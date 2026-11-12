@@ -20,7 +20,7 @@ export const REGIONS: readonly Region[] = [
   { id: "minas-gerais", label: "Minas Gerais", bbox: [-51.1, -22.9, -39.9, -14.2] },
 ];
 
-export const DEFAULT_REGION_ID = "brasil";
+export const DEFAULT_REGION_ID = "world";
 
 export function getRegion(id: string | null | undefined): Region {
   return (

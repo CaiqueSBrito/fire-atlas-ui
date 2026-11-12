@@ -2,7 +2,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import type { MonthDay } from "@/types/calendar";
-import { DayTile, sensorCounts } from "./day-tile";
+import { DayTile, compactCount, sensorCounts } from "./day-tile";
 
 function setup(day: MonthDay, props: { selected?: boolean; isToday?: boolean } = {}) {
   const onSelect = vi.fn();
@@ -145,6 +145,28 @@ describe("DayTile — interação", () => {
   it("verso mostra o número do dia com dois dígitos", () => {
     const { button } = setup({ date: "2026-11-05", status: "none" });
     expect(button).toHaveTextContent("05");
+  });
+});
+
+describe("contagens grandes (Mundo)", () => {
+  it("abrevia a partir de mil mantendo o número exato no rótulo", () => {
+    const { button } = setup({
+      date: "2026-11-05",
+      status: "activity",
+      counts: { MODIS: 1234, VIIRS: 15200 },
+    });
+    expect(button.querySelector('[data-sensor="MODIS"]')).toHaveTextContent("◆1,2k");
+    expect(button.querySelector('[data-sensor="VIIRS"]')).toHaveTextContent("●15k");
+    expect(button).toHaveAccessibleName(/1234 focos MODIS, 15200 focos VIIRS/);
+  });
+
+  it("compactCount: limites", () => {
+    expect(compactCount(0)).toBe("0");
+    expect(compactCount(999)).toBe("999");
+    expect(compactCount(1000)).toBe("1,0k");
+    expect(compactCount(9949)).toBe("9,9k");
+    expect(compactCount(10000)).toBe("10k");
+    expect(compactCount(123456)).toBe("123k");
   });
 });
 

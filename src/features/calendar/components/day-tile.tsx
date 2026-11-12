@@ -31,6 +31,13 @@ export function sensorCounts(day: MonthDay): { sensor: Sensor; count: number }[]
   });
 }
 
+/** Abrevia a partir de mil para caber na carta: 1234 → "1,2k", 15200 → "15k". */
+export function compactCount(n: number): string {
+  if (n < 1000) return String(n);
+  const k = n / 1000;
+  return `${k < 10 ? k.toFixed(1).replace(".", ",") : Math.round(k)}k`;
+}
+
 type DayTileProps = {
   day: MonthDay;
   index: number;
@@ -91,7 +98,7 @@ export function DayTile({ day, index, isToday, selected, onSelect }: DayTileProp
                 <span className={SENSOR_META[sensor].color}>
                   {SENSOR_META[sensor].glyph}
                 </span>
-                <span className="text-ink-100">{count}</span>
+                <span className="text-ink-100">{compactCount(count)}</span>
               </span>
             ))}
           </span>

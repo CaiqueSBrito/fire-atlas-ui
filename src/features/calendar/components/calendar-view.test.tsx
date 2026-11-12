@@ -47,7 +47,7 @@ describe("CA01 — abertura: o painel exibe as cartas das datas", () => {
     const days = screen.getAllByRole("button", { name: /de novembro de 2026/ });
     expect(days).toHaveLength(30);
     expect(screen.getByText("Novembro de 2026", { selector: "span" })).toBeInTheDocument();
-    expect(mockedMonth).toHaveBeenCalledWith("2026-11", "brasil", expect.anything());
+    expect(mockedMonth).toHaveBeenCalledWith("2026-11", "world", expect.anything());
   });
 
   it("sem data selecionada, mostra o estado vazio convidativo", async () => {
@@ -88,7 +88,7 @@ describe("CA02 — seleção: carta vira e mostra os dados da data", () => {
     expect(tile(5)).toHaveAttribute("data-flipped", "false");
 
     const card = await screen.findByRole("article");
-    expect(card).toHaveAccessibleName("Carta de Brasil em 04/11/2026");
+    expect(card).toHaveAccessibleName("Carta de Mundo em 04/11/2026");
     expect(within(card).getByText("Focos MODIS").nextSibling).toHaveTextContent("3");
     expect(screen.getByRole("heading", { level: 2, name: "4 de novembro de 2026" }))
       .toBeInTheDocument();
@@ -110,6 +110,28 @@ describe("CA02 — seleção: carta vira e mostra os dados da data", () => {
     const card = await screen.findByRole("article");
     expect(card).toHaveAccessibleName("Carta de Bahia em 04/11/2026");
     expect(mockedDay).toHaveBeenCalledWith("2026-11-04", "bahia", "all", expect.anything());
+  });
+
+  it("a carta abre primeiro no Mundo (região padrão), não no Brasil", async () => {
+    setup("month=2026-11&date=2026-11-04");
+    const card = await screen.findByRole("article");
+    expect(card).toHaveAccessibleName("Carta de Mundo em 04/11/2026");
+    expect(screen.getByRole("combobox", { name: "Local" })).toHaveTextContent("Mundo");
+    expect(mockedDay).toHaveBeenCalledWith("2026-11-04", "world", "all", expect.anything());
+  });
+
+  it("o Brasil só aparece quando pedido na URL ou escolhido no Local", async () => {
+    setup("month=2026-11&date=2026-11-04&region=brasil");
+    expect(await screen.findByRole("article")).toHaveAccessibleName(
+      "Carta de Brasil em 04/11/2026",
+    );
+  });
+
+  it("região desconhecida na URL cai no Mundo", async () => {
+    setup("month=2026-11&date=2026-11-04&region=atlantida");
+    expect(await screen.findByRole("article")).toHaveAccessibleName(
+      "Carta de Mundo em 04/11/2026",
+    );
   });
 
   it("ignora data inválida na URL em vez de quebrar", async () => {
@@ -192,7 +214,7 @@ describe("CA03 — atualização sem voltar ao calendário", () => {
     await userEvent.click(screen.getByRole("combobox", { name: "Horário" }));
     await userEvent.click(screen.getByRole("option", { name: "Passagem diurna" }));
     await waitFor(() =>
-      expect(mockedDay).toHaveBeenCalledWith("2026-11-04", "brasil", "day", expect.anything()),
+      expect(mockedDay).toHaveBeenCalledWith("2026-11-04", "world", "day", expect.anything()),
     );
     expect(lastUrl()?.get("time")).toBe("day");
   });
@@ -203,7 +225,7 @@ describe("CA03 — atualização sem voltar ao calendário", () => {
     await userEvent.click(screen.getByRole("button", { name: "Próximo dia" }));
     await waitFor(() =>
       expect(screen.getByRole("article")).toHaveAccessibleName(
-        "Carta de Brasil em 05/11/2026",
+        "Carta de Mundo em 05/11/2026",
       ),
     );
     expect(tile(5)).toHaveAttribute("aria-pressed", "true");
@@ -216,7 +238,7 @@ describe("CA03 — atualização sem voltar ao calendário", () => {
     await screen.findByRole("article");
     await userEvent.click(screen.getByRole("button", { name: "Próximo dia" }));
     await waitFor(() =>
-      expect(mockedMonth).toHaveBeenCalledWith("2026-12", "brasil", expect.anything()),
+      expect(mockedMonth).toHaveBeenCalledWith("2026-12", "world", expect.anything()),
     );
     expect(screen.getByText("Dezembro de 2026", { selector: "span" })).toBeInTheDocument();
   });
@@ -288,7 +310,7 @@ describe("RN02 — navegação temporal", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "mar" }));
 
     await waitFor(() =>
-      expect(mockedMonth).toHaveBeenCalledWith("2025-03", "brasil", expect.anything()),
+      expect(mockedMonth).toHaveBeenCalledWith("2025-03", "world", expect.anything()),
     );
     expect(lastUrl()?.get("month")).toBe("2025-03");
     expect(screen.queryByRole("dialog")).toBeNull();
