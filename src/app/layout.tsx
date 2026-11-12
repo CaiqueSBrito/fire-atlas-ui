@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
+import { AppProviders } from "@/providers/app-providers";
 import "./globals.css";
 
 const display = Space_Grotesk({
@@ -30,7 +31,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="pt-BR"
       className={`${display.variable} ${sans.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <AppProviders>{children}</AppProviders>
+      </body>
     </html>
   );
 }
