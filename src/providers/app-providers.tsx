@@ -11,12 +11,12 @@ export function AppProviders({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60_000,
+            staleTime: 5 * 60_000,
             refetchOnWindowFocus: false,
-            // Uma retentativa automática só para falhas recuperáveis; depois
-            // a UI mostra o erro com botão de nova tentativa manual.
+            // Até 2 retentativas automáticas, exceto em falhas não
+            // recuperáveis (4xx); depois a UI oferece "Tentar novamente".
             retry: (count, error) =>
-              count < 1 && !(error instanceof ApiError && !error.recoverable),
+              count < 2 && !(error instanceof ApiError && !error.recoverable),
             retryDelay: 600,
           },
         },
