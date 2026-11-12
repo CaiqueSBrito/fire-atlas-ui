@@ -1,0 +1,69 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — tema espacial (dark first).
+ * Contraste alvo: WCAG AA (4.5:1 texto, 3:1 UI). Nunca usar só cor para
+ * transmitir informação: sempre acompanhar de rótulo/legenda/ícone.
+ */
+:root {
+  --space-950: #04060c; /* fundo base */
+  --space-900: #0a0f1e; /* superfícies */
+  --space-800: #121a31; /* cards / painéis */
+  --space-600: #2a3558; /* bordas */
+  --ink-100: #f2f5ff; /* texto principal */
+  --ink-300: #aab4d4; /* texto secundário */
+  --fire-500: #e5242b; /* botão vermelho de acesso */
+  --fire-400: #ff4a3d; /* hover / glow */
+  --ember-400: #ffb02e; /* destaque / foco ativo */
+  --earth-400: #3aa6ff; /* oceano / atmosfera do globo */
+  --focus-ring: #ffd166;
+}
+
+@theme inline {
+  --color-space-950: var(--space-950);
+  --color-space-900: var(--space-900);
+  --color-space-800: var(--space-800);
+  --color-space-600: var(--space-600);
+  --color-ink-100: var(--ink-100);
+  --color-ink-300: var(--ink-300);
+  --color-fire-500: var(--fire-500);
+  --color-fire-400: var(--fire-400);
+  --color-ember-400: var(--ember-400);
+  --color-earth-400: var(--earth-400);
+
+  --font-display: var(--font-display), system-ui, sans-serif;
+  --font-sans: var(--font-sans-body), system-ui, sans-serif;
+  --font-mono: var(--font-data), ui-monospace, monospace;
+
+  /* Escala tipográfica fluida (mobile → desktop) */
+  --text-display: clamp(2.5rem, 1.5rem + 5vw, 5.5rem);
+  --text-h1: clamp(2rem, 1.4rem + 2.5vw, 3.5rem);
+  --text-h2: clamp(1.5rem, 1.2rem + 1.2vw, 2.25rem);
+  --text-body: 1rem;
+  --text-small: 0.875rem;
+  --text-caption: 0.75rem;
+}
+
+body {
+  background: var(--space-950);
+  color: var(--ink-100);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.6;
+}
+
+/* Foco visível para navegação por teclado (RN04) */
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
