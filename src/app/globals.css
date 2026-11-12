@@ -30,6 +30,10 @@
   --color-fire-400: var(--fire-400);
   --color-ember-400: var(--ember-400);
   --color-earth-400: var(--earth-400);
+  /* Identidade dos sensores (sempre com forma + texto; ver lib/sensors.ts) */
+  --color-modis: #ffb02e;
+  --color-viirs: #ff4a3d;
+  --color-harmonized: #3aa6ff;
 
   --font-display: var(--font-space-grotesk), system-ui, sans-serif;
   --font-sans: var(--font-inter), system-ui, sans-serif;

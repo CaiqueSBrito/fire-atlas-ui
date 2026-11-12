@@ -45,14 +45,18 @@ Os textos da home seguem o enunciado oficial — não inventar dados/números.
 |---|---|
 | `/` | Home: cabeçalho + hero (globo + botão vermelho) + seções (desafio, proposta, dados, FAQ) + rodapé |
 | `/explore` | Redireciona para `/explore/map` |
-| `/explore/map` | Mapa + filtros (rota padrão do ambiente principal) |
+| `/explore/map` | Mapa interativo MapLibre + base NASA GIBS, camadas MODIS ◆ / VIIRS ●, área por desenho ou coordenadas, detalhes da detecção (NASA-012) |
 | `/explore/calendar` | Calendário de queimadas (cartas interativas, sidebar retrátil própria) — feature NASA-013 |
-| `/explore/statistics` | Análises (indicadores/cartas) |
-| `/explore/forecasts` | Previsões — **só existe com `NEXT_PUBLIC_FEATURE_FORECAST=true`** (404 caso contrário) |
+| `/explore/statistics` | Dashboard: indicadores, série temporal, histórico/anomalia, ranking e períodos críticos (NASA-014) |
+| `/explore/forecasts` | Previsões (NASA-015) — **só existe com `NEXT_PUBLIC_FEATURE_FORECAST=true`** (404 caso contrário) |
 
 O **calendário é uma rota própria** (`/explore/calendar`, feature `features/calendar`, com
 sidebar retrátil, região e estado na URL: `month`, `date`, `region`, `time`, `view`).
-A barra de filtros global (satélite/período) fica oculta nessa rota.
+A barra de filtros global (satélite/período) fica oculta nessa rota. O painel "Mapa de focos"
+da carta do dia usa o mapa real (`DayMap` → `FireMap`) e cai no `RegionPlot` esquemático
+quando não há WebGL (`lib/utils/webgl.ts`); a mini-carta dourada continua esquemática.
+Ao trocar de dia o mapa enquadra, com animação, a área dos focos do dia (`bboxOfPoints`);
+sem focos volta a enquadrar a região.
 
 **Padrão:** rotas (URLs e nomes de pastas em `app/`) sempre em inglês; textos da interface em português.
 
@@ -62,12 +66,35 @@ as demais usam `PageSection`).
 `explore/loading.tsx` e `explore/error.tsx` cobrem todas as seções (RN05). Nesta versão do
 Next o error boundary recebe **`retry`** (não `reset`).
 
+## Camadas do mapa (`/explore/map`)
+
+Mapa base (URL `base`): `satellite` (NASA Blue Marble), `vegetation` (satélite + NDVI MODIS 8 dias,
+GIBS) e `illustrated` (países em cinza mais escuro sobre oceano cinza claro, fronteiras brancas;
+dados Natural Earth em `public/data/`, só os maiores países têm divisões internas).
+Sobreposições: `heat=true` (densidade das detecções, ponderada por FRP quando existe; não é
+temperatura medida) e `temp=true` (temperatura máxima do ar do dia, **Open-Meteo**, CC BY 4.0,
+sem chave). A temperatura é um campo suave (grade de até 400 pontos, interpolação bicúbica,
+`lib/utils/temperature-field.ts`) desenhado num canvas e recortado só sobre os países
+(`temperature-image.ts`), com fronteiras finas por cima. Grade com margem de 30% além da área,
+cache de 30 min; o limite gratuito é ~600 chamadas/min (cada ponto conta): erro 429 mostra
+mensagem e "Tentar novamente", sem retentativa automática. Datas antigas (>90 dias) usam a API de
+arquivo. Vegetação usa imagens GIBS com a data do fim do período limitada a 3 dias atrás
+(`imageryDateFor`); legendas usam as paletas oficiais (`lib/map-layers.ts`). O worker do MapLibre
+é copiado para `public/` por `scripts/copy-maplibre-worker.mjs`.
+
 ## Dados (mock x API)
 
-Sem `NEXT_PUBLIC_API_URL`, `src/lib/api/fires.ts` gera dados **mock** (e em dev
-`?mock=error` / `?mock=empty` simulam falha e vazio). Com a variável, chama
-`GET /fires/summary?satellite=&from=&to=` — **contrato ainda não combinado com o backend**.
-Os 8 focos do globo da home são ilustrativos, não dados reais.
+Sem `NEXT_PUBLIC_API_URL`, `lib/api/mock-detections.ts` e `mock-stats.ts` geram dados
+**simulados** determinísticos (sempre sinalizados na UI; em dev `?mock=error` / `?mock=empty`
+simulam falha e vazio). Mapa e estatísticas usam as mesmas contagens. Com a variável, chama
+`GET /detections`, `/stats` e `/forecast` (`sensors, from, to, bbox` / `region, bbox`) —
+**contratos propostos, ainda não combinados com o backend** (tipos em `types/detections|stats|forecast.ts`).
+
+Regras de não-invenção: FRP, ranking, períodos críticos, harmonizado e correspondências
+só aparecem quando a API os fornece (senão "Indisponível"). Correspondência entre sensores
+vem só da harmonização validada (`matchId`). A previsão nunca é simulada: sem serviço,
+mostra indisponibilidade. Ausência de ponto nunca é apresentada como ausência de fogo.
+Os 8 focos do globo da home são ilustrativos.
 
 ## Estrutura de pastas
 
@@ -92,22 +119,25 @@ public/textures/  # texturas do globo
 Convenções: arquivos `kebab-case.tsx`, componentes `PascalCase`, imports via
 alias `@/`. Server Components por padrão; `"use client"` só onde há
 interação (globo, mapa, filtros). Features não importam umas das outras —
-só de `components/`, `lib/`, `hooks/`, `types/`. Filtros: `lib/filters.ts` + `hooks/use-filters.ts`.
+só de `components/`, `lib/`, `hooks/`, `types/` (exceções já existentes: previsão reutiliza o
+mapa e o `Unavailable` de stats). Filtros: `lib/filters.ts` + `hooks/use-filters.ts`.
+**Não escrever comentários no código** (pedido do time); nomes claros e CLAUDE.md bastam.
 
 ## Estado e filtros (RN03)
 
-Filtros (período, satélite MODIS/VIIRS/harmonizado, região, etc.) vivem na
-**query string da URL** (lib `nuqs`) — sobrevivem à navegação entre seções,
-são compartilháveis e funcionam com o botão voltar. Links do menu devem
-preservar a query string. Dados do servidor: **TanStack Query** (cache, retry,
-estados de loading/error).
+Filtros vivem na **query string da URL** (lib `nuqs`): `sensors` (modis,viirs — camadas
+independentes), `from`/`to` (padrão: últimos 7 dias), `region` (id de `config/regions.ts`,
+o mesmo parâmetro do calendário), `bbox` (`oeste,sul,leste,norte`, área personalizada,
+validada em `lib/utils/bbox.ts`, tem prioridade sobre `region`) e `date` (dia escolhido no
+calendário, usado como período quando `from/to` não existem). "Limpar filtros" restaura o padrão.
+Sobrevivem à navegação, são compartilháveis e funcionam com o botão voltar; links do menu
+preservam a query string. Dados do servidor: **TanStack Query** (`hooks/use-detections.ts`).
 
 ## Stack
 
 Next.js (App Router, `src/`), React, TypeScript, Tailwind v4, Three.js +
-`@react-three/fiber` + `drei` (globo), TanStack Query, nuqs.
-A instalar quando necessário: biblioteca de mapa (MapLibre GL / react-map-gl),
-biblioteca de gráficos.
+`@react-three/fiber` + `drei` (globo), MapLibre GL (mapa, carregado só no cliente via
+`dynamic`), TanStack Query, nuqs, Vitest. Gráficos são SVG próprio (sem biblioteca).
 
 ## Design
 

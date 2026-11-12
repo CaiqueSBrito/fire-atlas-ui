@@ -1,18 +1,32 @@
 "use client";
 
-import { useId, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { useFilters } from "@/hooks/use-filters";
-import { SATELLITE_OPTIONS } from "@/lib/filters";
+import { Select } from "@/components/ui/select";
+import { REGIONS } from "@/config/regions";
+import { useResolvedFilters } from "@/hooks/use-filters";
+import { isDirty } from "@/lib/filters";
+import { SENSOR_META, SENSORS } from "@/lib/sensors";
+import type { SensorId } from "@/types/detections";
 
 const dateInput =
   "min-h-11 rounded-lg border border-space-600 bg-space-800 px-3 text-small text-ink-100 [color-scheme:dark]";
 
-export function FilterBar({ children }: { children?: ReactNode }) {
-  const [filters, setFilters] = useFilters();
-  const name = useId();
-  const dirty =
-    filters.satellite !== "all" || filters.from !== null || filters.to !== null;
+const CUSTOM = "custom";
+
+export function FilterBar() {
+  const { raw, setRaw, filters } = useResolvedFilters();
+
+  function toggleSensor(id: SensorId) {
+    const next = filters.sensors.includes(id)
+      ? filters.sensors.filter((s) => s !== id)
+      : SENSORS.filter((s) => s === id || filters.sensors.includes(s));
+    void setRaw({ sensors: next });
+  }
+
+  const regionOptions = [
+    ...(filters.customArea ? [{ value: CUSTOM, label: "Área personalizada" }] : []),
+    ...REGIONS.map((r) => ({ value: r.id, label: r.label })),
+  ];
 
   return (
     <form
@@ -22,34 +36,48 @@ export function FilterBar({ children }: { children?: ReactNode }) {
     >
       <fieldset>
         <legend className="mb-1 text-caption uppercase tracking-wider text-ink-300">
-          Satélite
+          Sensores
         </legend>
-        <div className="flex flex-wrap gap-1">
-          {SATELLITE_OPTIONS.map((opt) => (
-            <label key={opt.value} className="cursor-pointer">
+        <div className="flex gap-1">
+          {SENSORS.map((id) => (
+            <label key={id} className="cursor-pointer">
               <input
-                type="radio"
-                name={name}
-                value={opt.value}
-                checked={filters.satellite === opt.value}
-                onChange={() => setFilters({ satellite: opt.value })}
+                type="checkbox"
+                checked={filters.sensors.includes(id)}
+                onChange={() => toggleSensor(id)}
                 className="peer sr-only"
               />
-              <span className="inline-flex min-h-11 items-center rounded-full border border-space-600 px-4 text-small font-semibold text-ink-300 peer-checked:border-ember-400 peer-checked:bg-ember-400 peer-checked:text-space-950 peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-(--focus-ring)">
-                {opt.label}
+              <span className="inline-flex min-h-11 items-center gap-2 rounded-full border border-space-600 px-4 text-small font-semibold text-ink-300 peer-checked:border-ink-300 peer-checked:bg-space-800 peer-checked:text-ink-100 peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-(--focus-ring)">
+                <span aria-hidden style={{ color: SENSOR_META[id].hex }}>
+                  {SENSOR_META[id].symbol}
+                </span>
+                {SENSOR_META[id].label}
               </span>
             </label>
           ))}
         </div>
       </fieldset>
 
+      <Select
+        label="Região"
+        value={filters.customArea ? CUSTOM : filters.regionId}
+        options={regionOptions}
+        onChange={(id) =>
+          void setRaw({
+            region: id === "world" || id === CUSTOM ? null : id,
+            bbox: id === CUSTOM ? raw.bbox : null,
+          })
+        }
+        className="w-48"
+      />
+
       <label className="flex flex-col gap-1 text-caption uppercase tracking-wider text-ink-300">
         De
         <input
           type="date"
-          value={filters.from ?? ""}
-          max={filters.to ?? undefined}
-          onChange={(e) => setFilters({ from: e.target.value || null })}
+          value={filters.from}
+          max={filters.to}
+          onChange={(e) => void setRaw({ from: e.target.value || null })}
           className={dateInput}
         />
       </label>
@@ -57,22 +85,35 @@ export function FilterBar({ children }: { children?: ReactNode }) {
         Até
         <input
           type="date"
-          value={filters.to ?? ""}
-          min={filters.from ?? undefined}
-          onChange={(e) => setFilters({ to: e.target.value || null })}
+          value={filters.to}
+          min={filters.from}
+          onChange={(e) => void setRaw({ to: e.target.value || null })}
           className={dateInput}
         />
       </label>
 
-      {children}
-
-      {dirty && (
+      {(isDirty(raw) || raw.date) && (
         <Button
           variant="ghost"
-          onClick={() => setFilters({ satellite: null, from: null, to: null })}
+          onClick={() =>
+            void setRaw({
+              sensors: null,
+              from: null,
+              to: null,
+              region: null,
+              bbox: null,
+              date: null,
+            })
+          }
         >
           Limpar filtros
         </Button>
+      )}
+
+      {filters.problem && (
+        <p role="alert" className="w-full text-small text-fire-400">
+          {filters.problem}
+        </p>
       )}
     </form>
   );

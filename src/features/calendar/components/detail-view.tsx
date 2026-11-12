@@ -9,7 +9,7 @@ import { useDayQuery } from "../hooks/use-calendar-queries";
 import { ActivityCard, PASS_TIME_LABEL } from "./activity-card";
 import { DatePicker } from "./date-picker";
 import { STATUS_META } from "./day-tile";
-import { RegionPlot } from "./region-plot";
+import { DayMap } from "./day-map";
 
 const VIEWS: { id: ImageryKind; label: string }[] = [
   { id: "thermal", label: "Térmica" },
@@ -196,9 +196,10 @@ export function DetailView({
           </div>
           <div className="mt-3 aspect-[3/2] max-h-[30rem] w-full overflow-hidden rounded-xl border border-space-600">
             {data && data.status !== "unavailable" ? (
-              <RegionPlot
+              <DayMap
                 region={region}
                 detections={data.detections}
+                date={date}
                 title={`Mapa esquemático com ${data.detections.length} detecções em ${region.label}`}
               />
             ) : (

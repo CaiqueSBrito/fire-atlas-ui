@@ -8,7 +8,6 @@ const base =
   "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
 
 const variants: Record<Variant, string> = {
-  // Botão vermelho de acesso (RN02). Branco sobre fire-500 = contraste 4.5:1.
   primary:
     "bg-fire-500 text-white shadow-[0_0_40px_rgba(229,36,43,0.55)] hover:brightness-110",
   secondary:
@@ -17,11 +16,10 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  md: "min-h-11 px-5 text-small", // 44px: alvo de toque mínimo
+  md: "min-h-11 px-5 text-small",
   lg: "min-h-14 px-8 text-lg",
 };
 
-/** Classes do botão — use também em <Link> para manter o mesmo visual. */
 export function buttonVariants({
   variant = "secondary",
   size = "md",

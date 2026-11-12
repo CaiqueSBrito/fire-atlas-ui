@@ -59,3 +59,5 @@ AGENTS.md
 
 # exemplo de variáveis de ambiente (versionado)
 !.env.example
+
+/public/maplibre-gl-worker.mjs

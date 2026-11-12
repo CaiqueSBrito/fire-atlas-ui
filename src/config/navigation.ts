@@ -5,8 +5,6 @@ export interface NavItem {
   label: string;
 }
 
-// O calendário é a rota /explore/calendar (sidebar retrátil própria).
-// A previsão só aparece com a feature flag ligada (funcionalidade validada).
 export const NAV_ITEMS: NavItem[] = [
   { href: "/", label: "Início" },
   { href: "/explore/map", label: "Mapa" },
