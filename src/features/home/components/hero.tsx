@@ -8,11 +8,9 @@ export function Hero() {
       aria-labelledby="hero-title"
       className="relative isolate flex min-h-[calc(100svh-4.5rem)] flex-col overflow-hidden bg-space-950"
     >
-      {/* Globo decorativo: o conteúdo equivalente está no texto ao lado. */}
       <div aria-hidden className="absolute inset-0 -z-20">
         <GlobeLoader />
       </div>
-      {/* Garante contraste do texto sobre o globo */}
       <div
         aria-hidden
         className="absolute inset-0 -z-10 bg-gradient-to-t from-space-950 via-space-950/70 to-transparent lg:bg-gradient-to-r lg:via-space-950/50"

@@ -16,7 +16,6 @@ function NavList({ search }: { search: string }) {
         return (
           <li key={item.href}>
             <Link
-              // Preserva a query string: filtros não se perdem (RN03).
               href={search ? `${item.href}?${search}` : item.href}
               aria-current={active ? "page" : undefined}
               className={cn(

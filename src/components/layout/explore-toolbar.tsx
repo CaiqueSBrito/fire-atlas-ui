@@ -3,7 +3,6 @@
 import { usePathname } from "next/navigation";
 import { FilterBar } from "@/features/filters/components/filter-bar";
 
-/** Filtros globais (satélite/período). O calendário tem controles próprios. */
 export function ExploreToolbar() {
   const pathname = usePathname();
   if (pathname.startsWith("/explore/calendar")) return null;

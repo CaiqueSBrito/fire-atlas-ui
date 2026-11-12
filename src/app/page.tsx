@@ -6,7 +6,6 @@ import { Faq } from "@/features/home/components/faq";
 import { Hero } from "@/features/home/components/hero";
 import { HowItWorks } from "@/features/home/components/how-it-works";
 
-// Home: cabeçalho + hero (globo 3D e botão vermelho → /explore/map) + seções.
 export default function Home() {
   return (
     <>

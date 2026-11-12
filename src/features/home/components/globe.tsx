@@ -7,7 +7,6 @@ import * as THREE from "three";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
 import { latLonToVector3 } from "@/lib/utils/geo";
 
-// Focos ilustrativos (não são dados reais): [lat, lon].
 const HOTSPOTS: Array<[number, number]> = [
   [-8, -60],
   [37, -120],
@@ -64,8 +63,6 @@ function Earth({ reduceMotion }: { reduceMotion: boolean }) {
 
   useFrame(({ pointer, camera, size }, delta) => {
     const aspect = size.width / size.height;
-    // Enquadramento responsivo: afasta a câmera em telas estreitas e desloca
-    // o globo (direita no desktop, parte superior no celular).
     camera.position.z = Math.max(3.6, 3.2 / aspect);
     const halfH = camera.position.z * Math.tan(THREE.MathUtils.degToRad(22.5));
     root.current?.position.set(
@@ -74,7 +71,6 @@ function Earth({ reduceMotion }: { reduceMotion: boolean }) {
       0,
     );
 
-    // Resposta ao mouse (CA02): o ponteiro inclina o globo e acelera a rotação.
     if (tilt.current) {
       tilt.current.rotation.x = THREE.MathUtils.damp(
         tilt.current.rotation.x,
@@ -110,7 +106,6 @@ function Earth({ reduceMotion }: { reduceMotion: boolean }) {
           </group>
         </group>
       </group>
-      {/* Atmosfera */}
       <mesh>
         <sphereGeometry args={[1.1, 64, 64]} />
         <meshBasicMaterial
@@ -132,7 +127,6 @@ export default function Globe() {
     <Canvas
       dpr={[1, 2]}
       camera={{ position: [0, 0, 3.6], fov: 45 }}
-      // Escuta o mouse na página toda (o texto do hero fica por cima do canvas).
       eventSource={document.body}
       eventPrefix="client"
     >

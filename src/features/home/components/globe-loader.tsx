@@ -3,7 +3,6 @@
 import { Component, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 
-/** Representação estática usada enquanto carrega ou se o WebGL falhar. */
 function GlobePlaceholder() {
   return (
     <div aria-hidden className="absolute inset-0 flex items-center justify-center lg:justify-end lg:pr-[12%]">
@@ -25,7 +24,6 @@ class WebGLBoundary extends Component<
   }
 }
 
-// three.js é pesado: carrega só no cliente e depois do primeiro render.
 const Globe = dynamic(() => import("./globe"), {
   ssr: false,
   loading: () => <GlobePlaceholder />,

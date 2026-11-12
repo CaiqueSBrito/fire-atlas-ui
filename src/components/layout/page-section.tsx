@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-/** Página padrão do /explore: <main id="conteudo"> centralizado com título. */
 export function PageSection({
   title,
   description,

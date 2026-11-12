@@ -1,9 +1,5 @@
 import * as THREE from "three";
 
-/**
- * Lat/lon (graus) → ponto na esfera, alinhado ao mapeamento UV da
- * SphereGeometry do Three (lon -180° na borda esquerda da textura).
- */
 export function latLonToVector3(lat: number, lon: number, radius = 1) {
   const phi = THREE.MathUtils.degToRad(lat);
   const theta = THREE.MathUtils.degToRad(lon);

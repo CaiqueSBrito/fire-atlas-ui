@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "postinstall": "node scripts/copy-maplibre-worker.mjs",
+    "predev": "node scripts/copy-maplibre-worker.mjs",
+    "prebuild": "node scripts/copy-maplibre-worker.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -14,6 +17,7 @@
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
     "@tanstack/react-query": "^5.107.1",
+    "maplibre-gl": "^6.18.0",
     "next": "16.4.6",
     "nuqs": "^2.10.3",
     "react": "19.3.0",

@@ -1,7 +1,6 @@
 import { Logo } from "./logo";
 import { MainNav } from "./main-nav";
 
-/** Cabeçalho compartilhado: logo + menu (home e ambiente principal). */
 export function SiteHeader() {
   return (
     <header className="border-b border-space-600 bg-space-950">

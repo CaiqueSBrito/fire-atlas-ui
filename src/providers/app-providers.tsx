@@ -13,8 +13,6 @@ export function AppProviders({ children }: { children: ReactNode }) {
           queries: {
             staleTime: 5 * 60_000,
             refetchOnWindowFocus: false,
-            // Até 2 retentativas automáticas, exceto em falhas não
-            // recuperáveis (4xx); depois a UI oferece "Tentar novamente".
             retry: (count, error) =>
               count < 2 && !(error instanceof ApiError && !error.recoverable),
             retryDelay: 600,

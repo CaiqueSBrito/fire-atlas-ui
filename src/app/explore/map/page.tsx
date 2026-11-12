@@ -1,5 +1,5 @@
-import { MapOverview } from "@/features/map/components/map-overview";
+import { MapExplorer } from "@/features/map/components/map-explorer";
 
 export default function MapPage() {
-  return <MapOverview />;
+  return <MapExplorer />;
 }

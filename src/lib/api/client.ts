@@ -1,13 +1,11 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
 
-/** Sem URL configurada o app usa dados mock (ver fires.ts). */
 export const hasApi = Boolean(BASE_URL);
 
 export class ApiError extends Error {
   constructor(
     message: string,
     public readonly status?: number,
-    /** Falhas de rede e 5xx são recuperáveis; 4xx não. */
     public readonly recoverable = true,
   ) {
     super(message);
