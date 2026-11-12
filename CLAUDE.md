@@ -46,15 +46,19 @@ Os textos da home seguem o enunciado oficial — não inventar dados/números.
 | `/` | Home: cabeçalho + hero (globo + botão vermelho) + seções (desafio, proposta, dados, FAQ) + rodapé |
 | `/explore` | Redireciona para `/explore/map` |
 | `/explore/map` | Mapa + filtros (rota padrão do ambiente principal) |
+| `/explore/calendar` | Calendário de queimadas (cartas interativas, sidebar retrátil própria) — feature NASA-013 |
 | `/explore/statistics` | Análises (indicadores/cartas) |
 | `/explore/forecasts` | Previsões — **só existe com `NEXT_PUBLIC_FEATURE_FORECAST=true`** (404 caso contrário) |
 
-O **calendário não é rota**: é um painel retrátil (`aria-expanded`) na barra de
-filtros do `/explore`, e escolher dia/período atualiza os filtros da URL.
+O **calendário é uma rota própria** (`/explore/calendar`, feature `features/calendar`, com
+sidebar retrátil, região e estado na URL: `month`, `date`, `region`, `time`, `view`).
+A barra de filtros global (satélite/período) fica oculta nessa rota.
 
 **Padrão:** rotas (URLs e nomes de pastas em `app/`) sempre em inglês; textos da interface em português.
 
-`src/app/explore/layout.tsx` é o shell compartilhado (`SiteHeader` + filtros/calendário + conteúdo).
+`src/app/explore/layout.tsx` é o shell compartilhado (`SiteHeader` + filtros + `children`).
+Cada página renderiza o próprio `<main id="conteudo">` (o calendário é largura total;
+as demais usam `PageSection`).
 `explore/loading.tsx` e `explore/error.tsx` cobrem todas as seções (RN05). Nesta versão do
 Next o error boundary recebe **`retry`** (não `reset`).
 
@@ -88,8 +92,7 @@ public/textures/  # texturas do globo
 Convenções: arquivos `kebab-case.tsx`, componentes `PascalCase`, imports via
 alias `@/`. Server Components por padrão; `"use client"` só onde há
 interação (globo, mapa, filtros). Features não importam umas das outras —
-só de `components/`, `lib/`, `hooks/`, `types/` (exceção: `components/layout/explore-toolbar.tsx`
-compõe filtros + calendário). Filtros: `lib/filters.ts` + `hooks/use-filters.ts`.
+só de `components/`, `lib/`, `hooks/`, `types/`. Filtros: `lib/filters.ts` + `hooks/use-filters.ts`.
 
 ## Estado e filtros (RN03)
 
@@ -113,9 +116,9 @@ Fontes (`next/font`): **Space Grotesk** (títulos), **Inter** (texto),
 **JetBrains Mono** (dados/números/coordenadas). Botão vermelho = `fire-500`.
 Acessibilidade: contraste WCAG AA, foco visível, `prefers-reduced-motion`,
 nunca só cor (usar legenda + texto), navegação completa por teclado, link
-"pular para o conteúdo" (`#main-content`), alternativa textual ao globo.
+"pular para o conteúdo" (`#conteudo`), alternativa textual ao globo.
 Origem do dado sempre com cor + forma + texto (ver `map-legend.tsx`).
 
 ## Comandos
 
-`npm run dev` · `npm run build` · `npm run lint`
+`npm run dev` · `npm run build` · `npm run lint` · `npm test` (Vitest + Testing Library)

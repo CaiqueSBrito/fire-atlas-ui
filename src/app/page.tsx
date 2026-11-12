@@ -11,7 +11,7 @@ export default function Home() {
   return (
     <>
       <SiteHeader />
-      <main id="main-content" tabIndex={-1}>
+      <main id="conteudo" tabIndex={-1}>
         <Hero />
         <AboutChallenge />
         <HowItWorks />

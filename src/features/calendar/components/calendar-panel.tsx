@@ -1,110 +1,191 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { useFilters } from "@/hooks/use-filters";
-import { cn } from "@/lib/utils/cn";
+import { ErrorState } from "@/components/feedback/error-state";
+import {
+  firstWeekday,
+  monthOf,
+  shiftMonth,
+  todayUtc,
+} from "@/lib/utils/dates";
+import type { DayStatus } from "@/types/calendar";
+import { useMonthQuery } from "../hooks/use-calendar-queries";
+import { DayTile, STATUS_META } from "./day-tile";
+import { FlameIcon } from "./flame-icon";
+import { MonthPicker } from "./month-picker";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-const MONTH_FMT = new Intl.DateTimeFormat("pt-BR", {
-  month: "long",
-  year: "numeric",
-});
-const DAY_FMT = new Intl.DateTimeFormat("pt-BR", { dateStyle: "full" });
+const STATUSES: DayStatus[] = ["activity", "none", "unavailable"];
+const STAT_LABEL: Record<DayStatus, string> = {
+  activity: "com atividade",
+  none: "sem registro",
+  unavailable: "indisponíveis",
+};
 
-const pad = (n: number) => String(n).padStart(2, "0");
-const toIso = (y: number, m: number, d: number) => `${y}-${pad(m + 1)}-${pad(d)}`;
-const formatIso = (iso: string) => iso.split("-").reverse().join("/");
+const navBtn =
+  "grid h-10 w-10 place-items-center rounded-xl text-lg text-ink-100 transition hover:bg-space-800 hover:text-ember-400";
 
-/** Calendário retrátil: escolher um dia ou um intervalo atualiza os filtros. */
-export function CalendarPanel() {
-  const [filters, setFilters] = useFilters();
-  const [view, setView] = useState(() => {
-    const ref = filters.from ? new Date(`${filters.from}T00:00:00`) : new Date();
-    return { year: ref.getFullYear(), month: ref.getMonth() };
-  });
+type CalendarPanelProps = {
+  month: string;
+  region: string;
+  selectedDate: string | null;
+  onMonthChange: (month: string) => void;
+  onSelectDate: (date: string) => void;
+  onClose: () => void;
+};
 
-  const firstWeekday = new Date(view.year, view.month, 1).getDay();
-  const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
-  const cells: Array<number | null> = [
-    ...Array<null>(firstWeekday).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
-  ];
-
-  function shiftMonth(delta: number) {
-    const d = new Date(view.year, view.month + delta, 1);
-    setView({ year: d.getFullYear(), month: d.getMonth() });
-  }
-
-  // 1º clique define o início; 2º define o fim (ou reinicia se for anterior).
-  function pick(iso: string) {
-    if (!filters.from || filters.to) {
-      setFilters({ from: iso, to: null });
-    } else if (iso < filters.from) {
-      setFilters({ from: iso, to: null });
-    } else {
-      setFilters({ to: iso });
-    }
-  }
+export function CalendarPanel({
+  month,
+  region,
+  selectedDate,
+  onMonthChange,
+  onSelectDate,
+  onClose,
+}: CalendarPanelProps) {
+  const query = useMonthQuery(month, region);
+  const offset = firstWeekday(month);
+  const today = todayUtc();
+  const stats = STATUSES.map(
+    (s) => query.data?.days.filter((d) => d.status === s).length ?? null,
+  );
 
   return (
-    <div className="mx-auto w-full max-w-sm p-4">
-      <div className="mb-3 flex items-center justify-between">
-        <Button variant="secondary" onClick={() => shiftMonth(-1)}>
-          <span aria-hidden>‹</span>
-          <span className="sr-only">Mês anterior</span>
-        </Button>
-        <h2 aria-live="polite" className="font-display font-bold capitalize">
-          {MONTH_FMT.format(new Date(view.year, view.month, 1))}
-        </h2>
-        <Button variant="secondary" onClick={() => shiftMonth(1)}>
-          <span aria-hidden>›</span>
-          <span className="sr-only">Próximo mês</span>
-        </Button>
+    <aside
+      aria-label="Calendário de queimadas"
+      className="panel-surface h-full w-full border-b border-space-600 p-5 lg:w-[30rem] lg:border-b-0 lg:border-r"
+    >
+      <div className="flex items-center gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-ember-400/30 bg-gradient-to-br from-fire-500/30 to-ember-400/10 shadow-[0_0_22px_rgba(229,36,43,0.3)]">
+          <FlameIcon className="h-6 w-[1.125rem]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-caption uppercase tracking-[0.2em] text-ink-300">
+            Baralho do mês
+          </p>
+          <p className="truncate text-small text-ink-100">
+            Escolha uma carta para explorar o dia
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-expanded="true"
+          aria-controls="calendar-grid"
+          aria-label="Recolher calendário"
+          title="Recolher calendário"
+          className="grid h-10 w-10 place-items-center rounded-xl border border-space-600 text-ink-100 transition hover:border-ember-400 hover:text-ember-400"
+        >
+          <span aria-hidden="true">«</span>
+        </button>
       </div>
 
-      <div className="grid grid-cols-7 gap-1 text-center">
-        {WEEKDAYS.map((d) => (
-          <span key={d} className="text-caption text-ink-300">
-            {d}
-          </span>
-        ))}
-        {cells.map((day, i) => {
-          if (day === null) return <span key={`blank-${i}`} />;
-          const iso = toIso(view.year, view.month, day);
-          const isEdge = iso === filters.from || iso === filters.to;
-          const inRange =
-            filters.from !== null &&
-            filters.to !== null &&
-            iso > filters.from &&
-            iso < filters.to;
-          return (
-            <button
-              key={iso}
-              type="button"
-              onClick={() => pick(iso)}
-              aria-pressed={isEdge || inRange}
-              aria-label={DAY_FMT.format(new Date(view.year, view.month, day))}
-              className={cn(
-                "min-h-11 rounded-lg font-mono text-small",
-                isEdge
-                  ? "bg-ember-400 font-bold text-space-950"
-                  : inRange
-                    ? "bg-space-600 text-ink-100"
-                    : "text-ink-100 hover:bg-space-800",
-              )}
+      <div className="mt-5 flex items-center justify-between rounded-2xl border border-space-600 bg-space-950/60 p-1.5">
+        <button
+          type="button"
+          onClick={() => onMonthChange(shiftMonth(month, -1))}
+          aria-label="Mês anterior"
+          className={navBtn}
+        >
+          ‹
+        </button>
+        <MonthPicker month={month} onChange={onMonthChange} />
+        <button
+          type="button"
+          onClick={() => onMonthChange(shiftMonth(month, 1))}
+          aria-label="Próximo mês"
+          className={navBtn}
+        >
+          ›
+        </button>
+      </div>
+
+      <div className="mt-2 flex justify-end">
+        <button
+          type="button"
+          onClick={() => onMonthChange(monthOf(today))}
+          disabled={month === monthOf(today)}
+          className="text-caption text-ink-300 underline-offset-4 hover:text-ember-400 hover:underline disabled:no-underline disabled:opacity-40"
+        >
+          Ir para o mês atual
+        </button>
+      </div>
+
+      <div id="calendar-grid" className="mt-3">
+        {query.isError ? (
+          <ErrorState
+            message={
+              query.error instanceof Error
+                ? query.error.message
+                : "Falha ao carregar o mês."
+            }
+            onRetry={() => query.refetch()}
+          />
+        ) : (
+          <>
+            <div
+              className="grid grid-cols-7 gap-1.5 text-center text-caption font-semibold uppercase tracking-wider text-ink-300"
+              aria-hidden="true"
             >
-              {day}
-            </button>
-          );
-        })}
+              {WEEKDAYS.map((d) => (
+                <span key={d}>{d}</span>
+              ))}
+            </div>
+            <div
+              className="mt-2 grid grid-cols-7 gap-1.5"
+              aria-busy={query.isPending}
+            >
+              {Array.from({ length: offset }, (_, i) => (
+                <span key={`pad-${i}`} aria-hidden="true" />
+              ))}
+              {query.isPending
+                ? Array.from({ length: 30 }, (_, i) => (
+                    <span
+                      key={i}
+                      className="aspect-[3/4] animate-pulse rounded-lg bg-space-800"
+                    />
+                  ))
+                : query.data.days.map((day, i) => (
+                    <DayTile
+                      key={day.date}
+                      index={i}
+                      isToday={day.date === today}
+                      day={day}
+                      selected={day.date === selectedDate}
+                      onSelect={onSelectDate}
+                    />
+                  ))}
+            </div>
+            {query.isPending && (
+              <p className="mt-2 text-small text-ink-300" role="status">
+                Carregando o mês…
+              </p>
+            )}
+          </>
+        )}
       </div>
 
-      <p className="mt-3 text-center text-small text-ink-300" aria-live="polite">
-        {filters.from
-          ? `Período: ${formatIso(filters.from)} – ${filters.to ? formatIso(filters.to) : "escolha o fim"}`
-          : "Escolha uma data inicial."}
+      {/* Legenda + resumo do mês (símbolo + rótulo + contagem: nunca só cor) */}
+      <ul className="mt-5 grid gap-2 text-small" aria-label="Resumo do mês">
+        {STATUSES.map((s, i) => (
+          <li
+            key={s}
+            className="flex items-center gap-3 rounded-xl border border-space-600 bg-space-950/50 px-3 py-2"
+          >
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-space-800 font-mono text-caption text-ink-100">
+              {STATUS_META[s].glyph}
+            </span>
+            <span className="flex-1 text-ink-300">{STATUS_META[s].label}</span>
+            <span className="font-mono font-bold text-ink-100">
+              {stats[i] === null ? "–" : `${stats[i]} ${stats[i] === 1 ? "dia" : "dias"}`}
+            </span>
+            <span className="sr-only">{STAT_LABEL[s]}</span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-3 text-caption text-ink-300">
+        Na carta, <span className="text-ember-400">◆</span> é MODIS e{" "}
+        <span className="text-fire-400">●</span> é VIIRS, com a quantidade de
+        focos de cada sensor — exibida apenas quando informada pela API.
       </p>
-    </div>
+    </aside>
   );
 }

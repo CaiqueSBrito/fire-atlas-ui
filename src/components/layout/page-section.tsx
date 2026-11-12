@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+/** Página padrão do /explore: <main id="conteudo"> centralizado com título. */
 export function PageSection({
   title,
   description,
@@ -10,17 +11,18 @@ export function PageSection({
   children?: ReactNode;
 }) {
   return (
-    <section aria-labelledby="page-title" className="flex flex-col gap-6">
+    <main
+      id="conteudo"
+      tabIndex={-1}
+      className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-6"
+    >
       <header>
-        <h1
-          id="page-title"
-          className="font-display text-h1 font-bold leading-tight"
-        >
+        <h1 className="font-display text-h1 font-bold leading-tight">
           {title}
         </h1>
         {description && <p className="mt-2 text-ink-300">{description}</p>}
       </header>
       {children}
-    </section>
+    </main>
   );
 }

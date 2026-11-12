@@ -1,32 +1,31 @@
-import { Button } from "@/components/ui/button";
+"use client";
 
-/**
- * Falha visível (RN05/CA04). Só mostra "Tentar novamente" quando a falha é
- * recuperável, ou seja, quando `onRetry` é informado.
- */
-export function ErrorState({
-  title = "Não foi possível carregar os dados",
-  message,
-  onRetry,
-}: {
+type ErrorStateProps = {
   title?: string;
   message?: string;
   onRetry?: () => void;
-}) {
+};
+
+export function ErrorState({
+  title = "Não foi possível carregar os dados",
+  message = "Verifique sua conexão e tente novamente.",
+  onRetry,
+}: ErrorStateProps) {
   return (
     <div
       role="alert"
-      className="flex flex-col items-center gap-4 rounded-2xl border border-fire-500 bg-space-900 p-10 text-center"
+      className="rounded-xl border border-fire-500/60 bg-space-900 p-5 text-center"
     >
-      <span aria-hidden className="text-3xl">
-        ⚠
-      </span>
-      <h2 className="font-display text-h2 font-bold">{title}</h2>
-      {message && <p className="max-w-prose text-ink-300">{message}</p>}
+      <p className="font-display text-lg font-bold text-ink-100">{title}</p>
+      <p className="mt-1 text-small text-ink-300">{message}</p>
       {onRetry && (
-        <Button variant="primary" onClick={onRetry}>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="mt-4 rounded-lg bg-fire-500 px-4 py-2 text-small font-semibold text-white hover:bg-fire-400"
+        >
           Tentar novamente
-        </Button>
+        </button>
       )}
     </div>
   );
