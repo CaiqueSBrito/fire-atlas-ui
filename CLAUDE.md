@@ -32,12 +32,14 @@ bloqueia o fluxo principal** — se falhar, o resto da plataforma continua.
 | Rota | Conteúdo |
 |---|---|
 | `/` | Home: globo + botão vermelho |
-| `/explorar/mapa` | Mapa + filtros (rota padrão do ambiente principal) |
-| `/explorar/calendario` | Calendário |
-| `/explorar/estatisticas` | Indicadores/cartas |
-| `/explorar/previsoes` | Previsões (opcional, isolada de falhas) |
+| `/explore/map` | Mapa + filtros (rota padrão do ambiente principal) |
+| `/explore/calendar` | Calendário |
+| `/explore/statistics` | Indicadores/cartas |
+| `/explore/forecasts` | Previsões (opcional, isolada de falhas) |
 
-`src/app/explorar/layout.tsx` é o shell compartilhado (cabeçalho + menu + conteúdo).
+**Padrão:** rotas (URLs e nomes de pastas em `app/`) sempre em inglês; textos da interface em português.
+
+`src/app/explore/layout.tsx` é o shell compartilhado (cabeçalho + menu + conteúdo).
 Cada seção deve ter `loading.tsx` e `error.tsx` próprios (RN05).
 
 ## Estrutura de pastas

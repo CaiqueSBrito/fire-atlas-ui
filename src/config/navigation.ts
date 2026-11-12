@@ -1,8 +1,8 @@
 export const NAV_ITEMS = [
-  { href: "/explorar/mapa", label: "Mapa" },
-  { href: "/explorar/calendario", label: "Calendário" },
-  { href: "/explorar/estatisticas", label: "Estatísticas" },
-  { href: "/explorar/previsoes", label: "Previsões" },
+  { href: "/explore/map", label: "Mapa" },
+  { href: "/explore/calendar", label: "Calendário" },
+  { href: "/explore/statistics", label: "Estatísticas" },
+  { href: "/explore/forecasts", label: "Previsões" },
 ] as const;
 
 export type NavItem = (typeof NAV_ITEMS)[number];

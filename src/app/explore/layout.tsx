@@ -3,6 +3,6 @@
 // filtros (RN03). Os filtros ficam na URL (query string) — ver CLAUDE.md.
 export default function ExplorarLayout({
   children,
-}: LayoutProps<"/explorar">) {
+}: LayoutProps<"/explore">) {
   return <div className="flex flex-1 flex-col">{children}</div>;
 }
