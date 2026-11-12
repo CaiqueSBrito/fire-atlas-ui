@@ -1,3 +1,5 @@
-export default function Page() {
-  return <main id="conteudo">Mapa — em construção</main>;
+import { MapOverview } from "@/features/map/components/map-overview";
+
+export default function MapPage() {
+  return <MapOverview />;
 }

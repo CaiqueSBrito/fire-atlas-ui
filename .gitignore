@@ -56,3 +56,6 @@ CLAUDE.local.md
 
 # gerado automaticamente pelo `next dev` (recriado a cada execução)
 AGENTS.md
+
+# exemplo de variáveis de ambiente (versionado)
+!.env.example

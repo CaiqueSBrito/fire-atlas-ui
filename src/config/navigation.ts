@@ -1,8 +1,17 @@
-export const NAV_ITEMS = [
-  { href: "/explore/map", label: "Mapa" },
-  { href: "/explore/calendar", label: "Calendário" },
-  { href: "/explore/statistics", label: "Estatísticas" },
-  { href: "/explore/forecasts", label: "Previsões" },
-] as const;
+import { FEATURES } from "./features";
 
-export type NavItem = (typeof NAV_ITEMS)[number];
+export interface NavItem {
+  href: string;
+  label: string;
+}
+
+// O calendário é um painel retrátil do ambiente principal (não uma rota).
+// A previsão só aparece com a feature flag ligada (funcionalidade validada).
+export const NAV_ITEMS: NavItem[] = [
+  { href: "/", label: "Início" },
+  { href: "/explore/map", label: "Mapa" },
+  { href: "/explore/statistics", label: "Análises" },
+  ...(FEATURES.forecast
+    ? [{ href: "/explore/forecasts", label: "Previsões" }]
+    : []),
+];

@@ -31,9 +31,9 @@
   --color-ember-400: var(--ember-400);
   --color-earth-400: var(--earth-400);
 
-  --font-display: var(--font-display), system-ui, sans-serif;
-  --font-sans: var(--font-sans-body), system-ui, sans-serif;
-  --font-mono: var(--font-data), ui-monospace, monospace;
+  --font-display: var(--font-space-grotesk), system-ui, sans-serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 
   /* Escala tipográfica fluida (mobile → desktop) */
   --text-display: clamp(2.5rem, 1.5rem + 5vw, 5.5rem);
