@@ -1,13 +1,15 @@
 "use client";
 
 import { useId } from "react";
-import { BASEMAP_OPTIONS, type BasemapId } from "@/lib/map-layers";
+import { BASEMAP_OPTIONS, PLOT_OPTIONS, type BasemapId, type PlotId } from "@/lib/map-layers";
 
 const radio =
   "flex cursor-pointer items-start gap-3 rounded-xl border border-space-600 p-3 has-[:checked]:border-ember-400 has-[:checked]:bg-space-800 has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-(--focus-ring)";
 
 export function LayerPanel({
   base,
+  plot = "points",
+  dots = true,
   heat,
   temperature,
   imageryDate,
@@ -15,6 +17,8 @@ export function LayerPanel({
   onChange,
 }: {
   base: BasemapId;
+  plot?: PlotId;
+  dots?: boolean;
   heat: boolean;
   temperature: boolean;
   imageryDate: string;
@@ -24,14 +28,57 @@ export function LayerPanel({
     message?: string;
     onRetry: () => void;
   };
-  onChange: (next: { base?: BasemapId; heat?: boolean; temp?: boolean }) => void;
+  onChange: (next: {
+    base?: BasemapId;
+    plot?: PlotId;
+    dots?: boolean;
+    heat?: boolean;
+    temp?: boolean;
+  }) => void;
 }) {
   const name = useId();
+  const plotName = useId();
   return (
     <section aria-labelledby="layers-title" className="flex flex-col gap-4">
       <h2 id="layers-title" className="text-caption uppercase tracking-wider text-ink-300">
         Camadas do mapa
       </h2>
+
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-small font-semibold">Visualização dos focos</legend>
+        {PLOT_OPTIONS.map((o) => (
+          <label key={o.id} className={radio}>
+            <input
+              type="radio"
+              name={plotName}
+              value={o.id}
+              checked={plot === o.id}
+              onChange={() => onChange({ plot: o.id })}
+              className="mt-1 accent-(--ember-400)"
+            />
+            <span className="flex flex-col">
+              <span className="text-small font-semibold">{o.label}</span>
+              <span className="text-caption text-ink-300">{o.description}</span>
+            </span>
+          </label>
+        ))}
+        {plot === "hex" && (
+          <label className={radio}>
+            <input
+              type="checkbox"
+              checked={dots}
+              onChange={(e) => onChange({ dots: e.target.checked })}
+              className="mt-1 accent-(--ember-400)"
+            />
+            <span className="flex flex-col">
+              <span className="text-small font-semibold">Mostrar pontos sobre os hexágonos</span>
+              <span className="text-caption text-ink-300">
+                Ao aproximar o zoom, cada detecção ◆ ● aparece por cima da célula; clique para ver os detalhes
+              </span>
+            </span>
+          </label>
+        )}
+      </fieldset>
 
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-small font-semibold">Mapa base</legend>

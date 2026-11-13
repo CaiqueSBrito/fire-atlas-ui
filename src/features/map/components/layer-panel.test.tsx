@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { LayerPanel } from "./layer-panel";
@@ -15,7 +15,7 @@ const props = (over = {}) => ({
 describe("LayerPanel", () => {
   it("lista os três mapas base e marca o atual", () => {
     render(<LayerPanel {...props({ base: "illustrated" })} />);
-    const radios = screen.getAllByRole("radio");
+    const radios = within(screen.getByRole("group", { name: "Mapa base" })).getAllByRole("radio");
     expect(radios).toHaveLength(3);
     expect(screen.getByRole("radio", { name: /Satélite \+ vegetação/ })).not.toBeChecked();
     expect(screen.getByRole("radio", { name: /Ilustrado/ })).toBeChecked();
@@ -130,5 +130,42 @@ describe("LayerPanel", () => {
   it("o mapa de calor não exige data (é calculado das detecções)", () => {
     render(<LayerPanel {...props({ heat: true })} />);
     expect(screen.queryByText(/Imagens da NASA de/)).not.toBeInTheDocument();
+  });
+
+  it("oferece a visualização dos focos em pontos ou hexágonos e marca a atual", () => {
+    const { rerender } = render(<LayerPanel {...props()} />);
+    const group = screen.getByRole("group", { name: "Visualização dos focos" });
+    expect(within(group).getByRole("radio", { name: /Pontos/ })).toBeChecked();
+    expect(within(group).getByRole("radio", { name: /Hexágonos \(H3\)/ })).not.toBeChecked();
+    rerender(<LayerPanel {...props({ plot: "hex" })} />);
+    expect(within(group).getByRole("radio", { name: /Hexágonos \(H3\)/ })).toBeChecked();
+  });
+
+  it("troca a visualização dos focos", async () => {
+    const p = props();
+    const { rerender } = render(<LayerPanel {...p} />);
+    await userEvent.click(screen.getByRole("radio", { name: /Hexágonos \(H3\)/ }));
+    expect(p.onChange).toHaveBeenCalledWith({ plot: "hex" });
+    rerender(<LayerPanel {...p} plot="hex" />);
+    await userEvent.click(screen.getByRole("radio", { name: /Pontos/ }));
+    expect(p.onChange).toHaveBeenLastCalledWith({ plot: "points" });
+  });
+
+  it("a opção de pontos sobre os hexágonos só existe no modo H3", () => {
+    const { rerender } = render(<LayerPanel {...props()} />);
+    expect(screen.queryByRole("checkbox", { name: /Mostrar pontos sobre os hexágonos/ })).not.toBeInTheDocument();
+    rerender(<LayerPanel {...props({ plot: "hex" })} />);
+    expect(screen.getByRole("checkbox", { name: /Mostrar pontos sobre os hexágonos/ })).toBeChecked();
+  });
+
+  it("liga e desliga os pontos sobre os hexágonos", async () => {
+    const p = props({ plot: "hex" });
+    const { rerender } = render(<LayerPanel {...p} />);
+    await userEvent.click(screen.getByRole("checkbox", { name: /Mostrar pontos sobre os hexágonos/ }));
+    expect(p.onChange).toHaveBeenLastCalledWith({ dots: false });
+    rerender(<LayerPanel {...p} dots={false} />);
+    expect(screen.getByRole("checkbox", { name: /Mostrar pontos sobre os hexágonos/ })).not.toBeChecked();
+    await userEvent.click(screen.getByRole("checkbox", { name: /Mostrar pontos sobre os hexágonos/ }));
+    expect(p.onChange).toHaveBeenLastCalledWith({ dots: true });
   });
 });

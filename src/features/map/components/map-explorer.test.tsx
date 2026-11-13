@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api/client";
@@ -8,6 +8,9 @@ import { fetchTemperatureGrid } from "@/lib/api/temperature";
 import { detection, detectionsResponse, temperatureGrid } from "@/test/detection-fixtures";
 import { renderWithProviders } from "@/test/render";
 import { MapExplorer } from "./map-explorer";
+
+const HEX_A = { id: "hexA", res: 4, count: 20, modis: 5, viirs: 15, center: [-50, -10], edgeKm: 26.1 };
+const HEX_B = { id: "hexB", res: 4, count: 7, modis: 7, viirs: 0, center: [-48, -12], edgeKm: 26.1 };
 
 vi.mock("@/lib/api/detections", () => ({
   fetchDetections: vi.fn(),
@@ -29,6 +32,12 @@ vi.mock("./fire-map-loader", () => ({
     showTemperature: boolean;
     imageryDate: string;
     temperature: unknown;
+    plot: string;
+    showPoints: boolean;
+    onSelect: (id: string | null) => void;
+    selectedHex: string | null;
+    onHexSelect: (cell: unknown) => void;
+    onHexChange: (info: unknown) => void;
   }) => (
     <div
       data-testid="fire-map"
@@ -40,7 +49,23 @@ vi.mock("./fire-map-loader", () => ({
       data-temp={String(p.showTemperature)}
       data-date={p.imageryDate}
       data-has-temp={String(Boolean(p.temperature))}
-    />
+      data-plot={p.plot}
+      data-points={String(p.showPoints)}
+      data-selected-hex={p.selectedHex ?? ""}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          p.onHexChange({ res: 4, edgeKm: 26.1, max: 20, cells: 2, top: [HEX_A, HEX_B] });
+          p.onHexSelect(HEX_A);
+        }}
+      >
+        emitir-hex
+      </button>
+      <button type="button" onClick={() => p.onSelect("viirs-1")}>
+        emitir-ponto
+      </button>
+    </div>
   ),
 }));
 
@@ -339,5 +364,149 @@ describe("MapExplorer — camadas do mapa", () => {
     renderWithProviders(<MapExplorer />, { searchParams: "?temp=true" });
     expect(await screen.findByText(/3 detecções no recorte/)).toBeInTheDocument();
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-count", "3");
+  });
+});
+
+describe("MapExplorer — hexágonos H3", () => {
+  it("começa em pontos e mostra a lista de detecções", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />);
+    await screen.findByText(/detecções no recorte/);
+    const map = screen.getByTestId("fire-map");
+    expect(map).toHaveAttribute("data-plot", "points");
+    expect(screen.getByText("Detecções de maior FRP")).toBeInTheDocument();
+    expect(screen.queryByText("Hexágonos com mais focos")).not.toBeInTheDocument();
+  });
+
+  it("lê o modo da URL e troca para hexágonos pelo painel", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />);
+    await screen.findByText(/detecções no recorte/);
+    await userEvent.click(screen.getByRole("radio", { name: /Hexágonos \(H3\)/ }));
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-plot", "hex");
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-points", "true");
+    expect(screen.getByText("Detecções de maior FRP")).toBeInTheDocument();
+    expect(screen.getByText(/Selecione um hexágono/)).toBeInTheDocument();
+  });
+
+  it("não refaz a consulta ao trocar de pontos para hexágonos", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />);
+    await screen.findByText(/detecções no recorte/);
+    await userEvent.click(screen.getByRole("radio", { name: /Hexágonos \(H3\)/ }));
+    expect(mocked).toHaveBeenCalledTimes(1);
+  });
+
+  it("mostra a escala e a lista dos hexágonos com mais focos", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
+    await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
+    expect(screen.getByText("Focos por hexágono (H3, resolução 4)")).toBeInTheDocument();
+    expect(screen.getByText("Hexágonos com mais focos")).toBeInTheDocument();
+  });
+
+  it("selecionar um hexágono mostra o detalhe no topo do painel, com a contagem por sensor", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
+    await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
+    const detail = screen.getByRole("region", { name: "Hexágono H3" });
+    expect(detail).toHaveTextContent("Focos na célula20");
+    expect(detail).toHaveTextContent("◆ MODIS5");
+    expect(detail).toHaveTextContent("● VIIRS15");
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-selected-hex", "hexA");
+    const aside = screen.getByRole("complementary", { name: "Painel do mapa" });
+    expect(aside.firstElementChild).not.toBe(detail);
+    expect(aside.children[1]).toBe(detail);
+  });
+
+  it("a lista permite escolher outro hexágono", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
+    await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
+    const top = screen.getByRole("region", { name: "Hexágonos com mais focos" });
+    await userEvent.click(within(top).getAllByRole("button")[1]);
+    expect(screen.getByRole("region", { name: "Hexágono H3" })).toHaveTextContent("Focos na célula7");
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-selected-hex", "hexB");
+  });
+
+  it("fechar o detalhe limpa a seleção do hexágono", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
+    await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
+    await userEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(screen.queryByRole("region", { name: "Hexágono H3" })).not.toBeInTheDocument();
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-selected-hex", "");
+  });
+
+  it("o detalhe de uma detecção também aparece no topo do painel", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />);
+    await screen.findByText(/detecções no recorte/);
+    await userEvent.click(screen.getByRole("button", { name: /120 MW/ }));
+    const detail = screen.getByRole("region", { name: /Detecção VIIRS/ });
+    const aside = screen.getByRole("complementary", { name: "Painel do mapa" });
+    expect(aside.children[1]).toBe(detail);
+  });
+});
+
+describe("MapExplorer — pontos sobre os hexágonos", () => {
+  it("no modo H3 os pontos continuam visíveis por padrão", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
+    expect(await screen.findByTestId("fire-map")).toHaveAttribute("data-points", "true");
+  });
+
+  it("a opção de pontos só aparece junto com os hexágonos", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />);
+    await screen.findByText(/detecções no recorte/);
+    expect(screen.queryByRole("checkbox", { name: /Mostrar pontos sobre os hexágonos/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("radio", { name: /Hexágonos \(H3\)/ }));
+    expect(screen.getByRole("checkbox", { name: /Mostrar pontos sobre os hexágonos/ })).toBeChecked();
+  });
+
+  it("desligar os pontos esconde a lista de detecções e mantém só os hexágonos", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
+    await screen.findByText("Detecções de maior FRP");
+    await userEvent.click(screen.getByRole("checkbox", { name: /Mostrar pontos sobre os hexágonos/ }));
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-points", "false");
+    expect(screen.queryByText("Detecções de maior FRP")).not.toBeInTheDocument();
+  });
+
+  it("lê a opção de pontos da URL", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex&dots=false" });
+    expect(await screen.findByTestId("fire-map")).toHaveAttribute("data-points", "false");
+  });
+
+  it("clicar num ponto mostra o detalhe da detecção e troca o detalhe do hexágono", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
+    await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
+    expect(screen.getByRole("region", { name: "Hexágono H3" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "emitir-ponto" }));
+    expect(screen.getByRole("region", { name: /Detecção VIIRS/ })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Hexágono H3" })).not.toBeInTheDocument();
+  });
+
+  it("clicar num hexágono depois troca de volta para o detalhe da célula", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
+    await userEvent.click(await screen.findByRole("button", { name: "emitir-ponto" }));
+    expect(screen.getByRole("region", { name: /Detecção VIIRS/ })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "emitir-hex" }));
+    expect(screen.getByRole("region", { name: "Hexágono H3" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Detecção VIIRS/ })).not.toBeInTheDocument();
+  });
+
+  it("escolher uma detecção na lista também limpa o hexágono selecionado", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
+    await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
+    const list = screen.getByRole("region", { name: "Detecções de maior FRP" });
+    await userEvent.click(within(list).getAllByRole("button")[0]);
+    expect(screen.queryByRole("region", { name: "Hexágono H3" })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /Detecção/ })).toBeInTheDocument();
   });
 });

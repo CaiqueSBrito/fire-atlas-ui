@@ -14,10 +14,22 @@ export const BASEMAP_OPTIONS: ReadonlyArray<{
   { id: "illustrated", label: "Ilustrado", description: "Países e estados em tons de cinza" },
 ];
 
+export const PLOTS = ["points", "hex"] as const;
+export type PlotId = (typeof PLOTS)[number];
+
+export const PLOT_OPTIONS: ReadonlyArray<{ id: PlotId; label: string; description: string }> = [
+  { id: "points", label: "Pontos", description: "Uma marca por detecção; clique para ver os detalhes" },
+  { id: "hex", label: "Hexágonos (H3)", description: "Contagem de focos por célula hexagonal" },
+];
+
+export const HEX_RAMP = ["#fff3b0", "#fdae61", "#f46d43", "#d73027", "#a50026"];
+
 export const mapLayerParsers = {
   base: parseAsStringLiteral(BASEMAPS).withDefault("satellite"),
   heat: parseAsBoolean.withDefault(false),
   temp: parseAsBoolean.withDefault(false),
+  plot: parseAsStringLiteral(PLOTS).withDefault("points"),
+  dots: parseAsBoolean.withDefault(true),
 };
 
 export const IMAGERY_LAG_DAYS = 3;

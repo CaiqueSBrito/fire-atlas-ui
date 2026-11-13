@@ -10,10 +10,12 @@ import { useMapLayers } from "@/hooks/use-map-layers";
 import { useTemperature } from "@/hooks/use-temperature";
 import { ApiError } from "@/lib/api/client";
 import { imageryDateFor } from "@/lib/map-layers";
+import type { HexCell, HexInfo } from "@/lib/utils/hex";
 import { formatBboxParam } from "@/lib/utils/bbox";
 import { AreaPanel } from "./area-panel";
 import { DetectionDetail } from "./detection-detail";
 import { DetectionList } from "./detection-list";
+import { HexDetail, HexTopList } from "./hex-detail";
 import { FireMap } from "./fire-map-loader";
 import { LayerPanel } from "./layer-panel";
 import { MapLegend } from "./map-legend";
@@ -35,6 +37,9 @@ export function MapExplorer() {
   const temperature = useTemperature(layers.temp);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawing, setDrawing] = useState(false);
+  const [hexInfo, setHexInfo] = useState<HexInfo | null>(null);
+  const [hexPicked, setHexPicked] = useState<HexCell | null>(null);
+  const hexSelected = hexInfo && hexPicked?.res === hexInfo.res ? hexPicked : null;
 
   const items = data?.items ?? [];
   const selected = items.find((d) => d.id === selectedId) ?? null;
@@ -86,6 +91,43 @@ export function MapExplorer() {
     );
   }
 
+  const pickPoint = (id: string | null) => {
+    setSelectedId(id);
+    if (id) setHexPicked(null);
+  };
+
+  const pickHex = (cell: HexCell | null) => {
+    setHexPicked(cell);
+    if (cell) setSelectedId(null);
+  };
+
+  const detailPanel =
+    hexSelected && data ? (
+      <HexDetail
+        cell={hexSelected}
+        shown={data.items.length}
+        total={data.total}
+        truncated={data.truncated}
+        onClose={() => setHexPicked(null)}
+      />
+    ) : selected && data ? (
+      <DetectionDetail
+        detection={selected}
+        source={data.source}
+        matchesAvailable={matchesAvailable}
+        onClose={() => setSelectedId(null)}
+      />
+    ) : null;
+
+  const showDetections = layers.plot === "points" || layers.dots;
+
+  const hint =
+    layers.plot === "hex"
+      ? layers.dots
+        ? "Selecione um hexágono (contagem por sensor) ou um ponto (localização, data e hora, sensor e FRP) no mapa ou nas listas."
+        : "Selecione um hexágono no mapa (ou na lista) para ver a contagem de focos por sensor."
+      : "Selecione um ponto no mapa (ou na lista) para ver localização, data e hora, sensor e FRP.";
+
   return (
     <main id="conteudo" tabIndex={-1} className="flex flex-1 flex-col lg:flex-row">
       <h1 className="sr-only">Mapa de focos de calor</h1>
@@ -98,8 +140,13 @@ export function MapExplorer() {
           drawing={drawing}
           onDrawn={applyArea}
           selectedId={selected?.id ?? null}
-          onSelect={setSelectedId}
+          onSelect={pickPoint}
           showMatches={matchesAvailable}
+          plot={layers.plot}
+          showPoints={layers.dots}
+          selectedHex={hexSelected?.id ?? null}
+          onHexSelect={pickHex}
+          onHexChange={setHexInfo}
           basemap={layers.base}
           showHeat={layers.heat}
           showTemperature={layers.temp}
@@ -127,6 +174,8 @@ export function MapExplorer() {
           não comprova ausência de incêndio.
         </p>
 
+        {detailPanel}
+
         {data && (
           <p className="font-mono text-small">
             {data.total.toLocaleString("pt-BR")} detecções no recorte
@@ -141,6 +190,8 @@ export function MapExplorer() {
 
         <LayerPanel
           base={layers.base}
+          plot={layers.plot}
+          dots={layers.dots}
           heat={layers.heat}
           temperature={layers.temp}
           imageryDate={imageryDate}
@@ -164,6 +215,8 @@ export function MapExplorer() {
           basemap={layers.base}
           showHeat={layers.heat}
           showTemperature={layers.temp}
+          plot={layers.plot}
+          hexInfo={hexInfo}
         />
 
         <AreaPanel
@@ -176,26 +229,18 @@ export function MapExplorer() {
           onClear={() => void setRaw({ bbox: null })}
         />
 
-        {selected && data ? (
-          <DetectionDetail
-            detection={selected}
-            source={data.source}
-            matchesAvailable={matchesAvailable}
-            onClose={() => setSelectedId(null)}
-          />
-        ) : (
-          <p className="text-small text-ink-300">
-            Selecione um ponto no mapa (ou na lista) para ver localização, data e
-            hora, sensor e FRP.
-          </p>
+        {!detailPanel && <p className="text-small text-ink-300">{hint}</p>}
+
+        {layers.plot === "hex" && hexInfo && (
+          <HexTopList cells={hexInfo.top} selectedId={hexSelected?.id ?? null} onSelect={pickHex} />
         )}
 
-        {data && (
+        {data && showDetections && (
           <DetectionList
             items={items}
             total={data.total}
             selectedId={selected?.id ?? null}
-            onSelect={setSelectedId}
+            onSelect={pickPoint}
           />
         )}
 

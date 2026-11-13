@@ -1,7 +1,7 @@
 "use client";
 
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Map as MlMap,
   setWorkerUrl,
@@ -18,8 +18,19 @@ import {
   gibsTiles,
   imageryDateFor,
   type BasemapId,
+  type PlotId,
 } from "@/lib/map-layers";
 import { SENSOR_META, SENSORS } from "@/lib/sensors";
+import { existingLayers } from "@/lib/utils/map-query";
+import {
+  aggregateHex,
+  hexColor,
+  hexInfo,
+  hexResolution,
+  hexRing,
+  type HexCell,
+  type HexInfo,
+} from "@/lib/utils/hex";
 import { fieldBounds, type TemperatureGrid } from "@/lib/utils/temperature-field";
 import { loadCountries, temperatureImage } from "@/lib/utils/temperature-image";
 import type { Bbox, FireDetection, SensorId } from "@/types/detections";
@@ -45,6 +56,8 @@ type FC = {
 const EMPTY: FC = { type: "FeatureCollection", features: [] };
 
 const ILLUSTRATED_LAYERS = ["ill-countries-fill", "ill-states-fill", "ill-states-line", "ill-countries-line"];
+
+const POINTS_MIN_ZOOM_IN_HEX = 5;
 
 const BLANK_IMAGE = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
 
@@ -159,6 +172,11 @@ export type FireMapProps = {
   showTemperature?: boolean;
   imageryDate?: string;
   temperature?: TemperatureGrid | null;
+  plot?: PlotId;
+  showPoints?: boolean;
+  selectedHex?: string | null;
+  onHexSelect?: (cell: HexCell | null) => void;
+  onHexChange?: (info: HexInfo | null) => void;
 };
 
 export default function FireMap({
@@ -177,17 +195,28 @@ export default function FireMap({
   showTemperature = false,
   imageryDate,
   temperature = null,
+  plot = "points",
+  showPoints = true,
+  selectedHex = null,
+  onHexSelect,
+  onHexChange,
 }: FireMapProps) {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
   const [ready, setReady] = useState(false);
-  const cb = useRef({ onSelect, onDrawn });
+  const [zoom, setZoom] = useState(2);
+  const plotRef = useRef(plot);
+  const pointsRef = useRef(showPoints);
+  const cellsRef = useRef<HexCell[]>([]);
+  const cb = useRef({ onSelect, onDrawn, onHexSelect, onHexChange });
   const drawingRef = useRef(drawing);
   const firstView = useRef(true);
   const imageryRef = useRef(imageryDate ?? imageryDateFor());
 
   useEffect(() => {
-    cb.current = { onSelect, onDrawn };
+    cb.current = { onSelect, onDrawn, onHexSelect, onHexChange };
+    plotRef.current = plot;
+    pointsRef.current = showPoints;
     drawingRef.current = drawing;
   });
 
@@ -226,6 +255,8 @@ export default function FireMap({
     map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new ScaleControl({ unit: "metric" }), "bottom-left");
 
+    map.on("zoomend", () => setZoom(map.getZoom()));
+
     map.on("load", () => {
       const date = imageryRef.current;
       map.addSource("vegetation", {
@@ -248,6 +279,29 @@ export default function FireMap({
         paint: { "raster-opacity": 0.92, "raster-fade-duration": 0 },
         layout: { visibility: "none" },
       });
+      map.addSource("hex", { type: "geojson", data: EMPTY as never });
+      map.addLayer({
+        id: "hex-fill",
+        type: "fill",
+        source: "hex",
+        layout: { visibility: "none" },
+        paint: { "fill-color": ["get", "color"], "fill-opacity": 0.8 },
+      } as never);
+      map.addLayer({
+        id: "hex-line",
+        type: "line",
+        source: "hex",
+        layout: { visibility: "none" },
+        paint: { "line-color": "#ffffff", "line-opacity": 0.5, "line-width": 0.7 },
+      } as never);
+      map.addLayer({
+        id: "hex-selected",
+        type: "line",
+        source: "hex",
+        layout: { visibility: "none" },
+        filter: ["==", ["get", "cell"], ""],
+        paint: { "line-color": "#f2f5ff", "line-width": 3 },
+      } as never);
       map.addSource("heat", { type: "geojson", data: EMPTY as never });
       map.addLayer({
         id: "heat",
@@ -336,25 +390,47 @@ export default function FireMap({
         source: "forecast",
         paint: { "line-color": "#c4a1ff", "line-width": 2, "line-dasharray": [1, 1.5] },
       });
+      setZoom(map.getZoom());
       setReady(true);
     });
 
+    const query = (geometry: Parameters<MlMap["queryRenderedFeatures"]>[0], ids: string[]) => {
+      const layers = existingLayers(map, ids);
+      return layers.length ? map.queryRenderedFeatures(geometry, { layers }) : [];
+    };
     const hit = (e: MapMouseEvent) =>
-      map.queryRenderedFeatures(
+      query(
         [
           [e.point.x - 8, e.point.y - 8],
           [e.point.x + 8, e.point.y + 8],
         ],
-        { layers: ["viirs", "modis"] },
+        ["viirs", "modis"],
       );
     map.on("click", (e) => {
       if (drawingRef.current) return;
+      if (plotRef.current === "hex") {
+        const pointId = pointsRef.current ? hit(e)[0]?.properties?.id : undefined;
+        if (typeof pointId === "string") {
+          cb.current.onSelect(pointId);
+          return;
+        }
+        const feature = query(e.point, ["hex-fill"])[0];
+        const cell = feature
+          ? (cellsRef.current.find((c) => c.id === feature.properties?.cell) ?? null)
+          : null;
+        cb.current.onHexSelect?.(cell);
+        if (!cell) cb.current.onSelect(null);
+        return;
+      }
       const id = hit(e)[0]?.properties?.id;
       cb.current.onSelect(typeof id === "string" ? id : null);
     });
     map.on("mousemove", (e) => {
       if (drawingRef.current) return;
-      map.getCanvas().style.cursor = hit(e).length ? "pointer" : "";
+      const hex = plotRef.current === "hex";
+      const overHex = hex && query(e.point, ["hex-fill"]).length > 0;
+      const overPoint = (!hex || pointsRef.current) && hit(e).length > 0;
+      map.getCanvas().style.cursor = overHex || overPoint ? "pointer" : "";
     });
 
     return () => {
@@ -430,6 +506,47 @@ export default function FireMap({
       map.easeTo({ center: [d.lon, d.lat], zoom: Math.max(map.getZoom(), 5), duration: reduceMotion() ? 0 : 600 });
     }
   }, [selectedId, detections, ready]);
+
+  const cells = useMemo(
+    () => (plot === "hex" ? aggregateHex(detections, hexResolution(zoom)) : []),
+    [plot, detections, zoom],
+  );
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const hex = plot === "hex";
+    for (const id of ["hex-fill", "hex-line", "hex-selected"]) setVisibility(map, id, hex);
+    for (const id of [...SENSORS, "matches", "selected"]) setVisibility(map, id, !hex || showPoints);
+    for (const id of [...SENSORS, "matches", "selected"]) {
+      if (map.getLayer(id)) map.setLayerZoomRange(id, hex ? POINTS_MIN_ZOOM_IN_HEX : 0, 24);
+    }
+    for (const sensor of SENSORS) {
+      if (map.getLayer(sensor)) map.setLayoutProperty(sensor, "icon-size", hex ? 0.7 : 1);
+    }
+  }, [plot, showPoints, ready]);
+
+  useEffect(() => {
+    cellsRef.current = cells;
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const max = cells.reduce((m, c) => Math.max(m, c.count), 0);
+    setData(map, "hex", {
+      type: "FeatureCollection",
+      features: cells.map((c) => ({
+        type: "Feature",
+        geometry: { type: "Polygon", coordinates: [hexRing(c.id)] },
+        properties: { cell: c.id, n: c.count, color: hexColor(c.count, max) },
+      })),
+    });
+    cb.current.onHexChange?.(plot === "hex" ? hexInfo(cells, hexResolution(zoom)) : null);
+  }, [cells, plot, zoom, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready || !map.getLayer("hex-selected")) return;
+    map.setFilter("hex-selected", ["==", ["get", "cell"], selectedHex ?? ""] as never);
+  }, [selectedHex, ready]);
 
   useEffect(() => {
     const map = mapRef.current;

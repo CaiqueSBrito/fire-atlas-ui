@@ -51,4 +51,24 @@ describe("MapLegend — camadas", () => {
     expect(screen.getByText("Vegetação (NDVI, MODIS)")).toBeInTheDocument();
     expect(screen.getByText("Temperatura máxima do ar (só sobre a terra)")).toBeInTheDocument();
   });
+
+  it("hexágonos mostram a escala por contagem, a resolução e o tamanho da célula", () => {
+    render(
+      <MapLegend
+        plot="hex"
+        hexInfo={{ res: 4, edgeKm: 26.1, max: 42, cells: 310, top: [] }}
+      />,
+    );
+    expect(screen.getByText("Focos por hexágono (H3, resolução 4)")).toBeInTheDocument();
+    expect(screen.getByText("1 foco")).toBeInTheDocument();
+    expect(screen.getByText("42 focos")).toBeInTheDocument();
+    expect(screen.getByText(/Aresta ≈ 26,1 km · 310 células/)).toBeInTheDocument();
+  });
+
+  it("sem hexágonos ativos a escala de hexágonos não aparece", () => {
+    const { rerender } = render(<MapLegend plot="points" />);
+    expect(screen.queryByText(/Focos por hexágono/)).not.toBeInTheDocument();
+    rerender(<MapLegend plot="hex" hexInfo={null} />);
+    expect(screen.queryByText(/Focos por hexágono/)).not.toBeInTheDocument();
+  });
 });

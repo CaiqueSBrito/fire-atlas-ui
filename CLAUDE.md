@@ -45,7 +45,7 @@ Os textos da home seguem o enunciado oficial — não inventar dados/números.
 |---|---|
 | `/` | Home: cabeçalho + hero (globo + botão vermelho) + seções (desafio, proposta, dados, FAQ) + rodapé |
 | `/explore` | Redireciona para `/explore/map` |
-| `/explore/map` | Mapa interativo MapLibre + base NASA GIBS, camadas MODIS ◆ / VIIRS ●, área por desenho ou coordenadas, detalhes da detecção (NASA-012) |
+| `/explore/map` | Mapa interativo MapLibre + base NASA GIBS, camadas MODIS ◆ / VIIRS ●, pontos ou hexágonos H3, área por desenho ou coordenadas, detalhes da detecção (NASA-012) |
 | `/explore/calendar` | Calendário de queimadas (cartas interativas, sidebar retrátil própria) — feature NASA-013 |
 | `/explore/statistics` | Dashboard: indicadores, série temporal, histórico/anomalia, ranking e períodos críticos (NASA-014) |
 | `/explore/forecasts` | Previsões (NASA-015) — **só existe com `NEXT_PUBLIC_FEATURE_FORECAST=true`** (404 caso contrário) |
@@ -67,6 +67,15 @@ as demais usam `PageSection`).
 Next o error boundary recebe **`retry`** (não `reset`).
 
 ## Camadas do mapa (`/explore/map`)
+
+Visualização dos focos (URL `plot`): `points` (padrão; um símbolo por detecção, clique mostra
+os detalhes) ou `hex` (**H3** via `h3-js`: contagem por célula hexagonal, MODIS e VIIRS separados
+no detalhe; resolução automática pelo zoom, `lib/utils/hex.ts`; cor por contagem; lista dos
+hexágonos com mais focos como alternativa por teclado). Os hexágonos contam só os pontos
+carregados (o mock limita a ~2,5 mil); com dados reais a agregação H3 deve vir do backend.
+No modo `hex` os pontos ◆ ● aparecem por cima das células a partir do zoom 5 (`dots=false` os
+desliga); clicar num ponto abre o detalhe da detecção e clicar na célula abre a contagem, um de
+cada vez. Os detalhes da seleção aparecem no topo do painel lateral.
 
 Mapa base (URL `base`): `satellite` (NASA Blue Marble), `vegetation` (satélite + NDVI MODIS 8 dias,
 GIBS) e `illustrated` (países em cinza mais escuro sobre oceano cinza claro, fronteiras brancas;

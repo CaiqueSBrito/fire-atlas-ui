@@ -1,4 +1,5 @@
-import { HEAT_RAMP, NDVI_RAMP, TEMPERATURE_RAMP, type BasemapId } from "@/lib/map-layers";
+import { HEAT_RAMP, HEX_RAMP, NDVI_RAMP, TEMPERATURE_RAMP, type BasemapId, type PlotId } from "@/lib/map-layers";
+import type { HexInfo } from "@/lib/utils/hex";
 import { SENSOR_META, SENSORS } from "@/lib/sensors";
 import type { SensorId } from "@/types/detections";
 
@@ -41,6 +42,8 @@ export function MapLegend({
   basemap = "satellite",
   showHeat = false,
   showTemperature = false,
+  plot = "points",
+  hexInfo,
 }: {
   counts?: Partial<Record<SensorId, number>>;
   enabled?: SensorId[];
@@ -49,6 +52,8 @@ export function MapLegend({
   basemap?: BasemapId;
   showHeat?: boolean;
   showTemperature?: boolean;
+  plot?: PlotId;
+  hexInfo?: HexInfo | null;
 }) {
   return (
     <section aria-labelledby="legend-title">
@@ -94,6 +99,15 @@ export function MapLegend({
             <span aria-hidden className="h-3 w-5 border-2 border-dashed border-[#c4a1ff] bg-[#c4a1ff]/20" />
             Previsto — não é detecção observada
           </li>
+        )}
+        {plot === "hex" && hexInfo && (
+          <Gradient
+            title={`Focos por hexágono (H3, resolução ${hexInfo.res})`}
+            colors={HEX_RAMP}
+            low="1 foco"
+            high={`${hexInfo.max.toLocaleString("pt-BR")} focos`}
+            note={`Aresta ≈ ${hexInfo.edgeKm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km · ${hexInfo.cells.toLocaleString("pt-BR")} células`}
+          />
         )}
         {showHeat && (
           <Gradient
