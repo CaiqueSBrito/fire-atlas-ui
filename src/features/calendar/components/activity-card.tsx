@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- imagens vêm da API (origem externa) */
 import type { Region } from "@/config/regions";
 import { formatShort } from "@/lib/utils/dates";
+import { gridPlotPoints } from "@/lib/utils/hex";
 import type {
   DayResponse,
   ImageryKind,
@@ -54,7 +55,7 @@ export function ActivityCard({ data, region, view }: ActivityCardProps) {
       <div className="mt-3 aspect-[3/2] overflow-hidden rounded-lg border-2 border-space-950/60 bg-space-900">
         {data.status === "unavailable" ? (
           <div className="grid h-full place-items-center p-4 text-center text-small text-ink-300">
-            Dados indisponíveis para esta data — nenhuma detecção é exibida.
+            {data.note ?? "Dados indisponíveis para esta data — nenhuma detecção é exibida."}
           </div>
         ) : imagery ? (
           <img
@@ -65,8 +66,12 @@ export function ActivityCard({ data, region, view }: ActivityCardProps) {
         ) : (
           <RegionPlot
             region={region}
-            detections={data.detections}
-            title={`Posição das ${data.detections.length} detecções em ${region.label}`}
+            detections={data.grid ? gridPlotPoints(data.grid.cells) : data.detections}
+            title={
+              data.grid
+                ? `Posição das ${data.grid.cells.length} células H3 com focos em ${region.label}`
+                : `Posição das ${data.detections.length} detecções em ${region.label}`
+            }
           />
         )}
       </div>
@@ -76,7 +81,7 @@ export function ActivityCard({ data, region, view }: ActivityCardProps) {
           ? `Fonte: ${imagery.source} · imagem de ${formatShort(imagery.date)}`
           : data.status === "unavailable"
             ? `Fonte consultada: ${data.source.name}`
-            : `Fonte: ${data.source.name} · posições aproximadas (sem mapa base)`}
+            : `Fonte: ${data.source.name} · ${data.grid ? "centro das células H3" : "posições aproximadas"} (sem mapa base)`}
       </p>
 
       <div className="mt-1 flex justify-between font-mono text-small text-space-950">

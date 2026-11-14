@@ -137,3 +137,12 @@ describe("hexInfo", () => {
     expect(hexInfo([], 3)).toMatchObject({ max: 0, cells: 0, top: [] });
   });
 });
+
+describe("hexFocusZoom", () => {
+  it("aumenta o zoom conforme a resolução e tem valor padrão", async () => {
+    const { hexFocusZoom } = await import("./hex");
+    expect(hexFocusZoom(4)).toBe(7);
+    expect(hexFocusZoom(2)).toBeLessThan(hexFocusZoom(6));
+    expect(hexFocusZoom(15)).toBe(8);
+  });
+});

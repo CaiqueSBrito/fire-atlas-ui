@@ -5,7 +5,7 @@ type Variant = "primary" | "secondary" | "ghost";
 type Size = "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex items-center justify-center gap-2 rounded-full font-semibold leading-6 tracking-[-0.02em] whitespace-nowrap transition duration-200 ease-[ease] disabled:cursor-not-allowed disabled:opacity-60";
 
 const variants: Record<Variant, string> = {
   primary:
@@ -16,8 +16,8 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  md: "min-h-11 px-5 text-small",
-  lg: "min-h-14 px-8 text-lg",
+  md: "h-12 px-4 text-base",
+  lg: "h-14 px-8 text-lg",
 };
 
 export function buttonVariants({

@@ -44,7 +44,7 @@ export function MonthYearGrid({ month, onSelect }: MonthYearGridProps) {
           options={yearOptions}
           onChange={setYear}
           className="w-32"
-          buttonClassName="!rounded-lg !bg-space-800 !px-2 !py-1 font-display font-bold"
+          buttonClassName="!min-h-0 !rounded-lg !bg-space-800 !px-2 !py-1 !text-small font-display font-bold"
           listClassName="max-h-52"
         />
         <button

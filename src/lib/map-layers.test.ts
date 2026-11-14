@@ -5,11 +5,8 @@ import {
   IMAGERY_LAG_DAYS,
   ILLUSTRATED_PALETTE,
   NDVI_RAMP,
-  TEMPERATURE_RAMP,
-  TEMPERATURE_STOPS,
   gibsTiles,
   imageryDateFor,
-  temperatureDateFor,
 } from "./map-layers";
 
 describe("imageryDateFor", () => {
@@ -43,21 +40,9 @@ describe("gibsTiles", () => {
   });
 });
 
-describe("temperatureDateFor", () => {
-  const today = "2026-11-12";
-  it("mantém datas passadas", () => {
-    expect(temperatureDateFor("2026-03-10", today)).toBe("2026-03-10");
-  });
-  it("limita hoje e o futuro a hoje", () => {
-    expect(temperatureDateFor("2026-11-12", today)).toBe("2026-11-12");
-    expect(temperatureDateFor("2099-01-01", today)).toBe("2026-11-12");
-    expect(temperatureDateFor(undefined, today)).toBe("2026-11-12");
-  });
-});
-
 describe("mapas base", () => {
-  it("oferece satélite, satélite com vegetação e ilustrado", () => {
-    expect(BASEMAPS).toEqual(["satellite", "vegetation", "illustrated"]);
+  it("oferece ruas, satélite, satélite com vegetação e ilustrado", () => {
+    expect(BASEMAPS).toEqual(["streets", "satellite", "vegetation", "illustrated"]);
     expect(BASEMAP_OPTIONS.map((o) => o.id)).toEqual([...BASEMAPS]);
   });
 
@@ -94,14 +79,6 @@ describe("mapas base", () => {
       const [r, g, b] = [1, 3, 5].map((i) => parseInt(c.slice(i, i + 2), 16));
       expect(Math.max(r, g, b) - Math.min(r, g, b)).toBeLessThanOrEqual(4);
     }
-  });
-
-  it("a legenda de temperatura cobre a escala usada no mapa", () => {
-    expect(TEMPERATURE_RAMP.low).toBe("≤ −10 °C");
-    expect(TEMPERATURE_RAMP.high).toBe("≥ 43 °C");
-    expect(TEMPERATURE_RAMP.colors).toHaveLength(TEMPERATURE_STOPS.length);
-    expect(TEMPERATURE_RAMP.colors[0]).toBe("#3b4cc0 0.0%");
-    expect(TEMPERATURE_RAMP.colors.at(-1)).toBe("#8b0a0a 100.0%");
   });
 
   it("a legenda de vegetação traz os extremos oficiais do NDVI", () => {

@@ -43,16 +43,3 @@ export const statsResponse = (over: Partial<StatsResponse> = {}): StatsResponse 
   source: { name: "Fonte de teste", simulated: true },
   ...over,
 });
-
-export const temperatureGrid = (): import("@/lib/utils/temperature-field").TemperatureGrid => ({
-  lons: [-60, -50, -40],
-  lats: [10, 0, -10],
-  values: [
-    [28, 30, 31],
-    [26, 29, 33],
-    [22, 25, 27],
-  ],
-  date: "2026-11-10",
-  min: 22,
-  max: 33,
-});

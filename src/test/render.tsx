@@ -1,6 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
+import { DrawModeProvider } from "@/providers/draw-mode";
 import { NuqsTestingAdapter, type OnUrlUpdateFunction } from "nuqs/adapters/testing";
 
 type Options = {
@@ -19,7 +20,9 @@ export function renderWithProviders(ui: ReactElement, opts: Options = {}) {
       onUrlUpdate={opts.onUrlUpdate}
       hasMemory
     >
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      <QueryClientProvider client={client}>
+        <DrawModeProvider>{children}</DrawModeProvider>
+      </QueryClientProvider>
     </NuqsTestingAdapter>
   );
   return { client, ...render(ui, { wrapper: Wrapper }) };

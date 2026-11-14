@@ -23,7 +23,7 @@ export function DetectionList({
 
   return (
     <section aria-labelledby="list-title">
-      <h2 id="list-title" className="text-caption uppercase tracking-wider text-ink-300">
+      <h2 id="list-title" className="text-small font-semibold tracking-[-0.02em] text-ink-300">
         Detecções de maior FRP
       </h2>
       <p className="mt-1 text-caption text-ink-300">

@@ -36,7 +36,7 @@
   --color-harmonized: #3aa6ff;
 
   --font-display: var(--font-space-grotesk), system-ui, sans-serif;
-  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-sans: var(--font-fustat), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 
   /* Escala tipográfica fluida (mobile → desktop) */
@@ -318,4 +318,37 @@ button:disabled,
     opacity: 0;
     transform: translateY(-4px) scale(0.97);
   }
+}
+
+html {
+  scrollbar-color: var(--space-600) transparent;
+  scrollbar-width: thin;
+}
+
+* {
+  scrollbar-color: var(--space-600) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--space-600);
+  border: 2px solid var(--space-900);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ember-400);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
 }

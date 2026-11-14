@@ -5,6 +5,7 @@ export const calendarParsers = {
   month: parseAsString,
   date: parseAsString,
   region: parseAsString,
+  bbox: parseAsString,
   time: parseAsStringLiteral(["all", "day", "night"] as const).withDefault("all"),
   view: parseAsStringLiteral(["thermal", "geographic"] as const),
 };

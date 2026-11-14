@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
-import { GlobeLoader } from "./globe-loader";
+import { HeroGlobe } from "./hero-globe";
+import { RegionLinks } from "./region-links";
 
 export function Hero() {
   return (
@@ -8,9 +9,7 @@ export function Hero() {
       aria-labelledby="hero-title"
       className="relative isolate flex min-h-[calc(100svh-4.5rem)] flex-col overflow-hidden bg-space-950"
     >
-      <div aria-hidden className="absolute inset-0 -z-20">
-        <GlobeLoader />
-      </div>
+      <HeroGlobe />
       <div
         aria-hidden
         className="absolute inset-0 -z-10 bg-gradient-to-t from-space-950 via-space-950/70 to-transparent lg:bg-gradient-to-r lg:via-space-950/50"
@@ -38,6 +37,7 @@ export function Hero() {
             Explorar focos de calor
             <span aria-hidden>→</span>
           </Link>
+          <RegionLinks />
           <p className="font-mono text-caption text-ink-300">
             Dados: NASA FIRMS · MODIS + VIIRS
           </p>

@@ -1,96 +1,110 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Select } from "@/components/ui/select";
-import { REGIONS } from "@/config/regions";
+import { getRegion } from "@/config/regions";
 import { useResolvedFilters } from "@/hooks/use-filters";
+import { formatPeriod } from "@/lib/filter-presets";
 import { isDirty } from "@/lib/filters";
 import { SENSOR_META, SENSORS } from "@/lib/sensors";
-import type { SensorId } from "@/types/detections";
+import { FilterModal } from "./filter-modal";
 
-const dateInput =
-  "min-h-11 rounded-lg border border-space-600 bg-space-800 px-3 text-small text-ink-100 [color-scheme:dark]";
+const pill =
+  "inline-flex h-12 items-center gap-2 rounded-full border border-space-600 px-4 text-base font-semibold leading-6 tracking-[-0.02em] text-ink-100";
 
-const CUSTOM = "custom";
+function Summary({
+  label,
+  active,
+  removeLabel,
+  onRemove,
+}: {
+  label: React.ReactNode;
+  active: boolean;
+  removeLabel: string;
+  onRemove: () => void;
+}) {
+  return (
+    <li
+      className={`${pill} ${active ? "border-ember-400/60 bg-space-800" : "text-ink-300"}`}
+    >
+      <span>{label}</span>
+      {active && (
+        <button
+          type="button"
+          aria-label={removeLabel}
+          onClick={onRemove}
+          className="-mr-2 grid h-8 w-8 place-items-center rounded-full text-ink-300 transition-colors duration-200 hover:bg-space-600 hover:text-ink-100"
+        >
+          <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
+      )}
+    </li>
+  );
+}
 
-export function FilterBar() {
+export function FilterBar({ canDraw = false }: { canDraw?: boolean }) {
   const { raw, setRaw, filters } = useResolvedFilters();
+  const [open, setOpen] = useState(false);
 
-  function toggleSensor(id: SensorId) {
-    const next = filters.sensors.includes(id)
-      ? filters.sensors.filter((s) => s !== id)
-      : SENSORS.filter((s) => s === id || filters.sensors.includes(s));
-    void setRaw({ sensors: next });
-  }
+  const sensorsActive = filters.sensors.length !== SENSORS.length;
+  const placeActive = filters.customArea || filters.regionId !== "world";
+  const periodActive = Boolean(raw.from || raw.to || raw.date);
+  const count = [sensorsActive, placeActive, periodActive].filter(Boolean).length;
 
-  const regionOptions = [
-    ...(filters.customArea ? [{ value: CUSTOM, label: "Área personalizada" }] : []),
-    ...REGIONS.map((r) => ({ value: r.id, label: r.label })),
-  ];
+  const sensorsLabel =
+    filters.sensors.length === 0 ? (
+      "Nenhum sensor"
+    ) : (
+      <span className="inline-flex items-center gap-2">
+        {filters.sensors.map((id) => (
+          <span key={id} className="inline-flex items-center gap-1">
+            <span aria-hidden style={{ color: SENSOR_META[id].hex }}>
+              {SENSOR_META[id].symbol}
+            </span>
+            {SENSOR_META[id].label}
+          </span>
+        ))}
+      </span>
+    );
 
   return (
-    <form
-      aria-label="Filtros da análise"
-      onSubmit={(e) => e.preventDefault()}
-      className="flex flex-wrap items-end gap-x-6 gap-y-3"
-    >
-      <fieldset>
-        <legend className="mb-1 text-caption uppercase tracking-wider text-ink-300">
-          Sensores
-        </legend>
-        <div className="flex gap-1">
-          {SENSORS.map((id) => (
-            <label key={id} className="cursor-pointer">
-              <input
-                type="checkbox"
-                checked={filters.sensors.includes(id)}
-                onChange={() => toggleSensor(id)}
-                className="peer sr-only"
-              />
-              <span className="inline-flex min-h-11 items-center gap-2 rounded-full border border-space-600 px-4 text-small font-semibold text-ink-300 peer-checked:border-ink-300 peer-checked:bg-space-800 peer-checked:text-ink-100 peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-(--focus-ring)">
-                <span aria-hidden style={{ color: SENSOR_META[id].hex }}>
-                  {SENSOR_META[id].symbol}
-                </span>
-                {SENSOR_META[id].label}
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-haspopup="dialog"
+        className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-ember-400 bg-space-900 px-4 text-base font-semibold leading-6 tracking-[-0.02em] text-ink-100 transition-colors duration-200 hover:bg-space-800"
+      >
+        <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 text-ember-400" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
+          <circle cx="16" cy="7" r="2" />
+          <circle cx="8" cy="17" r="2" />
+        </svg>
+        {count > 0 ? `Filtros (${count})` : "Filtros"}
+      </button>
 
-      <Select
-        label="Região"
-        value={filters.customArea ? CUSTOM : filters.regionId}
-        options={regionOptions}
-        onChange={(id) =>
-          void setRaw({
-            region: id === "world" || id === CUSTOM ? null : id,
-            bbox: id === CUSTOM ? raw.bbox : null,
-          })
-        }
-        className="w-48"
-      />
-
-      <label className="flex flex-col gap-1 text-caption uppercase tracking-wider text-ink-300">
-        De
-        <input
-          type="date"
-          value={filters.from}
-          max={filters.to}
-          onChange={(e) => void setRaw({ from: e.target.value || null })}
-          className={dateInput}
+      <ul aria-label="Filtros em uso" className="flex flex-wrap items-center gap-2">
+        <Summary
+          label={sensorsLabel}
+          active={sensorsActive}
+          removeLabel="Remover filtro de sensores"
+          onRemove={() => void setRaw({ sensors: null })}
         />
-      </label>
-      <label className="flex flex-col gap-1 text-caption uppercase tracking-wider text-ink-300">
-        Até
-        <input
-          type="date"
-          value={filters.to}
-          min={filters.from}
-          onChange={(e) => void setRaw({ to: e.target.value || null })}
-          className={dateInput}
+        <Summary
+          label={filters.customArea ? "Área personalizada" : getRegion(filters.regionId).label}
+          active={placeActive}
+          removeLabel="Remover filtro de local"
+          onRemove={() => void setRaw({ region: null, bbox: null })}
         />
-      </label>
+        <Summary
+          label={formatPeriod(filters.from, filters.to)}
+          active={periodActive}
+          removeLabel="Remover filtro de período"
+          onRemove={() => void setRaw({ from: null, to: null, date: null })}
+        />
+      </ul>
 
       {(isDirty(raw) || raw.date) && (
         <Button
@@ -115,6 +129,8 @@ export function FilterBar() {
           {filters.problem}
         </p>
       )}
-    </form>
+
+      <FilterModal open={open} onClose={() => setOpen(false)} canDraw={canDraw} />
+    </div>
   );
 }

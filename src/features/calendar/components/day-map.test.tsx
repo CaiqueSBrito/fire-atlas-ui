@@ -8,9 +8,11 @@ import { DayMap } from "./day-map";
 
 vi.mock("@/lib/utils/webgl", () => ({ supportsWebGL: vi.fn() }));
 vi.mock("@/features/map/components/fire-map-loader", () => ({
-  FireMap: (p: { detections: FireDetection[]; view: number[]; label: string }) => (
+  FireMap: (p: { detections: FireDetection[]; view: number[]; label: string; basemap: string; showHeat: boolean }) => (
     <div
       data-testid="fire-map"
+      data-base={p.basemap}
+      data-heat={String(p.showHeat)}
       data-label={p.label}
       data-view={p.view.join(",")}
       data-points={JSON.stringify(p.detections.map((d) => [d.id, d.sensor, d.datetime, d.frp]))}
@@ -90,5 +92,21 @@ describe("DayMap", () => {
       />,
     );
     expect(screen.getByTestId("fire-map").getAttribute("data-view")).not.toBe(first);
+  });
+
+  it("usa ruas por padrão e herda as camadas escolhidas no mapa", () => {
+    webgl.mockReturnValue(true);
+    const { rerender } = render(<DayMap {...props} />);
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-base", "streets");
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-heat", "false");
+    rerender(<DayMap {...props} layers={{ base: "illustrated", plot: "points", dots: true, heat: true }} />);
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-base", "illustrated");
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-heat", "true");
+  });
+
+  it("enquadra pelo ponto do mapa quando recebe o viewBbox", () => {
+    webgl.mockReturnValue(true);
+    render(<DayMap {...props} viewBbox={[-60, -20, -40, 0]} />);
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-view", "-60,-20,-40,0");
   });
 });

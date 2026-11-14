@@ -9,3 +9,11 @@ export function latLonToVector3(lat: number, lon: number, radius = 1) {
     -radius * Math.cos(phi) * Math.sin(theta),
   );
 }
+
+export function vectorToLatLon(v: { x: number; y: number; z: number }) {
+  const length = Math.hypot(v.x, v.y, v.z) || 1;
+  return {
+    lat: THREE.MathUtils.radToDeg(Math.asin(v.y / length)),
+    lon: THREE.MathUtils.radToDeg(Math.atan2(-v.z, v.x)),
+  };
+}

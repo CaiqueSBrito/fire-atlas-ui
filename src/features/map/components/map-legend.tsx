@@ -1,4 +1,4 @@
-import { HEAT_RAMP, HEX_RAMP, NDVI_RAMP, TEMPERATURE_RAMP, type BasemapId, type PlotId } from "@/lib/map-layers";
+import { HEAT_RAMP, HEX_RAMP, NDVI_RAMP, type BasemapId, type PlotId } from "@/lib/map-layers";
 import type { HexInfo } from "@/lib/utils/hex";
 import { SENSOR_META, SENSORS } from "@/lib/sensors";
 import type { SensorId } from "@/types/detections";
@@ -41,7 +41,6 @@ export function MapLegend({
   showForecast = false,
   basemap = "satellite",
   showHeat = false,
-  showTemperature = false,
   plot = "points",
   hexInfo,
 }: {
@@ -51,7 +50,6 @@ export function MapLegend({
   showForecast?: boolean;
   basemap?: BasemapId;
   showHeat?: boolean;
-  showTemperature?: boolean;
   plot?: PlotId;
   hexInfo?: HexInfo | null;
 }) {
@@ -59,7 +57,7 @@ export function MapLegend({
     <section aria-labelledby="legend-title">
       <h2
         id="legend-title"
-        className="text-caption uppercase tracking-wider text-ink-300"
+        className="text-small font-semibold tracking-[-0.02em] text-ink-300"
       >
         Legenda
       </h2>
@@ -106,7 +104,7 @@ export function MapLegend({
             colors={HEX_RAMP}
             low="1 foco"
             high={`${hexInfo.max.toLocaleString("pt-BR")} focos`}
-            note={`Aresta ≈ ${hexInfo.edgeKm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km · ${hexInfo.cells.toLocaleString("pt-BR")} células`}
+            note={`Aresta ≈ ${hexInfo.edgeKm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km · ${hexInfo.cells.toLocaleString("pt-BR")} células · escala logarítmica`}
           />
         )}
         {showHeat && (
@@ -117,16 +115,6 @@ export function MapLegend({
             high="Maior densidade"
           />
         )}
-        {showTemperature && (
-          <Gradient
-            title="Temperatura máxima do ar (só sobre a terra)"
-            colors={TEMPERATURE_RAMP.colors}
-            low={TEMPERATURE_RAMP.low}
-            mid={TEMPERATURE_RAMP.mid}
-            high={TEMPERATURE_RAMP.high}
-            note="Dados: Open-Meteo.com (CC BY 4.0)"
-          />
-        )}
         {basemap === "vegetation" && (
           <Gradient
             title="Vegetação (NDVI, MODIS)"
@@ -135,6 +123,11 @@ export function MapLegend({
             mid={NDVI_RAMP.mid}
             high={NDVI_RAMP.high}
           />
+        )}
+        {basemap === "streets" && (
+          <li className="text-caption text-ink-300">
+            Mapa de ruas: © OpenStreetMap contributors · OpenFreeMap (OpenMapTiles).
+          </li>
         )}
         {basemap === "illustrated" && (
           <li className="text-caption text-ink-300">

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { useDismiss } from "@/hooks/use-dismiss";
+import { fieldClass, fieldLabelClass } from "./field";
 
 export type SelectOption<T extends string | number> = {
   value: T;
@@ -131,7 +132,7 @@ export function Select<T extends string | number>({
     <div ref={ref} className={`relative ${className}`}>
       <span
         id={`${id}-label`}
-        className={hideLabel ? "sr-only" : "mb-1 block text-small text-ink-300"}
+        className={hideLabel ? "sr-only" : fieldLabelClass}
       >
         {label}
       </span>
@@ -146,8 +147,8 @@ export function Select<T extends string | number>({
         aria-activedescendant={open ? `${id}-opt-${active}` : undefined}
         onClick={() => (open ? setOpen(false) : openList())}
         onKeyDown={onKeyDown}
-        className={`flex w-full items-center justify-between gap-2 rounded-xl border bg-space-900 px-3 py-2.5 text-left text-small text-ink-100 transition-colors ${
-          open ? "border-ember-400" : "border-space-600 hover:border-ink-300"
+        className={`${fieldClass} w-full justify-between text-left ${
+          open ? "border-ember-400 ring-4 ring-ember-400/20" : ""
         } ${buttonClassName}`}
       >
         <span className="truncate">{options[selectedIndex]?.label}</span>
@@ -173,7 +174,7 @@ export function Select<T extends string | number>({
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => choose(i)}
-              className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-2 text-small ${
+              className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg px-3 py-3 text-base leading-6 ${
                 i === active ? "bg-space-800" : ""
               } ${o.value === value ? "font-bold text-ember-400" : "text-ink-100"}`}
             >

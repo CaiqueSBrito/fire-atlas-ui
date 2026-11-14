@@ -1,11 +1,18 @@
 "use client";
 
 import { Suspense, useRef } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
 import { Stars, useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { usePrefersReducedMotion } from "@/hooks/use-prefers-reduced-motion";
-import { latLonToVector3 } from "@/lib/utils/geo";
+import { latLonToVector3, vectorToLatLon } from "@/lib/utils/geo";
+
+export type GlobePoint = { lat: number; lon: number };
+
+export type GlobeHandlers = {
+  onPick?: (lat: number, lon: number) => void;
+  onHover?: (point: GlobePoint | null) => void;
+};
 
 const HOTSPOTS: Array<[number, number]> = [
   [-8, -60],
@@ -17,6 +24,10 @@ const HOTSPOTS: Array<[number, number]> = [
   [39, 22],
   [-15, -47],
 ];
+
+function locate(e: ThreeEvent<MouseEvent | PointerEvent>): GlobePoint {
+  return vectorToLatLon(e.eventObject.worldToLocal(e.point.clone()));
+}
 
 function Hotspot({
   lat,
@@ -55,7 +66,7 @@ function Hotspot({
   );
 }
 
-function Earth({ reduceMotion }: { reduceMotion: boolean }) {
+function Earth({ reduceMotion, onPick, onHover }: GlobeHandlers & { reduceMotion: boolean }) {
   const root = useRef<THREE.Group>(null);
   const tilt = useRef<THREE.Group>(null);
   const spin = useRef<THREE.Group>(null);
@@ -90,7 +101,17 @@ function Earth({ reduceMotion }: { reduceMotion: boolean }) {
       <group rotation={[0, 0, 0.2]}>
         <group ref={tilt}>
           <group ref={spin}>
-            <mesh>
+            <mesh
+              onClick={(e) => {
+                const target = e.nativeEvent.target as HTMLElement | null;
+                if (target?.closest("a, button, summary, input, select, textarea")) return;
+                e.stopPropagation();
+                const { lat, lon } = locate(e);
+                onPick?.(lat, lon);
+              }}
+              onPointerMove={(e) => onHover?.(locate(e))}
+              onPointerOut={() => onHover?.(null)}
+            >
               <sphereGeometry args={[1, 64, 64]} />
               <meshStandardMaterial map={map} roughness={1} />
             </mesh>
@@ -121,7 +142,7 @@ function Earth({ reduceMotion }: { reduceMotion: boolean }) {
   );
 }
 
-export default function Globe() {
+export default function Globe({ onPick, onHover }: GlobeHandlers) {
   const reduceMotion = usePrefersReducedMotion();
   return (
     <Canvas
@@ -141,7 +162,7 @@ export default function Globe() {
         speed={reduceMotion ? 0 : 0.6}
       />
       <Suspense fallback={null}>
-        <Earth reduceMotion={reduceMotion} />
+        <Earth reduceMotion={reduceMotion} onPick={onPick} onHover={onHover} />
       </Suspense>
     </Canvas>
   );

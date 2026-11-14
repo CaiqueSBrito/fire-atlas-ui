@@ -1,7 +1,7 @@
-import { parseAsBoolean, parseAsStringLiteral } from "nuqs";
+import { parseAsBoolean, parseAsInteger, parseAsStringLiteral } from "nuqs";
 import { shiftDate, todayUtc } from "@/lib/utils/dates";
 
-export const BASEMAPS = ["satellite", "vegetation", "illustrated"] as const;
+export const BASEMAPS = ["streets", "satellite", "vegetation", "illustrated"] as const;
 export type BasemapId = (typeof BASEMAPS)[number];
 
 export const BASEMAP_OPTIONS: ReadonlyArray<{
@@ -9,6 +9,7 @@ export const BASEMAP_OPTIONS: ReadonlyArray<{
   label: string;
   description: string;
 }> = [
+  { id: "streets", label: "Ruas (OpenStreetMap)", description: "Mapa de ruas com nomes de cidades, estados e rodovias" },
   { id: "satellite", label: "Satélite", description: "Imagem real da Terra (NASA Blue Marble)" },
   { id: "vegetation", label: "Satélite + vegetação", description: "Índice de vegetação NDVI (MODIS, composto de 8 dias)" },
   { id: "illustrated", label: "Ilustrado", description: "Países e estados em tons de cinza" },
@@ -25,22 +26,39 @@ export const PLOT_OPTIONS: ReadonlyArray<{ id: PlotId; label: string; descriptio
 export const HEX_RAMP = ["#fff3b0", "#fdae61", "#f46d43", "#d73027", "#a50026"];
 
 export const mapLayerParsers = {
-  base: parseAsStringLiteral(BASEMAPS).withDefault("satellite"),
+  base: parseAsStringLiteral(BASEMAPS).withDefault("streets"),
   heat: parseAsBoolean.withDefault(false),
-  temp: parseAsBoolean.withDefault(false),
   plot: parseAsStringLiteral(PLOTS).withDefault("points"),
   dots: parseAsBoolean.withDefault(true),
+  areas: parseAsInteger.withDefault(0),
 };
+
+export const TERRAIN_TILES =
+  "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
+
+export const TERRAIN_3D = { zoom: 10.5, pitch: 60, bearing: -20, exaggeration: 1.6 };
+
+export const GLOBE_MAX_ZOOM = 1.8;
+export const FLAT_MAX_ZOOM = 14;
+
+export const GLOBE_CENTER: [number, number] = [-35, 12];
+
+export const GLOBE_PROJECTION = {
+  type: ["interpolate", ["linear"], ["zoom"], GLOBE_MAX_ZOOM, "vertical-perspective", 2.4, "mercator"],
+};
+
+export function globeZoom(width: number, height: number): number {
+  const zoom = Math.log2((0.75 * Math.min(width, height) * Math.PI) / 512);
+  return Math.max(0.5, Math.min(GLOBE_MAX_ZOOM, zoom));
+}
+
+export const STREETS_STYLE_URL = "https://tiles.openfreemap.org/styles/liberty";
 
 export const IMAGERY_LAG_DAYS = 3;
 
 export function imageryDateFor(to?: string, today: string = todayUtc()): string {
   const limit = shiftDate(today, -IMAGERY_LAG_DAYS);
   return to && to < limit ? to : limit;
-}
-
-export function temperatureDateFor(to?: string, today: string = todayUtc()): string {
-  return to && to < today ? to : today;
 }
 
 const GIBS = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best";
@@ -63,27 +81,6 @@ export const ILLUSTRATED_PALETTE = {
 };
 
 export const HEAT_RAMP = ["#3b4cc0", "#6dbcdb", "#fee08b", "#f46d43", "#a50026"];
-
-export const TEMPERATURE_STOPS: ReadonlyArray<{ t: number; hex: string }> = [
-  { t: -10, hex: "#3b4cc0" },
-  { t: 0, hex: "#4b6cd6" },
-  { t: 10, hex: "#2bb5a0" },
-  { t: 18, hex: "#4cc84c" },
-  { t: 25, hex: "#f4e04d" },
-  { t: 31, hex: "#f5a623" },
-  { t: 36, hex: "#e8412c" },
-  { t: 43, hex: "#8b0a0a" },
-];
-
-const T_MIN = TEMPERATURE_STOPS[0].t;
-const T_MAX = TEMPERATURE_STOPS[TEMPERATURE_STOPS.length - 1].t;
-
-export const TEMPERATURE_RAMP = {
-  colors: TEMPERATURE_STOPS.map((s) => `${s.hex} ${(((s.t - T_MIN) / (T_MAX - T_MIN)) * 100).toFixed(1)}%`),
-  low: "≤ −10 °C",
-  mid: "25 °C",
-  high: "≥ 43 °C",
-};
 
 export const NDVI_RAMP = {
   colors: ["#d7c4b3", "#ac8d73", "#a0c031", "#4e9400", "#0a6900", "#001801"],

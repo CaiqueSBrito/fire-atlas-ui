@@ -19,7 +19,7 @@ function NavList({ search }: { search: string }) {
               href={search ? `${item.href}?${search}` : item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "inline-flex min-h-11 items-center rounded-full px-4 text-small font-semibold transition-colors",
+                "inline-flex h-12 items-center rounded-full px-4 text-base font-semibold leading-6 tracking-[-0.02em] transition-colors duration-200",
                 active
                   ? "bg-ember-400 text-space-950"
                   : "text-ink-300 hover:bg-space-800 hover:text-ink-100",

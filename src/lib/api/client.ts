@@ -1,4 +1,4 @@
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
 
 export const hasApi = Boolean(BASE_URL);
 
@@ -13,12 +13,25 @@ export class ApiError extends Error {
   }
 }
 
+async function problemDetail(res: Response): Promise<string | null> {
+  try {
+    const body: unknown = await res.json();
+    if (body && typeof body === "object" && "detail" in body) {
+      const { detail } = body as { detail: unknown };
+      return typeof detail === "string" && detail ? detail : null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export async function apiFetch<T>(
   path: string,
   params: Record<string, string | null | undefined> = {},
   signal?: AbortSignal,
 ): Promise<T> {
-  const url = new URL(path, BASE_URL);
+  const url = new URL(`${BASE_URL}${path}`);
   for (const [key, value] of Object.entries(params)) {
     if (value) url.searchParams.set(key, value);
   }
@@ -26,13 +39,17 @@ export async function apiFetch<T>(
   let res: Response;
   try {
     res = await fetch(url, { signal });
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) throw error;
     throw new ApiError("Não foi possível conectar ao servidor.");
   }
 
   if (!res.ok) {
+    const detail = res.status < 500 ? await problemDetail(res) : null;
     throw new ApiError(
-      `O servidor respondeu com erro (${res.status}).`,
+      detail
+        ? `O servidor recusou a consulta: ${detail}.`
+        : `O servidor respondeu com erro (${res.status}).`,
       res.status,
       res.status >= 500,
     );
