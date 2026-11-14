@@ -12,15 +12,28 @@ import {
   type MapTouchEvent,
 } from "maplibre-gl";
 import {
-  BASEMAPS,
+  FLAT_MAX_ZOOM,
+  GLOBE_CENTER,
+  GLOBE_MAX_ZOOM,
+  GLOBE_PROJECTION,
   HEAT_RAMP,
   ILLUSTRATED_PALETTE,
+  STREETS_STYLE_URL,
+  TERRAIN_3D,
+  TERRAIN_TILES,
   gibsTiles,
+  globeZoom,
   imageryDateFor,
   type BasemapId,
   type PlotId,
 } from "@/lib/map-layers";
 import { SENSOR_META, SENSORS } from "@/lib/sensors";
+import { getRegion } from "@/config/regions";
+import { isSameBbox } from "@/lib/utils/bbox";
+import { flatViewport } from "@/lib/utils/viewport-area";
+import type { HotAreas } from "@/lib/utils/hot-areas";
+import { continentAt, type ContinentId } from "@/lib/utils/continent";
+import type { CountryCollection } from "@/lib/utils/countries";
 import { existingLayers } from "@/lib/utils/map-query";
 import {
   aggregateHex,
@@ -31,8 +44,7 @@ import {
   type HexCell,
   type HexInfo,
 } from "@/lib/utils/hex";
-import { fieldBounds, type TemperatureGrid } from "@/lib/utils/temperature-field";
-import { loadCountries, temperatureImage } from "@/lib/utils/temperature-image";
+import { loadCountries } from "@/lib/utils/countries";
 import type { Bbox, FireDetection, SensorId } from "@/types/detections";
 import type { ForecastArea } from "@/types/forecast";
 
@@ -53,13 +65,69 @@ type FC = {
   }>;
 };
 
+const NO_CELLS: HexCell[] = [];
 const EMPTY: FC = { type: "FeatureCollection", features: [] };
 
 const ILLUSTRATED_LAYERS = ["ill-countries-fill", "ill-states-fill", "ill-states-line", "ill-countries-line"];
 
 const POINTS_MIN_ZOOM_IN_HEX = 5;
 
-const BLANK_IMAGE = "data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==";
+const STREETS_PREFIX = "ofm-";
+
+type StreetsStyle = {
+  sprite?: string;
+  glyphs?: string;
+  sources: Record<string, Record<string, unknown>>;
+  layers: Array<Record<string, unknown>>;
+};
+
+let streetsStyle: Promise<StreetsStyle> | null = null;
+const streetsReady = new WeakMap<MlMap, Promise<void>>();
+
+function loadStreetsStyle(): Promise<StreetsStyle> {
+  streetsStyle ??= fetch(STREETS_STYLE_URL)
+    .then((r) => {
+      if (!r.ok) throw new Error(`Estilo de ruas indisponível (${r.status})`);
+      return r.json() as Promise<StreetsStyle>;
+    })
+    .catch((error) => {
+      streetsStyle = null;
+      throw error;
+    });
+  return streetsStyle;
+}
+
+function ensureStreets(map: MlMap): Promise<void> {
+  let ready = streetsReady.get(map);
+  if (!ready) {
+    ready = loadStreetsStyle().then((spec) => {
+      if (spec.glyphs) map.setGlyphs(spec.glyphs);
+      if (spec.sprite) map.setSprite(spec.sprite);
+      for (const [id, source] of Object.entries(spec.sources)) {
+        map.addSource(`${STREETS_PREFIX}${id}`, source as never);
+      }
+      for (const layer of spec.layers) {
+        const copy: Record<string, unknown> = {
+          ...layer,
+          id: `${STREETS_PREFIX}${layer.id}`,
+          layout: { ...(layer.layout as object | undefined), visibility: "none" },
+        };
+        if (layer.source) copy.source = `${STREETS_PREFIX}${layer.source}`;
+        map.addLayer(copy as never, "vegetation");
+      }
+    });
+    streetsReady.set(map, ready);
+    ready.catch(() => streetsReady.delete(map));
+  }
+  return ready;
+}
+
+function setStreetsVisible(map: MlMap, visible: boolean) {
+  for (const layer of map.getStyle().layers) {
+    if (layer.id.startsWith(STREETS_PREFIX)) setVisibility(map, layer.id, visible);
+  }
+}
+
 
 const matchColor = (prop: string, palette: string[], fallback: string) => [
   "match",
@@ -77,30 +145,11 @@ function ensureCountries(map: MlMap) {
   });
 }
 
-function ensureTempBorders(map: MlMap) {
-  if (map.getLayer("temp-borders")) return;
-  ensureCountries(map);
-  map.addLayer(
-    {
-      id: "temp-borders",
-      type: "line",
-      source: "ill-countries",
-      layout: { visibility: "none" },
-      paint: {
-        "line-color": "#1b2430",
-        "line-opacity": 0.65,
-        "line-width": ["interpolate", ["linear"], ["zoom"], 1, 0.5, 6, 1.4],
-      },
-    } as never,
-    "heat",
-  );
-}
-
 function ensureIllustrated(map: MlMap) {
   if (map.getSource("ill-states")) return;
   ensureCountries(map);
   map.addSource("ill-states", { type: "geojson", data: "/data/states.geojson" });
-  const before = "temperature";
+  const before = "hex-fill";
   const layers = [
     { id: "ill-countries-fill", type: "fill", source: "ill-countries", paint: { "fill-color": matchColor("c9", ILLUSTRATED_PALETTE.countries, ILLUSTRATED_PALETTE.fallback) } },
     { id: "ill-states-fill", type: "fill", source: "ill-states", paint: { "fill-color": matchColor("c13", ILLUSTRATED_PALETTE.states, ILLUSTRATED_PALETTE.fallback) } },
@@ -108,6 +157,32 @@ function ensureIllustrated(map: MlMap) {
     { id: "ill-countries-line", type: "line", source: "ill-countries", paint: { "line-color": ILLUSTRATED_PALETTE.countryLine, "line-width": ["interpolate", ["linear"], ["zoom"], 1, 0.7, 6, 1.8] } },
   ];
   for (const layer of layers) map.addLayer(layer as never, before);
+}
+
+function ensureTerrain(map: MlMap) {
+  if (map.getSource("dem")) return;
+  map.addSource("dem", {
+    type: "raster-dem",
+    tiles: [TERRAIN_TILES],
+    encoding: "terrarium",
+    tileSize: 256,
+    maxzoom: 15,
+    attribution: "Relevo © Mapzen, AWS Terrain Tiles",
+  });
+  map.addLayer(
+    {
+      id: "hillshade",
+      type: "hillshade",
+      source: "dem",
+      layout: { visibility: "none" },
+      paint: {
+        "hillshade-exaggeration": 0.45,
+        "hillshade-shadow-color": "#000000",
+        "hillshade-highlight-color": "#ffffff",
+      },
+    } as never,
+    "hex-fill",
+  );
 }
 
 function setVisibility(map: MlMap, id: string, visible: boolean) {
@@ -169,14 +244,22 @@ export type FireMapProps = {
   label: string;
   basemap?: BasemapId;
   showHeat?: boolean;
-  showTemperature?: boolean;
   imageryDate?: string;
-  temperature?: TemperatureGrid | null;
   plot?: PlotId;
+  hexCells?: HexCell[] | null;
+  hexRes?: number;
+  hotAreas?: HotAreas | null;
   showPoints?: boolean;
   selectedHex?: string | null;
   onHexSelect?: (cell: HexCell | null) => void;
   onHexChange?: (info: HexInfo | null) => void;
+  introFly?: boolean;
+  focus3d?: { lon: number; lat: number; zoom?: number } | null;
+  projection?: "globe" | "mercator";
+  continentPicking?: boolean;
+  onContinentPick?: (id: ContinentId) => void;
+  onContinentHover?: (id: ContinentId | null) => void;
+  onViewport?: (bbox: Bbox) => void;
 };
 
 export default function FireMap({
@@ -190,16 +273,24 @@ export default function FireMap({
   showMatches,
   forecastAreas,
   label,
-  basemap = BASEMAPS[0],
+  basemap = "satellite",
   showHeat = false,
-  showTemperature = false,
   imageryDate,
-  temperature = null,
   plot = "points",
+  hexCells = null,
+  hexRes,
+  hotAreas = null,
   showPoints = true,
   selectedHex = null,
   onHexSelect,
   onHexChange,
+  introFly = false,
+  focus3d = null,
+  projection = "mercator",
+  continentPicking = false,
+  onContinentPick,
+  onContinentHover,
+  onViewport,
 }: FireMapProps) {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -208,13 +299,19 @@ export default function FireMap({
   const plotRef = useRef(plot);
   const pointsRef = useRef(showPoints);
   const cellsRef = useRef<HexCell[]>([]);
-  const cb = useRef({ onSelect, onDrawn, onHexSelect, onHexChange });
+  const cb = useRef({ onSelect, onDrawn, onHexSelect, onHexChange, onContinentPick, onContinentHover, onViewport });
   const drawingRef = useRef(drawing);
   const firstView = useRef(true);
+  const introRef = useRef(introFly);
+  const continentRef = useRef(continentPicking);
+  const countriesRef = useRef<CountryCollection | null>(null);
+  const lastHoverRef = useRef(0);
+  const savedCamera = useRef<{ center: [number, number]; zoom: number } | null>(null);
   const imageryRef = useRef(imageryDate ?? imageryDateFor());
 
   useEffect(() => {
-    cb.current = { onSelect, onDrawn, onHexSelect, onHexChange };
+    cb.current = { onSelect, onDrawn, onHexSelect, onHexChange, onContinentPick, onContinentHover, onViewport };
+    continentRef.current = continentPicking;
     plotRef.current = plot;
     pointsRef.current = showPoints;
     drawingRef.current = drawing;
@@ -243,7 +340,8 @@ export default function FireMap({
       dragRotate: false,
       pitchWithRotate: false,
       attributionControl: { compact: true },
-      maxZoom: 12,
+      ...(introRef.current ? { center: GLOBE_CENTER, zoom: 1.5 } : {}),
+      maxZoom: FLAT_MAX_ZOOM,
     });
     mapRef.current = map;
     map.touchZoomRotate.disableRotation();
@@ -267,25 +365,13 @@ export default function FireMap({
         attribution: "NDVI © NASA GIBS / MODIS",
       });
       map.addLayer({ id: "vegetation", type: "raster", source: "vegetation", paint: { "raster-opacity": 0.8 }, layout: { visibility: "none" } });
-      map.addSource("temperature", {
-        type: "image",
-        url: BLANK_IMAGE,
-        coordinates: [[-180, 85], [180, 85], [180, -85], [-180, -85]],
-      });
-      map.addLayer({
-        id: "temperature",
-        type: "raster",
-        source: "temperature",
-        paint: { "raster-opacity": 0.92, "raster-fade-duration": 0 },
-        layout: { visibility: "none" },
-      });
       map.addSource("hex", { type: "geojson", data: EMPTY as never });
       map.addLayer({
         id: "hex-fill",
         type: "fill",
         source: "hex",
         layout: { visibility: "none" },
-        paint: { "fill-color": ["get", "color"], "fill-opacity": 0.8 },
+        paint: { "fill-color": ["get", "color"], "fill-opacity": 0.72 },
       } as never);
       map.addLayer({
         id: "hex-line",
@@ -301,6 +387,28 @@ export default function FireMap({
         layout: { visibility: "none" },
         filter: ["==", ["get", "cell"], ""],
         paint: { "line-color": "#f2f5ff", "line-width": 3 },
+      } as never);
+      map.addSource("areas", { type: "geojson", data: EMPTY as never });
+      map.addLayer({
+        id: "areas-fill",
+        type: "fill",
+        source: "areas",
+        layout: { visibility: "none" },
+        paint: { "fill-color": "#ff4a3d", "fill-opacity": 0.08 },
+      } as never);
+      map.addLayer({
+        id: "areas-halo",
+        type: "line",
+        source: "areas",
+        layout: { visibility: "none", "line-join": "round" },
+        paint: { "line-color": "#1a0f1f", "line-opacity": 0.55, "line-width": 5.5 },
+      } as never);
+      map.addLayer({
+        id: "areas-line",
+        type: "line",
+        source: "areas",
+        layout: { visibility: "none", "line-join": "round" },
+        paint: { "line-color": "#ffffff", "line-opacity": 0.95, "line-width": 2.4 },
       } as never);
       map.addSource("heat", { type: "geojson", data: EMPTY as never });
       map.addLayer({
@@ -408,6 +516,11 @@ export default function FireMap({
       );
     map.on("click", (e) => {
       if (drawingRef.current) return;
+      if (continentRef.current) {
+        const continent = continentAt(e.lngLat.lng, e.lngLat.lat, countriesRef.current);
+        if (continent) cb.current.onContinentPick?.(continent);
+        return;
+      }
       if (plotRef.current === "hex") {
         const pointId = pointsRef.current ? hit(e)[0]?.properties?.id : undefined;
         if (typeof pointId === "string") {
@@ -427,10 +540,45 @@ export default function FireMap({
     });
     map.on("mousemove", (e) => {
       if (drawingRef.current) return;
+      if (continentRef.current) {
+        const now = performance.now();
+        if (now - lastHoverRef.current < 80) return;
+        lastHoverRef.current = now;
+        const continent = continentAt(e.lngLat.lng, e.lngLat.lat, countriesRef.current);
+        cb.current.onContinentHover?.(continent);
+        map.getCanvas().style.cursor = continent ? "pointer" : "";
+        return;
+      }
       const hex = plotRef.current === "hex";
       const overHex = hex && query(e.point, ["hex-fill"]).length > 0;
       const overPoint = (!hex || pointsRef.current) && hit(e).length > 0;
       map.getCanvas().style.cursor = overHex || overPoint ? "pointer" : "";
+    });
+
+    map.on("mouseout", () => cb.current.onContinentHover?.(null));
+    map.on("moveend", () => {
+      const pitch = map.getPitch();
+      if (pitch > 5) {
+        const c = map.getCenter();
+        const box = map.getContainer();
+        cb.current.onViewport?.(
+          flatViewport(
+            [c.lng, c.lat],
+            map.getZoom(),
+            box.clientWidth,
+            box.clientHeight,
+            1 + pitch / 90,
+          ),
+        );
+        return;
+      }
+      const b = map.getBounds();
+      cb.current.onViewport?.([
+        Math.max(-180, b.getWest()),
+        Math.max(-85, b.getSouth()),
+        Math.min(180, b.getEast()),
+        Math.min(85, b.getNorth()),
+      ]);
     });
 
     return () => {
@@ -455,13 +603,20 @@ export default function FireMap({
           })),
       });
     }
+    const heatMax = hexCells?.reduce((m, c) => Math.max(m, c.count), 1) ?? 1;
     setData(map, "heat", {
       type: "FeatureCollection",
-      features: detections.map((d) => ({
-        type: "Feature",
-        geometry: { type: "Point", coordinates: [d.lon, d.lat] },
-        properties: { w: d.frp ?? 1 },
-      })),
+      features: hexCells
+        ? hexCells.map((c) => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: c.center },
+            properties: { w: Math.max(1, 150 * Math.sqrt(c.count / heatMax)) },
+          }))
+        : detections.map((d) => ({
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [d.lon, d.lat] },
+            properties: { w: d.frp ?? 1 },
+          })),
     });
     setData(map, "matches", {
       type: "FeatureCollection",
@@ -475,22 +630,62 @@ export default function FireMap({
             }))
         : [],
     });
-  }, [detections, showMatches, ready]);
+  }, [detections, hexCells, showMatches, ready]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
-    const animate = !firstView.current && !reduceMotion();
+    map.setProjection((projection === "globe" ? GLOBE_PROJECTION : { type: "mercator" }) as never);
+  }, [projection, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const first = firstView.current;
+    const intro = first && introRef.current;
+    const animate = (!first || intro) && !reduceMotion();
     firstView.current = false;
     map.resize();
+    map.setMaxZoom(FLAT_MAX_ZOOM);
+    if (projection === "globe" && isSameBbox(view, getRegion("world").bbox)) {
+      const { width, height } = map.getContainer().getBoundingClientRect();
+      let cancelled = false;
+      const lockGlobeZoom = () => {
+        if (!cancelled) map.setMaxZoom(GLOBE_MAX_ZOOM);
+      };
+      map.once("moveend", lockGlobeZoom);
+      map.flyTo({
+        center: GLOBE_CENTER,
+        zoom: globeZoom(width, height),
+        pitch: 0,
+        bearing: 0,
+        duration: animate ? 1800 : 0,
+      });
+      return () => {
+        cancelled = true;
+        map.off("moveend", lockGlobeZoom);
+      };
+    }
+    const fromGlobe = map.getZoom() < 2.3;
     map.fitBounds(
       [
         [view[0], view[1]],
         [view[2], view[3]],
       ],
-      { padding: 24, duration: animate ? 900 : 0, maxZoom: 8 },
+      {
+        padding: 24,
+        duration: animate ? (intro ? 2600 : fromGlobe ? 2200 : 900) : 0,
+        maxZoom: 8,
+      },
     );
-  }, [view, ready]);
+  }, [view, projection, ready]);
+
+  useEffect(() => {
+    if (!continentPicking) return;
+    void loadCountries().then((loaded) => {
+      countriesRef.current = loaded;
+    });
+  }, [continentPicking]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -507,24 +702,78 @@ export default function FireMap({
     }
   }, [selectedId, detections, ready]);
 
-  const cells = useMemo(
-    () => (plot === "hex" ? aggregateHex(detections, hexResolution(zoom)) : []),
-    [plot, detections, zoom],
-  );
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const duration = reduceMotion() ? 0 : 1600;
+    if (focus3d) {
+      if (!savedCamera.current && map.getPitch() === 0) {
+        const center = map.getCenter();
+        savedCamera.current = { center: [center.lng, center.lat], zoom: map.getZoom() };
+      }
+      ensureTerrain(map);
+      map.setTerrain({ source: "dem", exaggeration: TERRAIN_3D.exaggeration });
+      setVisibility(map, "hillshade", true);
+      map.easeTo({
+        center: [focus3d.lon, focus3d.lat],
+        zoom: Math.max(map.getZoom(), focus3d.zoom ?? TERRAIN_3D.zoom),
+        pitch: TERRAIN_3D.pitch,
+        bearing: TERRAIN_3D.bearing,
+        duration,
+      });
+    } else if (map.getPitch() > 0 || map.getTerrain()) {
+      map.setTerrain(null);
+      setVisibility(map, "hillshade", false);
+      const saved = savedCamera.current;
+      savedCamera.current = null;
+      map.easeTo({ ...(saved ?? {}), pitch: 0, bearing: 0, duration });
+    }
+  }, [focus3d, ready]);
+
+  const cells = useMemo(() => {
+    if (plot !== "hex") return NO_CELLS;
+    return hexCells ?? aggregateHex(detections, hexResolution(zoom));
+  }, [plot, hexCells, detections, zoom]);
+  const cellRes = hexCells ? (hexRes ?? hexCells[0]?.res ?? 0) : hexResolution(zoom);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
     const hex = plot === "hex";
     for (const id of ["hex-fill", "hex-line", "hex-selected"]) setVisibility(map, id, hex);
-    for (const id of [...SENSORS, "matches", "selected"]) setVisibility(map, id, !hex || showPoints);
+    if (map.getLayer("hex-fill")) {
+      const opacity = hotAreas
+        ? ["case", [">=", ["get", "n"], hotAreas.threshold], 0.8, 0.1]
+        : showHeat
+          ? 0.3
+          : 0.72;
+      map.setPaintProperty("hex-fill", "fill-opacity", opacity as never);
+    }
+    const pointsVisible = (!hex || showPoints) && !showHeat;
+    for (const id of [...SENSORS, "matches"]) setVisibility(map, id, pointsVisible);
+    setVisibility(map, "selected", !hex || showPoints);
     for (const id of [...SENSORS, "matches", "selected"]) {
       if (map.getLayer(id)) map.setLayerZoomRange(id, hex ? POINTS_MIN_ZOOM_IN_HEX : 0, 24);
     }
     for (const sensor of SENSORS) {
       if (map.getLayer(sensor)) map.setLayoutProperty(sensor, "icon-size", hex ? 0.7 : 1);
     }
-  }, [plot, showPoints, ready]);
+  }, [plot, showPoints, showHeat, hotAreas, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    setData(map, "areas", {
+      type: "FeatureCollection",
+      features: (hotAreas?.areas ?? []).map((a) => ({
+        type: "Feature",
+        geometry: { type: "MultiPolygon", coordinates: a.polygon },
+        properties: { id: a.id, n: a.count },
+      })),
+    } as never);
+    const visible = Boolean(hotAreas) && plot === "hex";
+    for (const id of ["areas-fill", "areas-halo", "areas-line"]) setVisibility(map, id, visible);
+  }, [hotAreas, plot, ready]);
 
   useEffect(() => {
     cellsRef.current = cells;
@@ -539,8 +788,8 @@ export default function FireMap({
         properties: { cell: c.id, n: c.count, color: hexColor(c.count, max) },
       })),
     });
-    cb.current.onHexChange?.(plot === "hex" ? hexInfo(cells, hexResolution(zoom)) : null);
-  }, [cells, plot, zoom, ready]);
+    cb.current.onHexChange?.(plot === "hex" ? hexInfo(cells, cellRes) : null);
+  }, [cells, cellRes, plot, ready]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -552,42 +801,34 @@ export default function FireMap({
     const map = mapRef.current;
     if (!map || !ready) return;
     const illustrated = basemap === "illustrated";
+    const streets = basemap === "streets";
     if (illustrated) ensureIllustrated(map);
-    setVisibility(map, "base", !illustrated);
+    setVisibility(map, "base", basemap === "satellite" || basemap === "vegetation" || streets);
     setVisibility(map, "vegetation", basemap === "vegetation");
+    let cancelled = false;
+    if (streets) {
+      ensureStreets(map)
+        .then(() => {
+          if (cancelled) return;
+          setStreetsVisible(map, true);
+          setVisibility(map, "base", false);
+        })
+        .catch(() => undefined);
+    } else if (streetsReady.has(map)) {
+      setStreetsVisible(map, false);
+    }
     for (const id of ILLUSTRATED_LAYERS) setVisibility(map, id, illustrated);
     map.setPaintProperty("bg", "background-color", illustrated ? ILLUSTRATED_PALETTE.ocean : "#04060c");
-    setVisibility(map, "temp-borders", showTemperature && !illustrated);
-  }, [basemap, showTemperature, ready]);
+    return () => {
+      cancelled = true;
+    };
+  }, [basemap, ready]);
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
     setVisibility(map, "heat", showHeat);
-    setVisibility(map, "temperature", showTemperature);
-    if (showTemperature) {
-      ensureTempBorders(map);
-      setVisibility(map, "temp-borders", basemap !== "illustrated");
-    }
-  }, [showHeat, showTemperature, basemap, ready]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready || !showTemperature || !temperature) return;
-    let cancelled = false;
-    void loadCountries().then((countries) => {
-      if (cancelled) return;
-      const [w, s, e, n] = fieldBounds(temperature);
-      type ImageSource = { updateImage: (o: { url: string; coordinates: number[][] }) => void };
-      (map.getSource("temperature") as unknown as ImageSource | undefined)?.updateImage({
-        url: temperatureImage(temperature, countries),
-        coordinates: [[w, n], [e, n], [e, s], [w, s]],
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [temperature, showTemperature, ready]);
+  }, [showHeat, ready]);
 
   useEffect(() => {
     const date = imageryDate ?? imageryDateFor();

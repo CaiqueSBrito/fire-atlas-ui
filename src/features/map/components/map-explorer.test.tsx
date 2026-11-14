@@ -1,11 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api/client";
 import { imageryDateFor } from "@/lib/map-layers";
 import { fetchDetections } from "@/lib/api/detections";
-import { fetchTemperatureGrid } from "@/lib/api/temperature";
-import { detection, detectionsResponse, temperatureGrid } from "@/test/detection-fixtures";
+import { detection, detectionsResponse } from "@/test/detection-fixtures";
+import { useDrawMode } from "@/providers/draw-mode";
 import { renderWithProviders } from "@/test/render";
 import { MapExplorer } from "./map-explorer";
 
@@ -17,27 +17,27 @@ vi.mock("@/lib/api/detections", () => ({
   fetchStats: vi.fn(),
 }));
 
-vi.mock("@/lib/api/temperature", () => ({
-  fetchTemperatureGrid: vi.fn(),
-  temperatureEndpoint: vi.fn(),
-}));
-
-vi.mock("./fire-map-loader", () => ({
-  FireMap: (p: {
+vi.mock("./fire-map-loader", () => {
+  const Stub = (p: {
     detections: unknown[];
     showMatches: boolean;
     drawing: boolean;
     basemap: string;
     showHeat: boolean;
-    showTemperature: boolean;
     imageryDate: string;
-    temperature: unknown;
     plot: string;
     showPoints: boolean;
     onSelect: (id: string | null) => void;
     selectedHex: string | null;
     onHexSelect: (cell: unknown) => void;
     onHexChange: (info: unknown) => void;
+    introFly: boolean;
+    focus3d: { lon: number; lat: number; zoom?: number } | null;
+    projection: string;
+    continentPicking: boolean;
+    onContinentPick: (id: string) => void;
+    onContinentHover: (id: string | null) => void;
+    onViewport: (bbox: number[]) => void;
   }) => (
     <div
       data-testid="fire-map"
@@ -46,12 +46,15 @@ vi.mock("./fire-map-loader", () => ({
       data-drawing={String(p.drawing)}
       data-base={p.basemap}
       data-heat={String(p.showHeat)}
-      data-temp={String(p.showTemperature)}
       data-date={p.imageryDate}
-      data-has-temp={String(Boolean(p.temperature))}
       data-plot={p.plot}
       data-points={String(p.showPoints)}
       data-selected-hex={p.selectedHex ?? ""}
+      data-intro={String(p.introFly)}
+      data-focus3d={p.focus3d ? `${p.focus3d.lon},${p.focus3d.lat}` : ""}
+      data-focus-zoom={p.focus3d?.zoom ?? ""}
+      data-projection={p.projection}
+      data-picking={String(p.continentPicking)}
     >
       <button
         type="button"
@@ -65,17 +68,28 @@ vi.mock("./fire-map-loader", () => ({
       <button type="button" onClick={() => p.onSelect("viirs-1")}>
         emitir-ponto
       </button>
+      <button type="button" onClick={() => p.onSelect(null)}>
+        emitir-vazio
+      </button>
+      <button type="button" onClick={() => p.onContinentHover("south-america")}>
+        emitir-hover
+      </button>
+      <button type="button" onClick={() => p.onViewport([-60, -20, -40, 0])}>
+        emitir-viewport
+      </button>
+      <button type="button" onClick={() => p.onContinentPick("south-america")}>
+        emitir-continente
+      </button>
+
     </div>
-  ),
-}));
+  );
+  return { FireMap: Stub };
+});
 
 const mocked = vi.mocked(fetchDetections);
-const temperatureMock = vi.mocked(fetchTemperatureGrid);
 
 beforeEach(() => {
   mocked.mockReset();
-  temperatureMock.mockReset();
-  temperatureMock.mockResolvedValue(temperatureGrid());
 });
 
 describe("MapExplorer — estados (RN05)", () => {
@@ -206,83 +220,103 @@ describe("MapExplorer — correspondências (RN06)", () => {
   });
 });
 
+function DrawTrigger() {
+  const { setDrawing } = useDrawMode();
+  return (
+    <button type="button" onClick={() => setDrawing(true)}>
+      iniciar-desenho
+    </button>
+  );
+}
+
 describe("MapExplorer — desenho de área", () => {
-  it("alterna o modo de desenho no mapa", async () => {
+  it("o modo de desenho vem do modal de filtros e mostra a instrução no mapa", async () => {
     mocked.mockResolvedValue(detectionsResponse());
-    renderWithProviders(<MapExplorer />);
+    renderWithProviders(
+      <>
+        <DrawTrigger />
+        <MapExplorer />
+      </>,
+    );
     await screen.findByText(/detecções no recorte/);
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-drawing", "false");
-    await userEvent.click(screen.getByRole("button", { name: /Desenhar área/ }));
+    expect(screen.queryByText(/Arraste no mapa para desenhar a área/)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "iniciar-desenho" }));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-drawing", "true");
+    expect(screen.getByText(/Arraste no mapa para desenhar a área/)).toBeInTheDocument();
   });
 
-  it("aplicar coordenadas válidas refaz a consulta com a nova área", async () => {
+  it("cancelar encerra o desenho", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(
+      <>
+        <DrawTrigger />
+        <MapExplorer />
+      </>,
+    );
+    await screen.findByText(/detecções no recorte/);
+    await userEvent.click(screen.getByRole("button", { name: "iniciar-desenho" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-drawing", "false");
+  });
+
+  it("a barra lateral não tem mais o formulário de área (fica no modal de filtros)", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
     await screen.findByText(/detecções no recorte/);
-    const west = screen.getByLabelText(/Oeste/);
-    await userEvent.clear(west);
-    await userEvent.type(west, "-100");
-    await userEvent.click(screen.getByRole("button", { name: "Aplicar coordenadas" }));
-    await waitFor(() => expect(mocked).toHaveBeenCalledTimes(2));
-    expect(mocked.mock.calls[1][0].bbox).toEqual([-100, -60, 180, 80]);
+    expect(screen.queryByRole("button", { name: /Desenhar área/ })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/Oeste/)).not.toBeInTheDocument();
   });
 });
 
 describe("MapExplorer — camadas do mapa", () => {
-  it("começa no satélite, sem calor nem temperatura", async () => {
+  it("começa no mapa de ruas, sem calor", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
     const map = await screen.findByTestId("fire-map");
-    expect(map).toHaveAttribute("data-base", "satellite");
+    expect(map).toHaveAttribute("data-base", "streets");
     expect(map).toHaveAttribute("data-heat", "false");
-    expect(map).toHaveAttribute("data-temp", "false");
   });
 
   it("lê as camadas da URL", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />, {
-      searchParams: "?base=illustrated&heat=true&temp=true",
+      searchParams: "?base=illustrated&heat=true",
     });
     const map = await screen.findByTestId("fire-map");
     expect(map).toHaveAttribute("data-base", "illustrated");
     expect(map).toHaveAttribute("data-heat", "true");
-    expect(map).toHaveAttribute("data-temp", "true");
   });
 
-  it("troca entre satélite, vegetação e ilustrado", async () => {
+  it("o mapa começa em ruas e o interruptor alterna o mapa ilustrado", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
     await screen.findByText(/detecções no recorte/);
-    await userEvent.click(screen.getByRole("radio", { name: /Satélite \+ vegetação/ }));
-    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-base", "vegetation");
-    expect(screen.getByText("Vegetação (NDVI, MODIS)")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("radio", { name: /Ilustrado/ }));
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-base", "streets");
+    expect(screen.queryByRole("radio", { name: /Satélite/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("switch", { name: /Mapa ilustrado/ }));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-base", "illustrated");
     expect(screen.getByText(/decorativos/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("radio", { name: /^Satélite(?! \+)/ }));
-    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-base", "satellite");
+    await userEvent.click(screen.getByRole("switch", { name: /Mapa ilustrado/ }));
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-base", "streets");
   });
 
-  it("liga o mapa de calor e a temperatura e mostra as legendas", async () => {
+  it("liga o mapa de calor e mostra a legenda", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
     await screen.findByText(/detecções no recorte/);
-    await userEvent.click(screen.getByRole("checkbox", { name: /Mapa de calor/ }));
-    await userEvent.click(screen.getByRole("checkbox", { name: /Temperatura da superfície/ }));
+    await userEvent.click(screen.getByRole("switch", { name: /Mapa de calor/ }));
     const map = screen.getByTestId("fire-map");
     expect(map).toHaveAttribute("data-heat", "true");
-    expect(map).toHaveAttribute("data-temp", "true");
     expect(screen.getByText("Mapa de calor (densidade de focos)")).toBeInTheDocument();
-    expect(screen.getByText("≥ 43 °C")).toBeInTheDocument();
   });
 
   it("trocar de camada não refaz a consulta de detecções", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
     await screen.findByText(/detecções no recorte/);
-    await userEvent.click(screen.getByRole("radio", { name: /Ilustrado/ }));
-    await userEvent.click(screen.getByRole("checkbox", { name: /Mapa de calor/ }));
+    await userEvent.click(screen.getByRole("switch", { name: /Mapa ilustrado/ }));
+    await userEvent.click(screen.getByRole("switch", { name: /Mapa de calor/ }));
     expect(mocked).toHaveBeenCalledTimes(1);
   });
 
@@ -298,73 +332,6 @@ describe("MapExplorer — camadas do mapa", () => {
     expect(await screen.findByTestId("fire-map")).toHaveAttribute("data-date", imageryDateFor());
   });
 
-  it("só consulta a temperatura quando a camada está ligada", async () => {
-    mocked.mockResolvedValue(detectionsResponse());
-    renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
-    expect(temperatureMock).not.toHaveBeenCalled();
-    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-has-temp", "false");
-    await userEvent.click(screen.getByRole("checkbox", { name: /Temperatura da superfície/ }));
-    await waitFor(() =>
-      expect(screen.getByTestId("fire-map")).toHaveAttribute("data-has-temp", "true"),
-    );
-    expect(temperatureMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("consulta a temperatura do fim do período sobre a área do mapa", async () => {
-    mocked.mockResolvedValue(detectionsResponse());
-    renderWithProviders(<MapExplorer />, {
-      searchParams: "?temp=true&to=2026-03-10&from=2026-03-01&bbox=-60,-10,-50,0",
-    });
-    await waitFor(() => expect(temperatureMock).toHaveBeenCalled());
-    const [axes, date] = temperatureMock.mock.calls[0];
-    expect(date).toBe("2026-03-10");
-    expect(axes.lons[0]).toBeLessThanOrEqual(-60);
-    expect(axes.lons.at(-1)!).toBeGreaterThanOrEqual(-50);
-    expect(axes.lats[0]).toBeGreaterThanOrEqual(0);
-  });
-
-  it("mostra o carregamento e depois o dia da temperatura", async () => {
-    mocked.mockResolvedValue(detectionsResponse());
-    let release: (v: ReturnType<typeof temperatureGrid>) => void = () => {};
-    temperatureMock.mockReturnValue(new Promise((r) => (release = r)));
-    renderWithProviders(<MapExplorer />, { searchParams: "?temp=true" });
-    expect(await screen.findByText("Carregando temperatura…")).toBeInTheDocument();
-    release(temperatureGrid());
-    expect(await screen.findByText(/Temperatura máxima do ar em/)).toBeInTheDocument();
-    expect(screen.queryByText("Carregando temperatura…")).not.toBeInTheDocument();
-  });
-
-  it("falha da temperatura é informada e pode ser repetida", async () => {
-    mocked.mockResolvedValue(detectionsResponse());
-    temperatureMock.mockRejectedValueOnce(new ApiError("Serviço fora do ar"));
-    temperatureMock.mockRejectedValueOnce(new ApiError("Serviço fora do ar"));
-    temperatureMock.mockResolvedValueOnce(temperatureGrid());
-    renderWithProviders(<MapExplorer />, { searchParams: "?temp=true" });
-    expect(await screen.findByText("Serviço fora do ar", {}, { timeout: 4000 })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-    await waitFor(() =>
-      expect(screen.getByTestId("fire-map")).toHaveAttribute("data-has-temp", "true"),
-    );
-  }, 15000);
-
-  it("limite de consultas não dispara nova tentativa automática", async () => {
-    mocked.mockResolvedValue(detectionsResponse());
-    temperatureMock.mockRejectedValue(
-      new ApiError("O limite de consultas de temperatura foi atingido.", 429),
-    );
-    renderWithProviders(<MapExplorer />, { searchParams: "?temp=true" });
-    expect(await screen.findByText(/limite de consultas/)).toBeInTheDocument();
-    expect(temperatureMock).toHaveBeenCalledTimes(1);
-  });
-
-  it("a falha da temperatura não derruba as detecções no mapa", async () => {
-    mocked.mockResolvedValue(detectionsResponse());
-    temperatureMock.mockRejectedValue(new ApiError("Serviço fora do ar"));
-    renderWithProviders(<MapExplorer />, { searchParams: "?temp=true" });
-    expect(await screen.findByText(/3 detecções no recorte/)).toBeInTheDocument();
-    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-count", "3");
-  });
 });
 
 describe("MapExplorer — hexágonos H3", () => {
@@ -386,7 +353,6 @@ describe("MapExplorer — hexágonos H3", () => {
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-plot", "hex");
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-points", "true");
     expect(screen.getByText("Detecções de maior FRP")).toBeInTheDocument();
-    expect(screen.getByText(/Selecione um hexágono/)).toBeInTheDocument();
   });
 
   it("não refaz a consulta ao trocar de pontos para hexágonos", async () => {
@@ -460,16 +426,16 @@ describe("MapExplorer — pontos sobre os hexágonos", () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
     await screen.findByText(/detecções no recorte/);
-    expect(screen.queryByRole("checkbox", { name: /Mostrar pontos sobre os hexágonos/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("switch", { name: /Mostrar pontos sobre os hexágonos/ })).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("radio", { name: /Hexágonos \(H3\)/ }));
-    expect(screen.getByRole("checkbox", { name: /Mostrar pontos sobre os hexágonos/ })).toBeChecked();
+    expect(screen.getByRole("switch", { name: /Mostrar pontos sobre os hexágonos/ })).toBeChecked();
   });
 
   it("desligar os pontos esconde a lista de detecções e mantém só os hexágonos", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
     await screen.findByText("Detecções de maior FRP");
-    await userEvent.click(screen.getByRole("checkbox", { name: /Mostrar pontos sobre os hexágonos/ }));
+    await userEvent.click(screen.getByRole("switch", { name: /Mostrar pontos sobre os hexágonos/ }));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-points", "false");
     expect(screen.queryByText("Detecções de maior FRP")).not.toBeInTheDocument();
   });
@@ -508,5 +474,191 @@ describe("MapExplorer — pontos sobre os hexágonos", () => {
     await userEvent.click(within(list).getAllByRole("button")[0]);
     expect(screen.queryByRole("region", { name: "Hexágono H3" })).not.toBeInTheDocument();
     expect(screen.getByRole("region", { name: /Detecção/ })).toBeInTheDocument();
+  });
+});
+
+describe("MapExplorer — vista 3D e voo de entrada", () => {
+  const twoPoints = () =>
+    detectionsResponse({
+      items: [
+        detection({ id: "a", lat: -12, lon: -45, frp: 100 }),
+        detection({ id: "b", sensor: "viirs", lat: 5, lon: 20, frp: 50 }),
+      ],
+    });
+
+  const listButtons = () =>
+    within(screen.getByRole("region", { name: "Detecções de maior FRP" })).getAllByRole("button");
+
+  afterEach(() => {
+    sessionStorage.clear();
+  });
+
+  it("sem região o mapa começa como globo e aceita escolher um continente", async () => {
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />);
+    await screen.findByText(/detecções no recorte/);
+    const map = screen.getByTestId("fire-map");
+    expect(map).toHaveAttribute("data-projection", "globe");
+    expect(map).toHaveAttribute("data-picking", "true");
+    expect(screen.getByText("Clique em um continente para explorar")).toBeInTheDocument();
+  });
+
+  it("passar o mouse sobre um continente mostra o nome", async () => {
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />);
+    await userEvent.click(await screen.findByRole("button", { name: "emitir-hover" }));
+    expect(screen.getByText("Clique para explorar: América do Sul")).toBeInTheDocument();
+  });
+
+  it("clicar no continente sai do globo e abre o mapa 2D da região", async () => {
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />);
+    await userEvent.click(await screen.findByRole("button", { name: "emitir-continente" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("fire-map")).toHaveAttribute("data-projection", "mercator"),
+    );
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-picking", "false");
+    expect(screen.queryByText(/Clique em um continente/)).not.toBeInTheDocument();
+  });
+
+  it("com região na URL o mapa abre em 2D, sem globo e sem botão de vista 3D", async () => {
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
+    await screen.findByText(/detecções no recorte/);
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-projection", "mercator");
+    expect(screen.queryByRole("button", { name: /Vista 3D/ })).not.toBeInTheDocument();
+  });
+
+  it("'Voltar ao globo' limpa a região e volta para o globo", async () => {
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
+    await screen.findByText(/detecções no recorte/);
+    await userEvent.click(screen.getByRole("button", { name: "Voltar ao globo" }));
+    await waitFor(() =>
+      expect(screen.getByTestId("fire-map")).toHaveAttribute("data-projection", "globe"),
+    );
+    expect(screen.queryByRole("button", { name: "Voltar ao globo" })).not.toBeInTheDocument();
+  });
+
+  it("área desenhada mantém o mapa plano mesmo sem região", async () => {
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />, { searchParams: "?bbox=-60,-20,-40,0" });
+    await screen.findByText(/detecções no recorte/);
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-projection", "mercator");
+  });
+
+  it("selecionar um ponto inclina e foca automaticamente", async () => {
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
+    await screen.findByText(/detecções no recorte/);
+    await userEvent.click(listButtons()[0]);
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus3d", "-45,-12");
+    expect(screen.getByRole("button", { name: "Voltar ao 2D" })).toBeInTheDocument();
+  });
+
+  it("'Voltar ao 2D' desfaz a inclinação e 'Ver em 3D' refaz", async () => {
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
+    await screen.findByText(/detecções no recorte/);
+    await userEvent.click(listButtons()[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Voltar ao 2D" }));
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus3d", "");
+    await userEvent.click(screen.getByRole("button", { name: "Ver em 3D" }));
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus3d", "-45,-12");
+  });
+
+  it("fechar o detalhe ou clicar no vazio volta ao 2D", async () => {
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
+    await screen.findByText(/detecções no recorte/);
+    await userEvent.click(listButtons()[0]);
+    await userEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus3d", "");
+    await userEvent.click(listButtons()[0]);
+    await userEvent.click(screen.getByRole("button", { name: "emitir-vazio" }));
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus3d", "");
+  });
+
+  it("trocar de detecção acompanha o novo ponto", async () => {
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
+    await screen.findByText(/detecções no recorte/);
+    await userEvent.click(listButtons()[0]);
+    await userEvent.click(listButtons()[1]);
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus3d", "20,5");
+  });
+
+  it("escolher um hexágono inclina e foca no centro da célula com zoom da resolução", async () => {
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america&plot=hex&dots=false" });
+    await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus3d", "-50,-10");
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus-zoom", "7");
+    expect(screen.getByRole("region", { name: "Hexágono H3" })).toBeInTheDocument();
+  });
+
+  it("sem a marca do globo o mapa abre direto, sem voo", async () => {
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />);
+    expect(await screen.findByTestId("fire-map")).toHaveAttribute("data-intro", "false");
+  });
+
+  it("vindo do globo o mapa faz o voo de entrada e consome a marca", async () => {
+    sessionStorage.setItem("fire-atlas:intro-fly", "1");
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />);
+    expect(await screen.findByTestId("fire-map")).toHaveAttribute("data-intro", "true");
+    await waitFor(() => expect(sessionStorage.getItem("fire-atlas:intro-fly")).toBeNull());
+  });
+
+  it("a região vinda do globo enquadra o mapa no continente", async () => {
+    mocked.mockResolvedValue(twoPoints());
+    renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
+    await screen.findByText(/detecções no recorte/);
+    expect(mocked.mock.calls[0][0].bbox).toEqual([-82, -56, -34, 13]);
+  });
+});
+
+describe("MapExplorer — painel lateral", () => {
+  it("oculta e mostra o painel lateral", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />);
+    await screen.findByText(/detecções no recorte/);
+    await userEvent.click(screen.getByRole("button", { name: "Ocultar painel" }));
+    expect(screen.queryByRole("complementary", { name: "Painel do mapa" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Mostrar painel" }));
+    expect(screen.getByRole("complementary", { name: "Painel do mapa" })).toBeInTheDocument();
+  });
+});
+
+describe("MapExplorer — calendário", () => {
+  it("o botão de calendário leva a região, o dia e o enquadramento atual do mapa", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />, {
+      searchParams: "?region=south-america&from=2026-11-08&to=2026-11-14",
+    });
+    await screen.findByText(/detecções no recorte/);
+    const link = screen.getByRole("link", { name: /Abrir o calendário/ });
+    expect(link.getAttribute("href")).toBe(
+      "/explore/calendar?region=south-america&date=2026-11-14",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "emitir-viewport" }));
+    expect(screen.getByRole("link", { name: /Abrir o calendário/ }).getAttribute("href")).toBe(
+      "/explore/calendar?region=south-america&date=2026-11-14&bbox=-60%2C-20%2C-40%2C0",
+    );
+  });
+
+  it("o link do calendário leva as camadas ativas do mapa", async () => {
+    mocked.mockResolvedValue(detectionsResponse());
+    renderWithProviders(<MapExplorer />, {
+      searchParams: "?region=south-america&to=2026-11-14&heat=true&plot=hex&dots=false&base=illustrated",
+    });
+    await screen.findByText(/detecções no recorte/);
+    const href = screen.getByRole("link", { name: /Abrir o calendário/ }).getAttribute("href")!;
+    const q = new URLSearchParams(href.split("?")[1]);
+    expect(q.get("base")).toBe("illustrated");
+    expect(q.get("plot")).toBe("hex");
+    expect(q.get("dots")).toBe("false");
+    expect(q.get("heat")).toBe("true");
   });
 });

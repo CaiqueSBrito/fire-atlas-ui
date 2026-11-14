@@ -3,24 +3,24 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { fetchDetections, fetchStats } from "@/lib/api/detections";
 import { fetchForecast } from "@/lib/api/forecast";
-import type { DetectionQuery } from "@/types/detections";
+import type { Bbox, DetectionQuery } from "@/types/detections";
 import { useResolvedFilters } from "./use-filters";
 
-function useQueryParams() {
+function useQueryParams(area?: Bbox | null) {
   const ctx = useResolvedFilters();
   const { filters } = ctx;
   const query: DetectionQuery = {
     sensors: filters.sensors,
     from: filters.from,
     to: filters.to,
-    bbox: filters.bbox,
+    bbox: area ?? filters.bbox,
   };
   const enabled = filters.problem === null && filters.sensors.length > 0;
   return { ...ctx, query, enabled };
 }
 
-export function useDetections() {
-  const { query, mock, enabled, filters } = useQueryParams();
+export function useDetections(area?: Bbox | null) {
+  const { query, mock, enabled, filters } = useQueryParams(area);
   const result = useQuery({
     queryKey: ["detections", query, mock],
     queryFn: ({ signal }) => fetchDetections(query, mock, signal),
@@ -44,8 +44,12 @@ export function useStats() {
 export function useForecast() {
   const { filters } = useResolvedFilters();
   const result = useQuery({
-    queryKey: ["forecast", filters.regionId, filters.bbox],
-    queryFn: ({ signal }) => fetchForecast(filters.regionId, filters.bbox, signal),
+    queryKey: ["forecast", filters.regionId, filters.bbox, filters.from, filters.to],
+    queryFn: ({ signal }) =>
+      fetchForecast(filters.regionId, filters.bbox, signal, {
+        from: filters.from,
+        to: filters.to,
+      }),
   });
   return { ...result, filters };
 }

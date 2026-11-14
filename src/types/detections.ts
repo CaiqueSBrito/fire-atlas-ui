@@ -1,3 +1,5 @@
+import type { HexCell } from "@/lib/utils/hex";
+
 export type SensorId = "modis" | "viirs";
 
 export type Bbox = [number, number, number, number];
@@ -20,8 +22,15 @@ export type FireDetection = {
   matchId?: string | null;
 };
 
+export type DetectionGrid = {
+  resolution: number;
+  maxResolution?: number;
+  cells: HexCell[];
+};
+
 export type DetectionsResponse = {
   items: FireDetection[];
+  grid?: DetectionGrid | null;
   total: number;
   truncated: boolean;
   harmonization: { available: boolean };

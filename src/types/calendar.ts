@@ -1,3 +1,5 @@
+import type { DetectionGrid } from "./detections";
+
 // DTOs do calendário de queimadas (NASA-013).
 // Datas sempre em UTC, formato ISO "YYYY-MM-DD"; meses "YYYY-MM".
 
@@ -40,7 +42,7 @@ export type Detection = {
   lon: number;
   sensor: Sensor;
   /** D = passagem diurna, N = noturna */
-  dayNight: "D" | "N";
+  dayNight: "D" | "N" | null;
 };
 
 export type ImageryKind = "thermal" | "geographic";
@@ -60,6 +62,8 @@ export type DayResponse = {
   status: DayStatus;
   counts?: SensorCounts;
   detections: Detection[];
+  grid?: DetectionGrid | null;
+  note?: string | null;
   imagery: Imagery[];
   source: DataSource;
 };

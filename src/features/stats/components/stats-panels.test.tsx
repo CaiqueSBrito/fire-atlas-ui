@@ -93,6 +93,8 @@ describe("mapa — legenda e detalhes", () => {
         }}
         source={{ name: "Fonte X", simulated: true }}
         matchesAvailable={false}
+        view3d={false}
+        onToggle3d={() => {}}
         onClose={() => {}}
       />,
     );

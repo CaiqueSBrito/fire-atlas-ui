@@ -2,6 +2,7 @@
 
 import { Component, type ReactNode } from "react";
 import dynamic from "next/dynamic";
+import type { GlobeHandlers } from "./globe";
 
 function GlobePlaceholder() {
   return (
@@ -29,10 +30,10 @@ const Globe = dynamic(() => import("./globe"), {
   loading: () => <GlobePlaceholder />,
 });
 
-export function GlobeLoader() {
+export function GlobeLoader({ onPick, onHover }: GlobeHandlers) {
   return (
     <WebGLBoundary>
-      <Globe />
+      <Globe onPick={onPick} onHover={onHover} />
     </WebGLBoundary>
   );
 }

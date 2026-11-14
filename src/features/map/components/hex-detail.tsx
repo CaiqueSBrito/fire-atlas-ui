@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { SENSOR_META } from "@/lib/sensors";
 import { cn } from "@/lib/utils/cn";
 import type { HexCell } from "@/lib/utils/hex";
@@ -9,12 +10,16 @@ export function HexDetail({
   shown,
   total,
   truncated,
+  view3d,
+  onToggle3d,
   onClose,
 }: {
   cell: HexCell;
   shown: number;
   total: number;
   truncated: boolean;
+  view3d: boolean;
+  onToggle3d: () => void;
   onClose: () => void;
 }) {
   const rows: Array<[string, string]> = [
@@ -50,6 +55,9 @@ export function HexDetail({
           </div>
         ))}
       </dl>
+      <Button variant="secondary" className="mt-4 w-full" onClick={onToggle3d}>
+        {view3d ? "Voltar ao 2D" : "Ver em 3D"}
+      </Button>
       {truncated && (
         <p className="mt-3 text-caption text-ink-300">
           Contagem sobre os {shown.toLocaleString("pt-BR")} pontos exibidos, de{" "}
@@ -72,7 +80,7 @@ export function HexTopList({
   if (!cells.length) return null;
   return (
     <section aria-labelledby="hex-top-title">
-      <h2 id="hex-top-title" className="text-caption uppercase tracking-wider text-ink-300">
+      <h2 id="hex-top-title" className="text-small font-semibold tracking-[-0.02em] text-ink-300">
         Hexágonos com mais focos
       </h2>
       <p className="mt-1 text-caption text-ink-300">

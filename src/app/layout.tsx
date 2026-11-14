@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Inter, JetBrains_Mono } from "next/font/google";
+import { Space_Grotesk, Fustat, JetBrains_Mono } from "next/font/google";
 import { SkipLink } from "@/components/layout/skip-link";
 import { AppProviders } from "@/providers/app-providers";
 import "./globals.css";
@@ -10,9 +10,9 @@ const display = Space_Grotesk({
   weight: ["500", "700"],
 });
 
-const sans = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
+const sans = Fustat({
+  variable: "--font-fustat",
+  subsets: ["latin", "latin-ext"],
 });
 
 const mono = JetBrains_Mono({

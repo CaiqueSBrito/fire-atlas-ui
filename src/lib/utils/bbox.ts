@@ -22,6 +22,10 @@ export function validateBbox(b: Bbox): string | null {
   return null;
 }
 
+export function isSameBbox(a: Bbox, b: Bbox): boolean {
+  return a.every((value, i) => value === b[i]);
+}
+
 export function bboxContains(b: Bbox, lon: number, lat: number): boolean {
   return lon >= b[0] && lon <= b[2] && lat >= b[1] && lat <= b[3];
 }

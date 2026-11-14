@@ -1,5 +1,6 @@
 import { cellToBoundary, cellToLatLng, getHexagonEdgeLengthAvg, latLngToCell } from "h3-js";
 import { HEX_RAMP } from "@/lib/map-layers";
+import type { Detection } from "@/types/calendar";
 import type { SensorId } from "@/types/detections";
 
 export type HexCell = {
@@ -19,6 +20,20 @@ export type HexInfo = {
   cells: number;
   top: HexCell[];
 };
+
+const FOCUS_ZOOM_BY_RES: Record<number, number> = {
+  1: 3.5,
+  2: 4.5,
+  3: 5.5,
+  4: 7,
+  5: 8.5,
+  6: 9.5,
+  7: 10.5,
+};
+
+export function hexFocusZoom(res: number): number {
+  return FOCUS_ZOOM_BY_RES[res] ?? 8;
+}
 
 const ZOOM_TO_RES: ReadonlyArray<[number, number]> = [
   [2, 2],
@@ -53,6 +68,16 @@ export function aggregateHex(
   return [...cells.values()];
 }
 
+export function gridPlotPoints(cells: HexCell[]): Detection[] {
+  const out: Detection[] = [];
+  for (const c of cells) {
+    const base = { lat: c.center[1], lon: c.center[0], dayNight: null };
+    if (c.modis > 0) out.push({ ...base, sensor: "MODIS" });
+    if (c.viirs > 0) out.push({ ...base, sensor: "VIIRS" });
+  }
+  return out;
+}
+
 export function hexRing(id: string): Array<[number, number]> {
   const ring = cellToBoundary(id, true) as Array<[number, number]>;
   const lons = ring.map((p) => p[0]);
@@ -69,7 +94,7 @@ const hexToRgb = (hex: string): [number, number, number] => [
 ];
 
 export function hexColor(count: number, max: number): string {
-  const t = max <= 1 ? 0 : Math.sqrt(Math.max(0, count - 1) / (max - 1));
+  const t = max <= 1 ? 0 : Math.log(Math.max(1, count)) / Math.log(max);
   const scaled = Math.min(1, Math.max(0, t)) * (HEX_RAMP.length - 1);
   const i = Math.min(HEX_RAMP.length - 2, Math.floor(scaled));
   const k = scaled - i;
@@ -77,6 +102,19 @@ export function hexColor(count: number, max: number): string {
   const b = hexToRgb(HEX_RAMP[i + 1]);
   const mix = a.map((v, n) => Math.round(v + (b[n] - v) * k));
   return `#${mix.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
+
+export function sameHexInfo(a: HexInfo | null, b: HexInfo | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return (
+    a.res === b.res &&
+    a.edgeKm === b.edgeKm &&
+    a.max === b.max &&
+    a.cells === b.cells &&
+    a.top.length === b.top.length &&
+    a.top.every((c, i) => c.id === b.top[i].id && c.count === b.top[i].count)
+  );
 }
 
 export function hexInfo(cells: HexCell[], res: number, topN = 8): HexInfo {

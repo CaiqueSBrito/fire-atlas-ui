@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { useQueryStates } from "nuqs";
 import { getRegion } from "@/config/regions";
+import { useMapLayers } from "@/hooks/use-map-layers";
+import { parseBbox, validateBbox } from "@/lib/utils/bbox";
 import {
   isValidDate,
   isValidMonth,
@@ -16,6 +18,7 @@ import { FlameIcon } from "./flame-icon";
 
 export function CalendarView() {
   const [params, setParams] = useQueryStates(calendarParsers);
+  const [layers] = useMapLayers();
   const [open, setOpen] = useState(true); // RN01: abre/recolhe sob demanda
 
   const date = isValidDate(params.date) ? params.date : null;
@@ -23,6 +26,8 @@ export function CalendarView() {
     ? params.month
     : monthOf(date ?? todayUtc());
   const region = getRegion(params.region);
+  const parsedBbox = parseBbox(params.bbox);
+  const viewBbox = parsedBbox && !validateBbox(parsedBbox) ? parsedBbox : null;
   const stageRef = useRef<HTMLDivElement>(null);
 
   const selectDate = (d: string) => {
@@ -85,9 +90,12 @@ export function CalendarView() {
             regionId={region.id}
             passTime={params.time}
             view={params.view}
+            viewBbox={viewBbox}
+            layers={layers}
             onChange={(patch) =>
               setParams({
                 ...patch,
+                ...(patch.region ? { bbox: null } : {}),
                 // mantém o mês do painel acompanhando a data (RN06/CA03)
                 ...(patch.date ? { month: monthOf(patch.date) } : {}),
               })

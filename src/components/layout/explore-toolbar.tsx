@@ -10,7 +10,7 @@ export function ExploreToolbar() {
   return (
     <div className="border-b border-space-600 bg-space-900">
       <div className="mx-auto max-w-7xl px-4 py-3">
-        <FilterBar />
+        <FilterBar canDraw={pathname.startsWith("/explore/map")} />
       </div>
     </div>
   );

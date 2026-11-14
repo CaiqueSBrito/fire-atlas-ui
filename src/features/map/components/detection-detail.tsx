@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { SENSOR_META } from "@/lib/sensors";
 import type { DataOrigin, FireDetection } from "@/types/detections";
 
@@ -15,11 +16,15 @@ export function DetectionDetail({
   detection: d,
   source,
   matchesAvailable,
+  view3d,
+  onToggle3d,
   onClose,
 }: {
   detection: FireDetection;
   source: DataOrigin;
   matchesAvailable: boolean;
+  view3d: boolean;
+  onToggle3d: () => void;
   onClose: () => void;
 }) {
   const meta = SENSOR_META[d.sensor];
@@ -64,6 +69,9 @@ export function DetectionDetail({
           </div>
         ))}
       </dl>
+      <Button variant="secondary" className="mt-4 w-full" onClick={onToggle3d}>
+        {view3d ? "Voltar ao 2D" : "Ver em 3D"}
+      </Button>
     </section>
   );
 }

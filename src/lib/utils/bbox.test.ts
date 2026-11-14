@@ -135,3 +135,11 @@ describe("padBbox", () => {
     expect(validateBbox(padBbox([-74, -34, -34, 6], 0.3))).toBeNull();
   });
 });
+
+describe("isSameBbox", () => {
+  it("compara os quatro limites", async () => {
+    const { isSameBbox } = await import("./bbox");
+    expect(isSameBbox([1, 2, 3, 4], [1, 2, 3, 4])).toBe(true);
+    expect(isSameBbox([1, 2, 3, 4], [1, 2, 3, 5])).toBe(false);
+  });
+});

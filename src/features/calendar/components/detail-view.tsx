@@ -3,12 +3,15 @@
 import { ErrorState } from "@/components/feedback/error-state";
 import { Select } from "@/components/ui/select";
 import { REGIONS, getRegion } from "@/config/regions";
+import { hasApi } from "@/lib/api/client";
 import { formatLong, shiftDate, todayUtc } from "@/lib/utils/dates";
 import type { ImageryKind, PassTime } from "@/types/calendar";
+import type { Bbox } from "@/types/detections";
 import { useDayQuery } from "../hooks/use-calendar-queries";
 import { ActivityCard, PASS_TIME_LABEL } from "./activity-card";
 import { DatePicker } from "./date-picker";
 import { STATUS_META } from "./day-tile";
+import type { DayMapLayers } from "./day-live-map";
 import { DayMap } from "./day-map";
 
 const VIEWS: { id: ImageryKind; label: string }[] = [
@@ -17,7 +20,9 @@ const VIEWS: { id: ImageryKind; label: string }[] = [
 ];
 
 const REGION_OPTIONS = REGIONS.map((r) => ({ value: r.id, label: r.label }));
-const TIME_OPTIONS = (Object.keys(PASS_TIME_LABEL) as PassTime[]).map((t) => ({
+const TIME_OPTIONS = (
+  hasApi ? (["all"] as PassTime[]) : (Object.keys(PASS_TIME_LABEL) as PassTime[])
+).map((t) => ({
   value: t,
   label: PASS_TIME_LABEL[t],
 }));
@@ -27,6 +32,8 @@ type DetailViewProps = {
   regionId: string;
   passTime: PassTime;
   view: ImageryKind | null;
+  viewBbox?: Bbox | null;
+  layers?: DayMapLayers;
   onChange: (
     patch: Partial<{
       date: string | null;
@@ -42,12 +49,15 @@ export function DetailView({
   regionId,
   passTime,
   view,
+  viewBbox = null,
+  layers,
   onChange,
 }: DetailViewProps) {
   const region = getRegion(regionId);
-  const query = useDayQuery(date, region.id, passTime);
+  const time: PassTime = hasApi ? "all" : passTime;
+  const query = useDayQuery(date, region.id, time);
   const data = query.data;
-  const isStale = !!data && (data.date !== date || data.region !== region.id || data.passTime !== passTime);
+  const isStale = !!data && (data.date !== date || data.region !== region.id || data.passTime !== time);
 
   // Alternância térmica/geográfica só quando há imagem correspondente (RN07).
   const available = new Set(data?.imagery.map((i) => i.kind));
@@ -121,12 +131,19 @@ export function DetailView({
             </button>
           </div>
         </div>
-        <Select
-          label="Horário"
-          value={passTime}
-          options={TIME_OPTIONS}
-          onChange={(t) => onChange({ time: t })}
-        />
+        <div>
+          <Select
+            label="Horário"
+            value={time}
+            options={TIME_OPTIONS}
+            onChange={(t) => onChange({ time: t })}
+          />
+          {hasApi && (
+            <p className="mt-1 text-caption text-ink-300">
+              A fonte não separa passagem diurna e noturna.
+            </p>
+          )}
+        </div>
       </div>
 
       <div
@@ -199,13 +216,20 @@ export function DetailView({
               <DayMap
                 region={region}
                 detections={data.detections}
+                grid={data.grid}
                 date={date}
-                title={`Mapa esquemático com ${data.detections.length} detecções em ${region.label}`}
+                viewBbox={viewBbox}
+                layers={layers}
+                title={
+                  data.grid
+                    ? `Mapa esquemático com ${data.grid.cells.length} células H3 com focos em ${region.label}`
+                    : `Mapa esquemático com ${data.detections.length} detecções em ${region.label}`
+                }
               />
             ) : (
               <div className="grid h-full place-items-center p-4 text-center text-small text-ink-300">
                 {data
-                  ? "Dados indisponíveis para esta data."
+                  ? (data.note ?? "Dados indisponíveis para esta data.")
                   : "Carregando…"}
               </div>
             )}
