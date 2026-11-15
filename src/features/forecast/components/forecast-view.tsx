@@ -1,17 +1,26 @@
 "use client";
 
+import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PageSection } from "@/components/layout/page-section";
-import { useDetections, useForecast } from "@/hooks/use-detections";
-import { ApiError } from "@/lib/api/client";
-import { FireMap } from "@/features/map/components/fire-map-loader";
-import { MapLegend } from "@/features/map/components/map-legend";
+import { REGIONS } from "@/config/regions";
 import { Unavailable } from "@/features/stats/components/unavailable";
-import type { ForecastResponse } from "@/types/forecast";
+import { useForecast } from "@/hooks/use-detections";
+import { ApiError } from "@/lib/api/client";
+import type { ForecastCell, ForecastResponse } from "@/types/forecast";
+
+type Available = Extract<ForecastResponse, { status: "available" }>;
 
 const fmtDate = (d: string) => d.split("-").reverse().join("/");
-type Available = Extract<ForecastResponse, { status: "available" }>;
+const fmtInt = (n: number) => n.toLocaleString("pt-BR");
+const fmtNum = (n: number | null, digits = 1) =>
+  n === null ? "—" : n.toLocaleString("pt-BR", { maximumFractionDigits: digits });
+const fmtPct = (p: number | null) =>
+  p === null
+    ? null
+    : (p * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const COORD = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
 
 function PredictedBanner() {
   return (
@@ -19,17 +28,188 @@ function PredictedBanner() {
       role="note"
       className="rounded-xl border-2 border-dashed border-[#c4a1ff] bg-[#c4a1ff]/10 p-3 text-small"
     >
-      <strong>PREVISÃO — não são detecções observadas.</strong> Estimativas de um
-      modelo preditivo, sujeitas às limitações listadas abaixo.
+      <strong>PREVISÃO — não são detecções observadas.</strong> Probabilidade de fogo
+      nos 7 dias seguintes à emissão, calculada pelo modelo do pipeline de dados.
     </p>
   );
 }
 
-export function ForecastView() {
-  const { data, error, isPending, refetch, filters } = useForecast();
-  let body: React.ReactNode;
+function Card({
+  label,
+  value,
+  unit,
+  unavailable,
+}: {
+  label: string;
+  value: string | null;
+  unit?: string;
+  unavailable: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-space-600 bg-space-800 p-5">
+      <p className="text-small text-ink-300">{label}</p>
+      {value === null ? (
+        <>
+          <p className="mt-1 font-mono text-h2 font-bold text-ink-300">—</p>
+          <p className="text-caption text-ink-300">Indisponível: {unavailable}</p>
+        </>
+      ) : (
+        <p className="mt-1 font-mono text-h2 font-bold">
+          {value}
+          {unit && <span className="ml-2 text-small font-normal text-ink-300">{unit}</span>}
+        </p>
+      )}
+    </div>
+  );
+}
 
-  if (isPending) {
+function place(cell: ForecastCell) {
+  if (!cell.city && !cell.country) return "Sem localidade registrada";
+  const city = cell.city
+    ? `${cell.city}${cell.cityDistanceKm !== null ? ` (${fmtNum(cell.cityDistanceKm, 0)} km)` : ""}`
+    : null;
+  return [city, cell.country].filter(Boolean).join(", ");
+}
+
+function RiskTable({ data }: { data: Available }) {
+  return (
+    <section
+      aria-labelledby="risk-title"
+      className="rounded-2xl border border-space-600 bg-space-800 p-5"
+    >
+      <h2 id="risk-title" className="font-display text-lg font-bold">
+        Células de maior probabilidade
+      </h2>
+      <p className="mt-1 text-small text-ink-300">
+        {data.truncated
+          ? `As ${fmtInt(data.cells.length)} de maior probabilidade entre ${fmtInt(data.summary.cells)} células da região.`
+          : `Todas as ${fmtInt(data.cells.length)} células com previsão na região.`}{" "}
+        Cidade mais próxima e distância segundo a base de lugares.
+      </p>
+      <div className="mt-3 max-h-[32rem] overflow-auto rounded-lg border border-space-600">
+        <table className="w-full text-small">
+          <caption className="sr-only">
+            Células H3 ordenadas da maior para a menor probabilidade de fogo em 7 dias
+          </caption>
+          <thead className="sticky top-0 bg-space-900">
+            <tr>
+              <th scope="col" className="px-3 py-2 text-left">#</th>
+              <th scope="col" className="px-3 py-2 text-left">Localidade</th>
+              <th scope="col" className="px-3 py-2 text-left">Coordenadas</th>
+              <th scope="col" className="px-3 py-2 text-right">Probabilidade 7 dias</th>
+              <th scope="col" className="px-3 py-2 text-right">Focos 24 h</th>
+              <th scope="col" className="px-3 py-2 text-right">Focos 7 dias</th>
+              <th scope="col" className="px-3 py-2 text-right">FRP médio 7 dias (MW)</th>
+              <th scope="col" className="px-3 py-2 text-left">Fogo ativo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.cells.map((c, i) => (
+              <tr key={c.id} className="border-t border-space-600">
+                <td className="px-3 py-1.5 font-mono text-ink-300">{i + 1}</td>
+                <th scope="row" className="px-3 py-1.5 text-left font-normal">
+                  {place(c)}
+                  <span className="block font-mono text-caption text-ink-300">{c.id}</span>
+                </th>
+                <td className="px-3 py-1.5 font-mono">
+                  {Math.abs(c.lat).toLocaleString("pt-BR", COORD)}° {c.lat < 0 ? "S" : "N"},{" "}
+                  {Math.abs(c.lon).toLocaleString("pt-BR", COORD)}° {c.lon < 0 ? "O" : "L"}
+                </td>
+                <td className="px-3 py-1.5 text-right font-mono">{fmtPct(c.probability)}%</td>
+                <td className="px-3 py-1.5 text-right font-mono">{fmtNum(c.detections24h, 0)}</td>
+                <td className="px-3 py-1.5 text-right font-mono">{fmtNum(c.detections7d, 0)}</td>
+                <td className="px-3 py-1.5 text-right font-mono">{fmtNum(c.frpMean7d)}</td>
+                <td className="px-3 py-1.5">
+                  {c.active === null ? "—" : c.active ? "Sim" : "Não"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function Report({ data }: { data: Available }) {
+  const { summary } = data;
+  return (
+    <div className="flex flex-col gap-6">
+      <PredictedBanner />
+      <section aria-label="Indicadores" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <Card
+          label="Células com previsão"
+          value={fmtInt(summary.cells)}
+          unit="células H3"
+          unavailable="a API não informou"
+        />
+        <Card
+          label="Células com fogo ativo"
+          value={fmtInt(summary.activeCells)}
+          unit="células H3"
+          unavailable="a API não informou"
+        />
+        <Card
+          label="Maior probabilidade"
+          value={fmtPct(summary.maxProbability)}
+          unit="%"
+          unavailable="nenhuma célula na região"
+        />
+        <Card
+          label="Probabilidade média"
+          value={fmtPct(summary.meanProbability)}
+          unit="%"
+          unavailable="nenhuma célula na região"
+        />
+      </section>
+
+      {summary.cells === 0 ? (
+        <EmptyState
+          title="Nenhuma célula com previsão nesta região"
+          description="O modelo não gerou previsão para esta área na emissão mais recente. Isso não significa ausência de risco de fogo."
+        />
+      ) : (
+        <RiskTable data={data} />
+      )}
+
+      <section
+        aria-labelledby="forecast-meta-title"
+        className="rounded-2xl border border-space-600 bg-space-900 p-5 text-small text-ink-300"
+      >
+        <h2 id="forecast-meta-title" className="font-display text-base font-bold text-ink-100">
+          Metadados
+        </h2>
+        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
+          <dt>Emissão</dt>
+          <dd className="font-mono text-ink-100">{fmtDate(data.issueDate)}</dd>
+          <dt>Origem</dt>
+          <dd className="text-ink-100">{data.source}</dd>
+          <dt>Método</dt>
+          <dd className="text-ink-100">{data.method}</dd>
+          <dt>Unidade espacial</dt>
+          <dd className="text-ink-100">célula H3 de resolução 6 (aresta média de ~3,7 km)</dd>
+        </dl>
+      </section>
+    </div>
+  );
+}
+
+export function ForecastView() {
+  const { data, error, isPending, isFetching, refetch, filters, enabled } = useForecast();
+  const regionLabel = filters.customArea
+    ? "Área personalizada"
+    : REGIONS.find((r) => r.id === filters.regionId)?.label ?? filters.regionId;
+  const issue = data?.status === "available" ? ` · emissão de ${fmtDate(data.issueDate)}` : "";
+
+  let body: React.ReactNode;
+  if (filters.problem) {
+    body = (
+      <ErrorState
+        title="Filtro inválido"
+        message={`${filters.problem} Ajuste os filtros para consultar.`}
+      />
+    );
+  } else if (enabled && isPending) {
     body = <LoadingState label="Consultando previsões…" />;
   } else if (error) {
     body = (
@@ -39,112 +219,21 @@ export function ForecastView() {
       />
     );
   } else if (data?.status === "unavailable") {
+    body = <Unavailable>{data.reason} Nenhuma estimativa é exibida sem previsão do serviço.</Unavailable>;
+  } else if (data) {
     body = (
-      <div className="flex flex-col gap-3">
-        <Unavailable>
-          {data.reason} Nenhuma estimativa é exibida enquanto não houver modelo
-          validado e dados fornecidos pelo serviço.
-        </Unavailable>
+      <div aria-busy={isFetching}>
+        <Report data={data} />
       </div>
     );
-  } else if (data) {
-    body = <Available data={data} />;
   }
 
   return (
     <PageSection
       title="Previsões"
-      description={`Funcionalidade complementar. Região selecionada: ${filters.regionId}.`}
+      description={`Relatório de risco de fogo para ${regionLabel}${issue}. Usa a região dos filtros; período e sensores não se aplicam (a previsão cobre os 7 dias seguintes à emissão).`}
     >
       {body}
     </PageSection>
   );
 }
-
-function Available({ data }: { data: Available }) {
-  const { data: observed } = useDetections();
-  const items = observed?.items ?? [];
-
-  return (
-    <div className="flex flex-col gap-6">
-      <PredictedBanner />
-
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-small">
-        <dt className="text-ink-300">Modelo</dt>
-        <dd>{data.model.name}{data.model.version ? ` v${data.model.version}` : ""}</dd>
-        <dt className="text-ink-300">Região</dt>
-        <dd>{data.region}</dd>
-        <dt className="text-ink-300">Horizonte previsto</dt>
-        <dd className="font-mono">{fmtDate(data.horizon.from)} → {fmtDate(data.horizon.to)}</dd>
-        {data.generatedAt && (
-          <>
-            <dt className="text-ink-300">Gerada em</dt>
-            <dd className="font-mono">{data.generatedAt}</dd>
-          </>
-        )}
-      </dl>
-
-      <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
-        <div className="relative min-h-[50svh] overflow-hidden rounded-2xl border border-space-600">
-          <FireMap
-            detections={items}
-            view={data.areas[0]?.bbox ?? [-180, -60, 180, 80]}
-            aoi={null}
-            drawing={false}
-            selectedId={null}
-            onSelect={() => {}}
-            showMatches={false}
-            forecastAreas={data.areas}
-            label="Mapa comparando detecções observadas (pontos) e áreas previstas (retângulos tracejados)."
-          />
-        </div>
-        <div className="flex flex-col gap-4">
-          <MapLegend enabled={filters_sensors(items)} showForecast />
-          <p className="text-caption text-ink-300">
-            Pontos ◆ ● = detecções <strong>observadas</strong>. Retângulos
-            tracejados = áreas <strong>previstas</strong>.
-          </p>
-        </div>
-      </div>
-
-      <section aria-labelledby="areas-title">
-        <h2 id="areas-title" className="font-display text-lg font-bold">Áreas previstas</h2>
-        <ul className="mt-3 grid gap-3 md:grid-cols-2">
-          {data.areas.map((a) => (
-            <li key={a.id} className="rounded-2xl border border-dashed border-[#c4a1ff] bg-space-800 p-4 text-small">
-              <p className="font-display text-base font-bold">
-                {a.label} <span className="font-normal text-[#c4a1ff]">· previsto</span>
-              </p>
-              <p className="font-mono text-ink-300">
-                O {a.bbox[0]}° S {a.bbox[1]}° L {a.bbox[2]}° N {a.bbox[3]}°
-              </p>
-              {a.frpPredicted && (
-                <p>FRP previsto: <span className="font-mono">{a.frpPredicted.value.toLocaleString("pt-BR")} {a.frpPredicted.unit}</span></p>
-              )}
-              {a.confidence && (
-                <p>{a.confidence.metric}: <span className="font-mono">{a.confidence.value.toLocaleString("pt-BR")}</span></p>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      <section aria-labelledby="limits-title" className="rounded-2xl border border-space-600 bg-space-900 p-5">
-        <h2 id="limits-title" className="font-display text-lg font-bold">Limitações do modelo</h2>
-        {data.limitations.length ? (
-          <ul className="mt-2 list-disc pl-5 text-small text-ink-300">
-            {data.limitations.map((l) => <li key={l}>{l}</li>)}
-          </ul>
-        ) : (
-          <p className="mt-2 text-small text-ink-300">
-            O serviço não informou as limitações documentadas do modelo. Trate
-            estas previsões com cautela.
-          </p>
-        )}
-      </section>
-    </div>
-  );
-}
-
-const filters_sensors = (items: { sensor: "modis" | "viirs" }[]) =>
-  (["modis", "viirs"] as const).filter((s) => items.some((i) => i.sensor === s));

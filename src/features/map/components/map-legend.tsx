@@ -38,7 +38,6 @@ export function MapLegend({
   counts,
   enabled,
   showMatches = false,
-  showForecast = false,
   basemap = "satellite",
   showHeat = false,
   plot = "points",
@@ -47,7 +46,6 @@ export function MapLegend({
   counts?: Partial<Record<SensorId, number>>;
   enabled?: SensorId[];
   showMatches?: boolean;
-  showForecast?: boolean;
   basemap?: BasemapId;
   showHeat?: boolean;
   plot?: PlotId;
@@ -90,12 +88,6 @@ export function MapLegend({
           <li className="flex items-center gap-2">
             <span aria-hidden className="grid h-4 w-4 place-items-center rounded-full border-2 border-white" />
             Correspondência entre sensores (harmonização validada)
-          </li>
-        )}
-        {showForecast && (
-          <li className="flex items-center gap-2">
-            <span aria-hidden className="h-3 w-5 border-2 border-dashed border-[#c4a1ff] bg-[#c4a1ff]/20" />
-            Previsto — não é detecção observada
           </li>
         )}
         {plot === "hex" && hexInfo && (
