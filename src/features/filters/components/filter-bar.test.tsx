@@ -122,12 +122,12 @@ describe("FilterBar — modal de filtros", () => {
     renderWithProviders(<FilterBar />, { onUrlUpdate });
     const dialog = await openModal();
     await userEvent.click(within(dialog).getByRole("checkbox", { name: /MODIS/ }));
-    await userEvent.click(within(dialog).getByRole("radio", { name: "Pará" }));
+    await userEvent.click(within(dialog).getByRole("radio", { name: "Brasil" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Últimos 30 dias" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Aplicar" }));
     const query = lastQuery(onUrlUpdate);
     expect(query).toContain("sensors=viirs");
-    expect(query).toContain("region=para");
+    expect(query).toContain("region=brasil");
     expect(query).toContain("from=2026-10-16");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
@@ -163,12 +163,23 @@ describe("FilterBar — modal de filtros", () => {
     expect(within(dialog).getByRole("button", { name: "Aplicar" })).toBeDisabled();
   });
 
+  it("o local não oferece estados, só mundo, continentes e Brasil", async () => {
+    renderWithProviders(<FilterBar />);
+    const dialog = await openModal();
+    expect(within(dialog).getByRole("radio", { name: "Brasil" })).toBeInTheDocument();
+    for (const state of ["Amazonas", "Pará", "Mato Grosso", "Tocantins", "Maranhão", "Bahia", "Minas Gerais"]) {
+      expect(within(dialog).queryByRole("radio", { name: state })).not.toBeInTheDocument();
+    }
+    await userEvent.type(within(dialog).getByRole("searchbox", { name: "Buscar região" }), "amaz");
+    expect(within(dialog).getByText("Nenhuma região encontrada.")).toBeInTheDocument();
+  });
+
   it("busca filtra as regiões", async () => {
     renderWithProviders(<FilterBar />);
     const dialog = await openModal();
-    await userEvent.type(within(dialog).getByRole("searchbox", { name: "Buscar região" }), "amaz");
-    expect(within(dialog).getByRole("radio", { name: "Amazonas" })).toBeInTheDocument();
-    expect(within(dialog).queryByRole("radio", { name: "Bahia" })).not.toBeInTheDocument();
+    await userEvent.type(within(dialog).getByRole("searchbox", { name: "Buscar região" }), "amér");
+    expect(within(dialog).getByRole("radio", { name: "América do Sul" })).toBeInTheDocument();
+    expect(within(dialog).queryByRole("radio", { name: "Europa" })).not.toBeInTheDocument();
     await userEvent.clear(within(dialog).getByRole("searchbox", { name: "Buscar região" }));
     await userEvent.type(within(dialog).getByRole("searchbox", { name: "Buscar região" }), "zzz");
     expect(within(dialog).getByText("Nenhuma região encontrada.")).toBeInTheDocument();

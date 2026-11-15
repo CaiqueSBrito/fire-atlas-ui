@@ -31,7 +31,7 @@ import type {
   SensorId,
 } from "@/types/detections";
 import type { ForecastCell, ForecastResponse } from "@/types/forecast";
-import type { SeriesPoint, StatsResponse } from "@/types/stats";
+import type { CellHistory, SeriesPoint, StatsResponse } from "@/types/stats";
 
 export const API_SOURCE: DataOrigin = {
   name: "NASA FIRMS (MODIS e VIIRS) · camada agregada por célula H3",
@@ -222,6 +222,7 @@ function toRanking(ranking: ApiRankingResponse | null | undefined): StatsRespons
     items: ranking.items.map((i) => ({
       label: `${coordinates(i.h3)} (H3 ${i.h3})${i.critical ? " · região crítica" : ""}`,
       value: i.detections,
+      h3: i.h3,
     })),
   };
 }
@@ -388,5 +389,42 @@ export function toDaySatellites(
     date,
     contributing: rows.filter((d) => d.contributes).map((d) => d.platform),
     available: rows.filter((d) => d.available).map((d) => d.platform),
+  };
+}
+
+export function toCellHistory(
+  cell: string,
+  sensors: SensorId[],
+  historical: ApiHistoricalResponse,
+): CellHistory | null {
+  const rows = historical.sensors.filter((s) => sensors.includes(lower(s.sensor)));
+  if (rows.length === 0) return null;
+  const first = rows[0].current;
+  const byYear = new Map<number, number>();
+  for (const r of rows) {
+    for (const y of r.baseline ?? []) byYear.set(y.year, (byYear.get(y.year) ?? 0) + y.detections);
+  }
+  const sufficient = rows.every((r) => r.sufficient && r.meanDetectionsPerDay != null);
+  const currentPerDay = rows.reduce((acc, r) => acc + r.current.detectionsPerDay, 0);
+  const meanPerDay = sufficient ? rows.reduce((acc, r) => acc + (r.meanDetectionsPerDay ?? 0), 0) : null;
+  return {
+    cell,
+    start: first.start,
+    end: first.end,
+    days: first.days,
+    current: {
+      year: Number(first.start.slice(0, 4)),
+      detections: rows.reduce((acc, r) => acc + r.current.detections, 0),
+    },
+    years: [...byYear.entries()].sort((a, b) => a[0] - b[0]).map(([year, detections]) => ({ year, detections })),
+    currentPerDay,
+    meanPerDay,
+    changePct: meanPerDay && meanPerDay > 0 ? ((currentPerDay - meanPerDay) / meanPerDay) * 100 : null,
+    anomalousSensors: sufficient ? rows.filter((r) => r.anomalous).map((r) => r.sensor) : [],
+    sufficient,
+    yearsWithData: Math.min(...rows.map((r) => r.yearsWithData)),
+    minYears: historical.minYears,
+    yearsRequested: historical.yearsRequested,
+    notes: [...new Set(rows.flatMap((r) => (r.note ? [`${r.sensor}: ${r.note}`] : [])))],
   };
 }

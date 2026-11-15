@@ -96,8 +96,8 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
       items: visible.filter((r) => r.id === "world" || CONTINENTS.includes(r.id)),
     },
     {
-      title: "Brasil e estados",
-      items: visible.filter((r) => r.id !== "world" && !CONTINENTS.includes(r.id)),
+      title: "País",
+      items: visible.filter((r) => r.id === "brasil"),
     },
   ].filter((g) => g.items.length > 0);
 

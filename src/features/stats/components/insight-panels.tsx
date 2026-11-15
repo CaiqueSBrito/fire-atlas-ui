@@ -3,7 +3,15 @@ import { Unavailable } from "./unavailable";
 
 const fmt = (n: number) => n.toLocaleString("pt-BR");
 
-export function RankingPanel({ ranking }: { ranking: StatsResponse["ranking"] }) {
+export function RankingPanel({
+  ranking,
+  selectedCell = null,
+  onSelectCell,
+}: {
+  ranking: StatsResponse["ranking"];
+  selectedCell?: string | null;
+  onSelectCell?: (h3: string) => void;
+}) {
   return (
     <section aria-labelledby="ranking-title" className="rounded-2xl border border-space-600 bg-space-800 p-5">
       <h2 id="ranking-title" className="font-display text-lg font-bold">Ranking de localidades</h2>
@@ -11,15 +19,34 @@ export function RankingPanel({ ranking }: { ranking: StatsResponse["ranking"] })
         <>
           <p className="mt-1 text-small text-ink-300">
             Critério: {ranking.criterion}. Regra: {ranking.rule}.
+            {onSelectCell && " Escolha uma célula para ver a comparação histórica dela."}
           </p>
           <ol className="mt-3 flex flex-col gap-1">
-            {ranking.items.map((it, i) => (
-              <li key={it.label} className="flex items-center gap-3 rounded-lg bg-space-900 px-3 py-2 text-small">
-                <span className="w-6 font-mono text-ink-300">{i + 1}.</span>
-                <span>{it.label}</span>
-                <span className="ml-auto font-mono">{fmt(it.value)} {ranking.unit}</span>
-              </li>
-            ))}
+            {ranking.items.map((it, i) => {
+              const content = (
+                <>
+                  <span className="w-6 font-mono text-ink-300">{i + 1}.</span>
+                  <span className="text-left">{it.label}</span>
+                  <span className="ml-auto shrink-0 font-mono">{fmt(it.value)} {ranking.unit}</span>
+                </>
+              );
+              return (
+                <li key={it.label}>
+                  {onSelectCell && it.h3 ? (
+                    <button
+                      type="button"
+                      aria-pressed={it.h3 === selectedCell}
+                      onClick={() => onSelectCell(it.h3!)}
+                      className="flex min-h-11 w-full items-center gap-3 rounded-lg border border-transparent bg-space-900 px-3 py-2 text-small transition hover:border-ember-400/60 aria-pressed:border-ember-400 aria-pressed:bg-ember-400/10"
+                    >
+                      {content}
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-3 rounded-lg bg-space-900 px-3 py-2 text-small">{content}</div>
+                  )}
+                </li>
+              );
+            })}
           </ol>
         </>
       ) : (

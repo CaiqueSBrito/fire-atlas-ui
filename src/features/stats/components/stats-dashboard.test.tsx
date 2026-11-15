@@ -97,13 +97,13 @@ describe("StatsDashboard (NASA-014)", () => {
       }),
     );
     renderWithProviders(<StatsDashboard />);
-    expect(await screen.findByText("2023–2025")).toBeInTheDocument();
-    expect(screen.getByText("Média simples")).toBeInTheDocument();
-    expect(screen.getByText("Pará")).toBeInTheDocument();
+    expect(await screen.findByText("Pará")).toBeInTheDocument();
     expect(screen.getByText(/Ordem decrescente/)).toBeInTheDocument();
     expect(screen.getByText("Semana crítica")).toBeInTheDocument();
     expect(screen.getByText("4.300")).toBeInTheDocument();
-    expect(screen.queryByText("Indisponível.")).not.toBeInTheDocument();
+    const history = screen.getByRole("region", { name: "Comparação histórica" });
+    expect(history).toHaveTextContent("mesmo período do mês nos 5 anos anteriores");
+    expect(history).toHaveTextContent("usa os dados reais da API");
   });
 
   it("sem detecções no recorte não afirma ausência de fogo", async () => {

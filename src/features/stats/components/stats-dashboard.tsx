@@ -6,7 +6,9 @@ import { LoadingState } from "@/components/feedback/loading-state";
 import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { PageSection } from "@/components/layout/page-section";
 import { REGIONS } from "@/config/regions";
-import { useHarmonizedMonthly, useStats } from "@/hooks/use-detections";
+import { useState } from "react";
+import { useCellHistory, useHarmonizedMonthly, useStats } from "@/hooks/use-detections";
+import { hasApi } from "@/lib/api/client";
 import { SENSOR_META } from "@/lib/sensors";
 import { HarmonizedMonthlyPanel } from "./harmonized-monthly";
 import { HistoryComparison } from "./history-comparison";
@@ -19,6 +21,11 @@ const fmtDate = (d: string) => d.split("-").reverse().join("/");
 export function StatsDashboard() {
   const { data, error, isPending, isFetching, refetch, filters, enabled } = useStats();
   const monthly = useHarmonizedMonthly();
+  const [chosenCell, setChosenCell] = useState<string | null>(null);
+  const rankedCells = (data?.ranking?.items ?? []).flatMap((it) => (it.h3 ? [it.h3] : []));
+  const selectedCell =
+    chosenCell && rankedCells.includes(chosenCell) ? chosenCell : (rankedCells[0] ?? null);
+  const cellHistory = useCellHistory(selectedCell);
   const regionLabel = filters.customArea
     ? "Área personalizada"
     : REGIONS.find((r) => r.id === filters.regionId)?.label ?? filters.regionId;
@@ -56,9 +63,16 @@ export function StatsDashboard() {
           onRetry={() => void monthly.refetch()}
         />
         <div className="grid gap-6 lg:grid-cols-2">
-          <HistoryComparison history={data.history} />
+          <HistoryComparison
+            enabled={hasApi}
+            cell={selectedCell}
+            history={cellHistory.data}
+            isPending={cellHistory.isPending}
+            error={cellHistory.error}
+            onRetry={() => void cellHistory.refetch()}
+          />
           <div className="flex flex-col gap-6">
-            <RankingPanel ranking={data.ranking} />
+            <RankingPanel ranking={data.ranking} selectedCell={selectedCell} onSelectCell={setChosenCell} />
             <CriticalPeriods data={data.criticalPeriods} />
           </div>
         </div>

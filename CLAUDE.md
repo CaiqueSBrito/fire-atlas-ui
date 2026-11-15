@@ -172,6 +172,12 @@ sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é
   `/compare/historical` (histórico/anomalia: só com 3+ anos anteriores, senão "Indisponível"). Ranking e
   histórico são opcionais (falha neles não derruba o painel). "Períodos críticos" = dias consecutivos com
   `unusual` do `/timeseries`. Dia sem dado vira `null` na série.
+- **Comparação histórica (Análises) é por célula H3**: o ranking é clicável (a 1ª célula vem selecionada) e
+  `useCellHistory` → `fetchCellHistory` chama `/compare/historical?cells=<célula>&start=<dia 1 do mês de to>&end=<to>&years=5`:
+  o mesmo período do mês contra as mesmas datas dos 5 anos anteriores (`toCellHistory` soma os sensores selecionados).
+  Painel `HistoryComparison`: uma barra por ano (ano sem registro = "sem registro", nunca zero), variação % sobre a
+  média de detecções/dia e "atípico" se |z| ≥ 2 em algum sensor; com menos de `minYears` anos: "Comparação
+  indisponível". Sem API: indisponível. O histórico da região inteira (`StatsResponse.history`) não aparece mais na tela.
 - Calendário (atividade **harmonizada**, gold/harmonized): `/activity/calendar` (mês: `harmonized`, `contributing`,
   `hasData`, `basis` e `temperature` por dia), `/activity/anomaly` (mês × mediana dos anos anteriores, `years=5`;
   sem 3 anos: "Indisponível") e `/activity/availability` (satélites que contribuíram no dia; vale para o mundo).
@@ -250,7 +256,7 @@ A barra do `explore/layout` (`features/filters/components/filter-bar.tsx`) mostr
 resumo dos três filtros (sensores, local, período; cada um ativo tem ✕ para remover) e "Limpar filtros".
 O botão abre o modal (`filter-modal.tsx`, sobre `components/ui/dialog.tsx`: foco preso, Esc, clique fora, rolagem
 travada, vira gaveta de baixo no celular). O modal trabalha com um **rascunho** e só grava na URL em "Aplicar":
-Sensores · Local (busca + continentes, Brasil e estados) · Área personalizada ("Desenhar no mapa" só na rota do
+Sensores · Local (busca + mundo, continentes e Brasil; os estados saíram do filtro, mas `region=<estado>` em links antigos ainda funciona) · Área personalizada ("Desenhar no mapa" só na rota do
 mapa, via `providers/draw-mode.tsx`; ou "Digitar coordenadas", validadas) · Período (atalhos em
 `lib/filter-presets.ts`: 7 dias = padrão e **não grava datas**, 30 dias, este mês, este ano, personalizado; máx. 366
 dias). Não há mais formulário de área nem "Áreas de calor" na barra lateral do mapa (o desenho de áreas de calor

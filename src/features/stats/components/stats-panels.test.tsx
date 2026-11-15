@@ -40,7 +40,7 @@ describe("painéis condicionados (CA04)", () => {
   it("histórico, ranking e períodos críticos indisponíveis informam o motivo", () => {
     render(
       <>
-        <HistoryComparison history={null} />
+        <HistoryComparison enabled cell={null} history={null} isPending={false} error={null} onRetry={() => {}} />
         <RankingPanel ranking={null} />
         <CriticalPeriods data={null} />
       </>,
@@ -49,26 +49,77 @@ describe("painéis condicionados (CA04)", () => {
     expect(screen.getByText(/ainda não foram aprovados/)).toBeInTheDocument();
   });
 
-  it("histórico exibe período de referência, método e definição (CA03)", () => {
+  it("histórico da célula: mesmo período do mês em cada ano, variação e método (CA03)", () => {
     render(
       <HistoryComparison
+        enabled
+        cell="86814c6dfffffff"
+        isPending={false}
+        error={null}
+        onRetry={() => {}}
         history={{
-          metric: "Detecções",
-          unit: "detecções",
-          observed: 120,
-          reference: 100,
-          referencePeriod: "2023–2025",
-          method: "Média simples",
-          anomaly: 20,
-          anomalyDefinition: "Observado − referência",
+          cell: "86814c6dfffffff",
+          start: "2026-11-01",
+          end: "2026-11-13",
+          days: 13,
+          current: { year: 2026, detections: 120 },
+          years: [
+            { year: 2022, detections: 80 },
+            { year: 2023, detections: 100 },
+            { year: 2025, detections: 120 },
+          ],
+          currentPerDay: 9.2,
+          meanPerDay: 7.7,
+          changePct: 19.5,
+          anomalousSensors: [],
+          sufficient: true,
+          yearsWithData: 3,
+          minYears: 3,
+          yearsRequested: 5,
+          notes: [],
         }}
       />,
     );
-    expect(screen.getByText("2023–2025")).toBeInTheDocument();
-    expect(screen.getByText("Média simples")).toBeInTheDocument();
-    expect(screen.getByText("Observado − referência")).toBeInTheDocument();
-    expect(screen.getAllByText(/\+20/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText(/20,0%/)).toBeInTheDocument();
+    expect(screen.getByText("86814c6dfffffff")).toBeInTheDocument();
+    expect(screen.getByText(/01\/11 a 13\/11 \(13 dias\)/)).toBeInTheDocument();
+    const years = screen.getByRole("list", { name: "Detecções no mesmo período de cada ano" });
+    expect(years.querySelectorAll("li")).toHaveLength(6);
+    expect(years).toHaveTextContent("2024sem registro");
+    expect(years).toHaveTextContent("2026120 detecções");
+    expect(screen.getByText(/\+19,5%/)).toBeInTheDocument();
+    expect(screen.getByText(/Dentro da variação habitual/)).toBeInTheDocument();
+    expect(screen.getByText(/Ano sem registro não é ano sem fogo/)).toBeInTheDocument();
+  });
+
+  it("histórico da célula sem anos suficientes não calcula variação", () => {
+    render(
+      <HistoryComparison
+        enabled
+        cell="86814c6dfffffff"
+        isPending={false}
+        error={null}
+        onRetry={() => {}}
+        history={{
+          cell: "86814c6dfffffff",
+          start: "2026-11-01",
+          end: "2026-11-13",
+          days: 13,
+          current: { year: 2026, detections: 120 },
+          years: [],
+          currentPerDay: 9.2,
+          meanPerDay: null,
+          changePct: null,
+          anomalousSensors: [],
+          sufficient: false,
+          yearsWithData: 0,
+          minYears: 3,
+          yearsRequested: 5,
+          notes: ["VIIRS: dados insuficientes"],
+        }}
+      />,
+    );
+    expect(screen.getByText(/Comparação indisponível: 0 anos anteriores com registro/)).toBeInTheDocument();
+    expect(screen.queryByText(/em relação à média/)).not.toBeInTheDocument();
   });
 });
 

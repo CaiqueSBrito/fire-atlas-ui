@@ -166,6 +166,13 @@ export type ApiHistoricalSensor = {
     detections: number;
     detectionsPerDay: number;
   };
+  baseline?: Array<{
+    year: number;
+    start: string;
+    end: string;
+    detections: number;
+    detectionsPerDay: number;
+  }> | null;
   yearsWithData: number;
   meanDetectionsPerDay?: number | null;
   stdDevDetectionsPerDay?: number | null;

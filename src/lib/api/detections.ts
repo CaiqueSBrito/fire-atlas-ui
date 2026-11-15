@@ -7,9 +7,9 @@ import type {
   ApiRankingResponse,
   ApiTimeseriesResponse,
 } from "@/types/api";
-import type { DetectionQuery, DetectionsResponse } from "@/types/detections";
-import type { StatsResponse } from "@/types/stats";
-import { sensorParam, toActivityGrid, toStatsResponse } from "./adapters";
+import type { DetectionQuery, DetectionsResponse, SensorId } from "@/types/detections";
+import type { CellHistory, StatsResponse } from "@/types/stats";
+import { sensorParam, toActivityGrid, toCellHistory, toStatsResponse } from "./adapters";
 import { apiFetch, hasApi } from "./client";
 import { isCovered, requireCoverage, type Coverage, type CoverageTable } from "./coverage";
 import { mockDetections, type MockMode } from "./mock-detections";
@@ -111,4 +111,24 @@ export async function fetchStats(
     ranking,
     historical,
   });
+}
+
+export function monthWindow(to: string): { start: string; end: string } {
+  return { start: `${to.slice(0, 8)}01`, end: to };
+}
+
+export async function fetchCellHistory(
+  cell: string,
+  to: string,
+  sensors: SensorId[],
+  signal?: AbortSignal,
+): Promise<CellHistory | null> {
+  if (!hasApi) return null;
+  const { start, end } = monthWindow(to);
+  const raw = await apiFetch<ApiHistoricalResponse>(
+    "/compare/historical",
+    { cells: cell, start, end, sensor: sensorParam(sensors), years: String(HISTORY_YEARS) },
+    signal,
+  );
+  return toCellHistory(cell, sensors, raw);
 }

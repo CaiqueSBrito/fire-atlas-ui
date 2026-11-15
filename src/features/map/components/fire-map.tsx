@@ -673,7 +673,8 @@ export default function FireMap({
       map.setMinZoom(0);
       return;
     }
-    const lockWorld = () => map.setMinZoom(flatMinZoom(map.getContainer().clientWidth));
+    const lockWorld = () =>
+      map.setMinZoom(Math.min(flatMinZoom(map.getContainer().clientWidth), map.getMaxZoom()));
     map.once("moveend", lockWorld);
     map.on("resize", lockWorld);
     return () => {
@@ -689,13 +690,15 @@ export default function FireMap({
     const intro = first && introRef.current;
     const animate = (!first || intro) && !reduceMotion();
     firstView.current = false;
-    map.resize();
     map.setMaxZoom(FLAT_MAX_ZOOM);
+    map.resize();
     if (projection === "globe" && isSameBbox(view, getRegion("world").bbox)) {
       const { width, height } = map.getContainer().getBoundingClientRect();
       let cancelled = false;
       const lockGlobeZoom = () => {
-        if (!cancelled) map.setMaxZoom(GLOBE_MAX_ZOOM);
+        if (cancelled) return;
+        if (map.getMinZoom() > GLOBE_MAX_ZOOM) map.setMinZoom(0);
+        map.setMaxZoom(GLOBE_MAX_ZOOM);
       };
       map.once("moveend", lockGlobeZoom);
       map.flyTo({

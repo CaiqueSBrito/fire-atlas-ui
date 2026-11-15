@@ -3,7 +3,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { fetchHarmonizedMonthly } from "@/lib/api/activity";
 import { hasApi } from "@/lib/api/client";
-import { fetchDetections, fetchStats } from "@/lib/api/detections";
+import { fetchCellHistory, fetchDetections, fetchStats } from "@/lib/api/detections";
 import { fetchForecast, MAP_FORECAST_LIMIT } from "@/lib/api/forecast";
 import type { Bbox, DetectionQuery } from "@/types/detections";
 import { useResolvedFilters } from "./use-filters";
@@ -82,4 +82,15 @@ export function useForecast() {
     placeholderData: keepPreviousData,
   });
   return { ...result, filters, enabled };
+}
+
+export function useCellHistory(cell: string | null) {
+  const { filters } = useResolvedFilters();
+  const sensors = [...filters.sensors].sort();
+  return useQuery({
+    queryKey: ["cell-history", cell, filters.to, sensors],
+    queryFn: ({ signal }) => fetchCellHistory(cell!, filters.to, sensors, signal),
+    enabled: hasApi && cell !== null && filters.problem === null && sensors.length > 0,
+    placeholderData: keepPreviousData,
+  });
 }
