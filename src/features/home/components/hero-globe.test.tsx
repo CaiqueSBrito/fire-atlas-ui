@@ -1,4 +1,4 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { peekIntroFly } from "@/lib/utils/intro-fly";
 import type { CountryCollection, Ring } from "@/lib/utils/countries";
@@ -76,31 +76,19 @@ describe("HeroGlobe", () => {
     expect(screen.getByTestId("globe").parentElement).toHaveAttribute("aria-hidden", "true");
   });
 
-  it("clicar na América do Sul abre o mapa já nessa região e marca o voo de entrada (CA01)", async () => {
+  it("o globo não leva ao mapa: só o botão principal e o menu fazem isso", async () => {
     await ready();
-    act(() => handlers.onPick!(-10, -55));
-    expect(push).toHaveBeenCalledWith("/explore/map?region=south-america");
-    expect(peekIntroFly()).toBe(true);
-  });
-
-  it("clicar na África abre a região da África", async () => {
-    await ready();
-    act(() => handlers.onPick!(0, 25));
-    expect(push).toHaveBeenCalledWith("/explore/map?region=africa");
-  });
-
-  it("clicar no oceano não navega nem marca o voo", async () => {
-    await ready();
-    act(() => handlers.onPick!(0, -30));
+    expect(handlers.onPick).toBeUndefined();
     expect(push).not.toHaveBeenCalled();
     expect(peekIntroFly()).toBe(false);
+    expect(screen.queryByText(/Clique/)).not.toBeInTheDocument();
   });
 
-  it("passar o mouse mostra o continente sob o cursor e muda o cursor", async () => {
+  it("passar o mouse mostra o nome do continente, sem mudar o cursor", async () => {
     await ready();
     act(() => handlers.onHover!({ lat: -10, lon: -55 }));
-    expect(screen.getByText(/Clique para explorar:/)).toHaveTextContent("América do Sul");
-    expect(document.body.style.cursor).toBe("pointer");
+    expect(screen.getByTestId("globe-continent")).toHaveTextContent("América do Sul");
+    expect(document.body.style.cursor).toBe("");
   });
 
   it("sair do globo ou passar sobre o oceano esconde o rótulo", async () => {
@@ -108,13 +96,12 @@ describe("HeroGlobe", () => {
     act(() => handlers.onHover!({ lat: -10, lon: -55 }));
     now = 2000;
     act(() => handlers.onHover!({ lat: 0, lon: -30 }));
-    expect(screen.queryByText(/Clique para explorar:/)).not.toBeInTheDocument();
-    expect(document.body.style.cursor).toBe("");
+    expect(screen.queryByTestId("globe-continent")).not.toBeInTheDocument();
     now = 3000;
     act(() => handlers.onHover!({ lat: 0, lon: 25 }));
-    expect(screen.getByText(/Clique para explorar:/)).toHaveTextContent("África");
+    expect(screen.getByTestId("globe-continent")).toHaveTextContent("África");
     act(() => handlers.onHover!(null));
-    expect(screen.queryByText(/Clique para explorar:/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId("globe-continent")).not.toBeInTheDocument();
   });
 
   it("limita a frequência da detecção ao mover o mouse", async () => {
@@ -122,13 +109,6 @@ describe("HeroGlobe", () => {
     act(() => handlers.onHover!({ lat: -10, lon: -55 }));
     now = 1010;
     act(() => handlers.onHover!({ lat: 0, lon: 25 }));
-    expect(screen.getByText(/Clique para explorar:/)).toHaveTextContent("América do Sul");
-  });
-
-  it("antes dos dados carregarem, clicar não navega", async () => {
-    render(<HeroGlobe />);
-    act(() => handlers.onPick!(-10, -55));
-    expect(push).not.toHaveBeenCalled();
-    await waitFor(() => expect(screen.getByTestId("globe")).toBeInTheDocument());
+    expect(screen.getByTestId("globe-continent")).toHaveTextContent("América do Sul");
   });
 });

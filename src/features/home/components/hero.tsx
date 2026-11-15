@@ -2,7 +2,6 @@ import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { HeroGlobe } from "./hero-globe";
 import { LiveStats } from "./live-stats";
-import { RegionLinks } from "./region-links";
 
 export function Hero() {
   return (
@@ -31,23 +30,14 @@ export function Hero() {
             Explore as detecções dos satélites MODIS e VIIRS da NASA FIRMS em
             mapa, calendário e análises.
           </p>
-          <div className="flex flex-wrap items-center gap-3">
-            <Link
-              href="/explore/map"
-              className={buttonVariants({ variant: "primary", size: "lg" })}
-            >
-              Explorar focos de calor
-              <span aria-hidden>→</span>
-            </Link>
-            <Link href="/explore/calendar" className={buttonVariants({ variant: "secondary" })}>
-              Calendário
-            </Link>
-            <Link href="/explore/statistics" className={buttonVariants({ variant: "secondary" })}>
-              Análises
-            </Link>
-          </div>
+          <Link
+            href="/explore/map"
+            className={buttonVariants({ variant: "primary", size: "lg" })}
+          >
+            Explorar focos de calor
+            <span aria-hidden>→</span>
+          </Link>
           <LiveStats />
-          <RegionLinks />
           <p className="font-mono text-caption text-ink-300">
             Dados: NASA FIRMS · MODIS + VIIRS
           </p>

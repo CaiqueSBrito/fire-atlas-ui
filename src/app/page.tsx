@@ -5,6 +5,7 @@ import { DataSources } from "@/features/home/components/data-sources";
 import { Faq } from "@/features/home/components/faq";
 import { Hero } from "@/features/home/components/hero";
 import { HowItWorks } from "@/features/home/components/how-it-works";
+import { Team } from "@/features/home/components/team";
 
 export default function Home() {
   return (
@@ -15,6 +16,7 @@ export default function Home() {
         <AboutChallenge />
         <HowItWorks />
         <DataSources />
+        <Team />
         <Faq />
       </main>
       <SiteFooter />

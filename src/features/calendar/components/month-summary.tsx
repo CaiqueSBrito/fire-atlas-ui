@@ -2,7 +2,7 @@ import { formatShort } from "@/lib/utils/dates";
 import type { ActivityDay, MonthAnomaly } from "@/types/calendar";
 import { formatActivity } from "../temperature";
 
-const row = "flex items-baseline justify-between gap-3 rounded-xl border border-space-600 bg-space-900 px-4 py-3";
+const row = "flex items-baseline justify-between gap-3 rounded-xl border border-space-600 bg-space-900 px-4 py-3 type-body-small";
 
 function anomalyText(anomaly: MonthAnomaly | undefined, failed: boolean): string {
   if (failed) return "Indisponível";
@@ -29,8 +29,8 @@ export function MonthSummary({
   const total = withData.reduce((sum, d) => sum + (d.value ?? 0), 0);
 
   return (
-    <article aria-labelledby="month-summary-title" className="rounded-2xl border border-space-600 bg-space-800 p-6">
-      <h3 id="month-summary-title" className="font-display text-xl font-bold">
+    <article aria-labelledby="month-summary-title" className="rounded-panel border border-space-600 bg-space-800 p-6">
+      <h3 id="month-summary-title" className="font-display type-heading-section">
         Resumo do mês
       </h3>
       <dl className="mt-3 grid gap-2">
@@ -58,11 +58,11 @@ export function MonthSummary({
         </div>
       </dl>
       {anomaly && !anomaly.sufficient && (
-        <p className="mt-2 text-caption text-ink-300">
+        <p className="mt-2 type-caption text-ink-300">
           A comparação exige pelo menos {anomaly.minYears} anos anteriores com dado; há {anomaly.yearsWithData}.
         </p>
       )}
-      <p className="mt-2 text-caption text-ink-300">Dias sem dado não significam ausência de fogo.</p>
+      <p className="mt-2 type-caption text-ink-300">Dias sem dado não significam ausência de fogo.</p>
     </article>
   );
 }

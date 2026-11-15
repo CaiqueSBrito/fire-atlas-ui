@@ -21,16 +21,12 @@ describe("Hero", () => {
     );
   });
 
-  it("oferece o globo e os atalhos por região", () => {
+  it("oferece o globo e só o botão principal, sem atalhos por região nem botões secundários", () => {
     render(<Hero />);
     expect(screen.getByTestId("hero-globe")).toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: "Explorar por região" })).toBeInTheDocument();
-  });
-
-  it("oferece as três entradas: mapa, calendário e análises", () => {
-    render(<Hero />);
-    expect(screen.getByRole("link", { name: "Calendário" })).toHaveAttribute("href", "/explore/calendar");
-    expect(screen.getByRole("link", { name: "Análises" })).toHaveAttribute("href", "/explore/statistics");
+    expect(screen.queryByRole("navigation", { name: "Explorar por região" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Calendário" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Análises" })).not.toBeInTheDocument();
     expect(screen.getByTestId("live-stats")).toBeInTheDocument();
   });
 });

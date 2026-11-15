@@ -43,7 +43,7 @@ Os textos da home seguem o enunciado oficial — não inventar dados/números.
 
 | Rota | Conteúdo |
 |---|---|
-| `/` | Home: cabeçalho + hero (globo + botão vermelho) + seções (desafio, proposta, dados, FAQ) + rodapé |
+| `/` | Home: cabeçalho + hero (globo + botão vermelho) + seções (desafio, proposta, dados, time, FAQ) + rodapé |
 | `/explore` | Redireciona para `/explore/map` |
 | `/explore/map` | Mapa interativo MapLibre + base NASA GIBS, camadas MODIS ◆ / VIIRS ●, pontos ou hexágonos H3, área por desenho ou coordenadas, detalhes da detecção (NASA-012) |
 | `/explore/calendar` | Calendário de queimadas: atividade harmonizada por dia, barras por faixa de temperatura de brilho, mapa do dia e resumo do mês — feature NASA-013 |
@@ -67,11 +67,9 @@ Next o error boundary recebe **`retry`** (não `reset`).
 
 ## Fluxo de exploração (globo → mapa 2D → foco inclinado)
 
-1. **Home:** o globo 3D é clicável. O clique vira latitude/longitude (`vectorToLatLon`), o
-   continente vem do ponto dentro dos países (`continentAt`, `public/data/countries.geojson` com a
-   propriedade `continent`) e abre `/explore/map?region=<continente>`; passar o mouse mostra
-   "Clique para explorar: <continente>". Alternativa por teclado e celular: os atalhos
-   `RegionLinks` ("Ou comece por uma região"). Ambos marcam `markIntroFly()` (sessionStorage).
+1. **Home:** só o botão principal "Explorar focos de calor" e o menu do topo levam ao mapa (pedido do time).
+   O globo 3D gira e, ao passar o mouse, mostra o nome do continente (`continentAt`), mas **não é clicável**.
+   Não há atalhos por região, botões de Calendário/Análises no hero nem link "Mapa" no rodapé.
 2. **Mapa (`/explore/map`) começa como globo 3D** (MapLibre `vertical-perspective`, `GLOBE_PROJECTION`)
    quando a região é `world` e não há `bbox`: passar o mouse mostra "Clique para explorar:
    <continente>"; clicar num continente (`continentAt`) grava `region=<id>` na URL e a câmera faz
@@ -293,3 +291,9 @@ Docker: `docker compose up -d --build` → http://localhost:3000 (`Dockerfile` m
 `docker-compose.yml`; padrão `NEXT_PUBLIC_API_URL=http://localhost:8080/api/v2`): mudar a URL exige
 rebuild. A URL é usada pelo navegador, então `localhost:8080` é a API rodando na máquina do usuário,
 não dentro do container. Para usar mock: `NEXT_PUBLIC_API_URL= docker compose up -d --build`.
+
+## Time (home)
+
+`features/home/components/team.tsx`: seção "Nosso time" (entre Dados e FAQ) com um card por pessoa (foto em
+`public/team/`, nome e função; a Ana tem o selo "Team Owner"). Para trocar foto, mantenha o nome do arquivo e ajuste `focus`
+(`object-position`) para centralizar o rosto. O logo do cabeçalho (`components/layout/logo.tsx`) usa gradiente de fogo.
