@@ -67,4 +67,11 @@ describe("MapLegend — camadas", () => {
     rerender(<MapLegend basemap="streets" />);
     expect(screen.getByText(/© OpenStreetMap contributors · OpenFreeMap/)).toBeInTheDocument();
   });
+
+  it("legenda da previsão com escala de probabilidade e emissão", () => {
+    render(<MapLegend forecastIssue="2026-11-15" />);
+    expect(screen.getByText(/probabilidade de fogo nos próximos 7 dias/)).toBeInTheDocument();
+    expect(screen.getByText(/Emissão de 15\/11\/2026/)).toBeInTheDocument();
+    expect(screen.getByText(/não detecção observada/)).toBeInTheDocument();
+  });
 });

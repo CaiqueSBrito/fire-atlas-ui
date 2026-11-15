@@ -2,8 +2,10 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
+import { fetchHarmonizedMonthly } from "@/lib/api/activity";
+import { hasApi } from "@/lib/api/client";
 import { fetchDetections, fetchStats } from "@/lib/api/detections";
-import { fetchForecast } from "@/lib/api/forecast";
+import { fetchForecast, MAP_FORECAST_LIMIT } from "@/lib/api/forecast";
 import { regionQueryKey } from "@/lib/api/query-region";
 import type { Bbox, DetectionQuery } from "@/types/detections";
 import { useResolvedFilters } from "./use-filters";
@@ -43,6 +45,31 @@ export function useStats() {
     placeholderData: keepPreviousData,
   });
   return { ...result, filters, enabled };
+}
+
+export function useHarmonizedMonthly() {
+  const { filters } = useResolvedFilters();
+  const area = {
+    regionId: filters.regionId,
+    bbox: filters.bbox,
+    customArea: filters.customArea,
+    to: filters.to,
+  };
+  return useQuery({
+    queryKey: ["harmonized-monthly", area],
+    queryFn: ({ signal }) => fetchHarmonizedMonthly(area, signal),
+    enabled: hasApi && filters.problem === null,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useMapForecast(area: Bbox, enabled: boolean) {
+  return useQuery({
+    queryKey: ["map-forecast", area],
+    queryFn: ({ signal }) => fetchForecast(area, signal, MAP_FORECAST_LIMIT),
+    enabled: hasApi && enabled,
+    placeholderData: keepPreviousData,
+  });
 }
 
 export function useForecast() {

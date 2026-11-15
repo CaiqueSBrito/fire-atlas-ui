@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
-import { useDetections } from "@/hooks/use-detections";
+import { useDetections, useMapForecast } from "@/hooks/use-detections";
 import { useResolvedFilters } from "@/hooks/use-filters";
 import { useMapLayers } from "@/hooks/use-map-layers";
 import { useQueryArea } from "@/hooks/use-query-area";
@@ -23,6 +23,7 @@ import { DetectionDetail } from "./detection-detail";
 import { DetectionList } from "./detection-list";
 import { HexDetail, HexTopList } from "./hex-detail";
 import { FireMap } from "./fire-map-loader";
+import { ForecastLayerList } from "./forecast-layer-list";
 import { Group, LayerPanel } from "./layer-panel";
 import { MapLegend } from "./map-legend";
 
@@ -45,6 +46,9 @@ export function MapExplorer() {
   const { data, error, isPending, isFetching, refetch, filters, enabled } =
     useDetections(queryArea);
   const [layers, setLayers] = useMapLayers();
+  const forecastQuery = useMapForecast(queryArea, layers.forecast);
+  const forecast =
+    layers.forecast && forecastQuery.data?.status === "available" ? forecastQuery.data : null;
   const imageryDate = imageryDateFor(filters.to);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focus3d, setFocus3d] = useState<{ lon: number; lat: number; zoom?: number } | null>(null);
@@ -173,6 +177,7 @@ export function MapExplorer() {
               })
         }
         onClose={() => pickHex(null)}
+        harmonizedUnit={grid?.harmonized?.unitLabel}
       />
     ) : selected && data ? (
       <DetectionDetail
@@ -219,6 +224,7 @@ export function MapExplorer() {
     showHeat: layers.heat,
     imageryDate,
     onViewport: (bbox: Bbox) => setViewportState({ key: regionKey, bbox }),
+    forecastCells: forecast?.cells ?? null,
     label:
       "Mapa de focos de calor. Arraste para deslocar; use os botões + e − para o zoom. A lista de detecções no painel é uma alternativa por teclado.",
   };
@@ -257,7 +263,9 @@ export function MapExplorer() {
             </p>
             {data && (
               <p className="font-mono text-small">
-                {data.total.toLocaleString("pt-BR")} detecções no recorte
+                {grid?.harmonized
+                  ? `${data.total.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} de atividade harmonizada no recorte`
+                  : `${data.total.toLocaleString("pt-BR")} detecções no recorte`}
                 {data.truncated && (
                   <span className="block text-caption text-ink-300">
                     Exibindo{" "}
@@ -272,7 +280,8 @@ export function MapExplorer() {
               <p className="rounded-xl border border-space-600 bg-space-800 p-3 text-small text-ink-300">
                 <span aria-hidden className="mr-1 inline-block h-3 w-5 rounded-sm border-2 border-white align-middle" />
                 Contorno branco: <strong className="text-ink-100">área de calor</strong>, células com ao menos{" "}
-                {hotAreas.threshold.toLocaleString("pt-BR")} focos (as {hotAreas.share}% mais intensas). As demais
+                {hotAreas.threshold.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}{" "}
+                {grid?.harmonized ? "de atividade harmonizada" : "focos"} (as {hotAreas.share}% mais intensas). As demais
                 ficam esmaecidas.
               </p>
             )}
@@ -284,6 +293,8 @@ export function MapExplorer() {
               showHeat={layers.heat}
               plot={plot}
               hexInfo={hexInfo}
+              harmonizedUnit={grid?.harmonized?.unitLabel}
+              forecastIssue={forecast?.issueDate ?? null}
             />
             {data?.source.simulated && (
               <p className="rounded-xl border border-dashed border-ember-400/60 p-3 text-caption text-ink-300">
@@ -410,12 +421,42 @@ export function MapExplorer() {
           gridOnly={grid ? { resolution: grid.resolution } : null}
           dots={layers.dots}
           heat={layers.heat}
+          forecast={hasApi ? layers.forecast : undefined}
           onChange={(next) => void setLayers(next)}
         />
 
+        {layers.forecast && hasApi && (
+          <Group title="Previsão">
+            {forecastQuery.isPending ? (
+              <p role="status" className="text-small text-ink-300">Carregando a previsão…</p>
+            ) : forecastQuery.isError ? (
+              <ErrorState
+                title="Não foi possível carregar a previsão"
+                message={forecastQuery.error.message}
+                onRetry={() => void forecastQuery.refetch()}
+              />
+            ) : forecastQuery.data?.status === "unavailable" ? (
+              <p className="rounded-xl border border-dashed border-space-600 p-3 text-small text-ink-300">
+                <strong className="text-ink-100">Previsão indisponível.</strong> {forecastQuery.data.reason}
+              </p>
+            ) : forecast ? (
+              <ForecastLayerList
+                cells={forecast.cells}
+                issueDate={forecast.issueDate}
+                truncated={forecast.truncated}
+              />
+            ) : null}
+          </Group>
+        )}
+
         <Group title="Detecções" open={false}>
           {plot === "hex" && hexInfo && (
-            <HexTopList cells={hexInfo.top} selectedId={hexSelected?.id ?? null} onSelect={pickHex} />
+            <HexTopList
+              cells={hexInfo.top}
+              selectedId={hexSelected?.id ?? null}
+              onSelect={pickHex}
+              harmonized={!!grid?.harmonized}
+            />
           )}
           {data && showDetections && (
             <DetectionList

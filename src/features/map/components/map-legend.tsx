@@ -1,4 +1,4 @@
-import { HEAT_RAMP, HEX_RAMP, NDVI_RAMP, type BasemapId, type PlotId } from "@/lib/map-layers";
+import { FORECAST_RAMP, HEAT_RAMP, HEX_RAMP, NDVI_RAMP, type BasemapId, type PlotId } from "@/lib/map-layers";
 import type { HexInfo } from "@/lib/utils/hex";
 import { SENSOR_META, SENSORS } from "@/lib/sensors";
 import type { SensorId } from "@/types/detections";
@@ -42,6 +42,8 @@ export function MapLegend({
   showHeat = false,
   plot = "points",
   hexInfo,
+  harmonizedUnit,
+  forecastIssue,
 }: {
   counts?: Partial<Record<SensorId, number>>;
   enabled?: SensorId[];
@@ -50,6 +52,8 @@ export function MapLegend({
   showHeat?: boolean;
   plot?: PlotId;
   hexInfo?: HexInfo | null;
+  harmonizedUnit?: string;
+  forecastIssue?: string | null;
 }) {
   return (
     <section aria-labelledby="legend-title">
@@ -92,11 +96,29 @@ export function MapLegend({
         )}
         {plot === "hex" && hexInfo && (
           <Gradient
-            title={`Focos por hexágono (H3, resolução ${hexInfo.res})`}
+            title={
+              harmonizedUnit
+                ? `Atividade harmonizada por hexágono (H3, resolução ${hexInfo.res})`
+                : `Focos por hexágono (H3, resolução ${hexInfo.res})`
+            }
             colors={HEX_RAMP}
-            low="1 foco"
-            high={`${hexInfo.max.toLocaleString("pt-BR")} focos`}
-            note={`Aresta ≈ ${hexInfo.edgeKm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km · ${hexInfo.cells.toLocaleString("pt-BR")} células · escala logarítmica`}
+            low={harmonizedUnit ? "Menor" : "1 foco"}
+            high={
+              harmonizedUnit
+                ? hexInfo.max.toLocaleString("pt-BR", { maximumFractionDigits: 1 })
+                : `${hexInfo.max.toLocaleString("pt-BR")} focos`
+            }
+            note={`${harmonizedUnit ? `${harmonizedUnit} · ` : ""}Aresta ≈ ${hexInfo.edgeKm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km · ${hexInfo.cells.toLocaleString("pt-BR")} células · escala logarítmica`}
+          />
+        )}
+        {forecastIssue && (
+          <Gradient
+            title="Previsão: probabilidade de fogo nos próximos 7 dias"
+            colors={FORECAST_RAMP}
+            low="0%"
+            mid="50%"
+            high="100%"
+            note={`Hexágonos roxos tracejados (pontos com zoom afastado). Emissão de ${forecastIssue.split("-").reverse().join("/")}. Estimativa de modelo, não detecção observada.`}
           />
         )}
         {showHeat && (

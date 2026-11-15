@@ -5,9 +5,10 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PageSection } from "@/components/layout/page-section";
 import { REGIONS } from "@/config/regions";
-import { useStats } from "@/hooks/use-detections";
+import { useHarmonizedMonthly, useStats } from "@/hooks/use-detections";
 import { ApiError } from "@/lib/api/client";
 import { SENSOR_META } from "@/lib/sensors";
+import { HarmonizedMonthlyPanel } from "./harmonized-monthly";
 import { HistoryComparison } from "./history-comparison";
 import { IndicatorCards } from "./indicator-cards";
 import { CriticalPeriods, RankingPanel } from "./insight-panels";
@@ -17,6 +18,7 @@ const fmtDate = (d: string) => d.split("-").reverse().join("/");
 
 export function StatsDashboard() {
   const { data, error, isPending, isFetching, refetch, filters, enabled } = useStats();
+  const monthly = useHarmonizedMonthly();
   const regionLabel = filters.customArea
     ? "Área personalizada"
     : REGIONS.find((r) => r.id === filters.regionId)?.label ?? filters.regionId;
@@ -52,6 +54,12 @@ export function StatsDashboard() {
         ) : (
           <TimeSeriesChart series={data.series} sensors={filters.sensors} />
         )}
+        <HarmonizedMonthlyPanel
+          data={monthly.data}
+          isPending={monthly.isPending}
+          error={monthly.error}
+          onRetry={() => void monthly.refetch()}
+        />
         <div className="grid gap-6 lg:grid-cols-2">
           <HistoryComparison history={data.history} />
           <div className="flex flex-col gap-6">
@@ -75,7 +83,10 @@ export function StatsDashboard() {
             <dt>Dados originais</dt>
             <dd className="text-ink-100">MODIS ◆ e VIIRS ● — preservados sem alteração</dd>
             <dt>Dados harmonizados</dt>
-            <dd className="text-ink-100">▲ azul tracejado — só quando a harmonização validada existir</dd>
+            <dd className="text-ink-100">
+              ▲ azul — atividade harmonizada mensal (gold/harmonized), em células ativas equivalentes ao MODIS
+              Aqua; só com a API
+            </dd>
           </dl>
         </section>
       </div>

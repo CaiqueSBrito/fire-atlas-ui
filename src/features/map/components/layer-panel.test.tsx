@@ -22,6 +22,15 @@ describe("LayerPanel", () => {
     expect(p.onChange).toHaveBeenLastCalledWith({ heat: false });
   });
 
+  it("previsão só aparece com API e liga a camada", async () => {
+    const p = props();
+    const { rerender } = render(<LayerPanel {...p} />);
+    expect(screen.queryByRole("switch", { name: /Previsão de fogo/ })).not.toBeInTheDocument();
+    rerender(<LayerPanel {...p} forecast={false} />);
+    await userEvent.click(screen.getByRole("switch", { name: /Previsão de fogo/ }));
+    expect(p.onChange).toHaveBeenLastCalledWith({ forecast: true });
+  });
+
   it("não oferece escolha de mapa base: só o interruptor do mapa ilustrado", () => {
     render(<LayerPanel {...props()} />);
     expect(screen.queryByRole("group", { name: "Mapa base" })).not.toBeInTheDocument();

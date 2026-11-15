@@ -142,7 +142,10 @@ sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é
 - Datas disponíveis vêm de `/meta/coverage` (`lib/api/coverage.ts`, cache compartilhado de 10 min); o retorno é uma
   lista por sensor com `minDate`, `maxDate` e `detections`. `/meta/sources` foi removido. As resoluções da gold são
   0–6, independentemente de importações. O histórico pode ser consultado desde 2000; ausência de dado não é zero.
-- Mapa: `/detections?cells&start&end&sensor&zoom=3`; a API escolhe a resolução de saída (células grossas
+- Mapa (normal e do dia no calendário): `fetchDetections` usa `/detections` (contagem por sensor). A versão por atividade
+  harmonizada (`/activity/cells`, `toActivityGrid` em `adapters.ts`) depende de uma rota que ainda não existe na `main` do
+  back (o rascunho para o PostGIS está num stash da branch `feat/activity-cells` e precisa ser portado para o Athena).
+- `/detections?cells&start&end&sensor&zoom=3` (contagem por sensor, também usada pela home); a API escolhe a resolução de saída (células grossas
   de entrada devolvem hexágonos finos) e informa `resolution`. Máx. 366 dias (400 com `detail` da API).
 - Estatísticas: `/compare` + `/timeseries` + `/rankings/cells` (ranking e regiões críticas) +
   `/compare/historical` (histórico/anomalia: só com 3+ anos anteriores, senão "Indisponível"). Ranking e
@@ -157,6 +160,14 @@ sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é
   (`lt320`, `320`…`350`, `ge360`, `none`) que somam `harmonized`; vem `null` enquanto o lake não tiver as colunas
   `harmonized_t_*` (a UI mostra a barra de uma cor e "Faixas de temperatura indisponíveis"). `basis`: `viirs` =
   VIIRS I-4, `aqua`/`terra` = MODIS 21/22 (escalas diferentes). Não há MODIS × VIIRS separados no calendário.
+- Análises: o painel `HarmonizedMonthlyPanel` usa `/activity/monthly` (últimos 12 meses até o fim do período, região por
+  continente/país/células; área desenhada vai por `cells`). Barras por mês: mês em andamento tracejado, mês sem dado só
+  contorno (nunca zero), tabela equivalente e unidade obrigatória. Sem API não aparece.
+- Previsão no mapa (URL `forecast=true`, interruptor "Previsão de fogo (7 dias)" em Sobreposições, só com API):
+  `useMapForecast` chama `/forecast` na área visível com `limit=2000` (`MAP_FORECAST_LIMIT`). O `FireMap` desenha os
+  hexágonos res 6 em roxo tracejado (cor pela probabilidade, `FORECAST_RAMP`) a partir do zoom 5 e pontos no centro com
+  zoom afastado. Legenda com emissão e o grupo "Previsão" no painel (aviso "PREVISÃO — não são detecções observadas" e as
+  10 maiores probabilidades, `ForecastLayerList`). Indisponível/erro aparecem no grupo; nunca simula.
 - Previsão: `/forecast?cells&limit=100` (gold/forecast, célula H3 res 6, emissão mais recente). A API devolve `summary`
   (células, ativas, maior e média da probabilidade na região inteira) e as células ordenadas, com cidade mais próxima e
   país de `h3_places`. Só a região dos filtros vale; período e sensores não se aplicam. Sem emissão publicada: "Indisponível".
@@ -175,7 +186,10 @@ Regras de não-invenção: FRP, ranking, períodos críticos, harmonizado e corr
 só aparecem quando a API os fornece (senão "Indisponível"). Correspondência entre sensores
 vem só da harmonização validada (`matchId`). A previsão nunca é simulada: sem serviço,
 mostra indisponibilidade. Ausência de ponto nunca é apresentada como ausência de fogo.
-Os 8 focos do globo da home são ilustrativos.
+Home: com a API real, o globo mostra as 12 células com mais detecções dos últimos 7 dias com dado (`lib/api/home.ts`,
+`fetchTopHotspots`) e a faixa `LiveStats` mostra a soma global dos últimos 30 dias por sensor; sem API ou com falha, a faixa
+some e o globo volta aos 8 pontos **ilustrativos** (a legenda diz qual é o caso). Nos testes, simule falha com função comum
+no `vi.mock` (um `vi.fn` que rejeita é registrado pelo Vitest como erro do teste).
 
 ## Estrutura de pastas
 
@@ -245,3 +259,9 @@ Origem do dado sempre com cor + forma + texto (ver `map-legend.tsx`).
 ## Comandos
 
 `npm run dev` · `npm run build` · `npm run lint` · `npm test` (Vitest + Testing Library)
+
+Docker: `docker compose up -d --build` → http://localhost:3000 (`Dockerfile` multi-stage com
+`output: "standalone"`). As variáveis `NEXT_PUBLIC_*` são **fixadas no build** (build args do
+`docker-compose.yml`; padrão `NEXT_PUBLIC_API_URL=http://localhost:8080/api/v2`): mudar a URL exige
+rebuild. A URL é usada pelo navegador, então `localhost:8080` é a API rodando na máquina do usuário,
+não dentro do container. Para usar mock: `NEXT_PUBLIC_API_URL= docker compose up -d --build`.

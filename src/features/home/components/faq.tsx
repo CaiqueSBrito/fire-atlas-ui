@@ -14,6 +14,18 @@ const QUESTIONS = [
     a: "Uma visão que integra o histórico e os dados recentes para identificar rapidamente padrões sazonais, anomalias e tendências em cada região, por exemplo em quais meses e anos houve mais focos.",
   },
   {
+    q: "Por que o mapa mostra hexágonos e não pontos?",
+    a: "Os dados chegam somados por célula hexagonal (sistema H3), por dia e por sensor. Ao aproximar, as células ficam menores, até cerca de 7 km. Dentro de uma célula não se sabe a posição exata de cada foco, por isso o mapa não desenha pontos.",
+  },
+  {
+    q: "Não ter registro significa que não houve fogo?",
+    a: "Não. Nuvens, fumaça, o horário de passagem do satélite e o tamanho do fogo afetam a detecção. A plataforma nunca trata a ausência de registro como ausência de fogo, e diferencia dia sem foco de dia sem dado.",
+  },
+  {
+    q: "Os números podem mudar depois?",
+    a: "Sim. Os meses recentes vêm do processamento quase em tempo real (NRT) da FIRMS e podem ser revisados, e o dia corrente só fica completo depois que termina.",
+  },
+  {
     q: "Só aparecem incêndios florestais?",
     a: "Não. Entram também queimadas agrícolas, limpeza de terreno, descarte de resíduos e atividades industriais, desde que sejam intensas o bastante para a detecção por satélite.",
   },

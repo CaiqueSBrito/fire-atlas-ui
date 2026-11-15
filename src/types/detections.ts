@@ -26,6 +26,7 @@ export type DetectionGrid = {
   resolution: number;
   maxResolution?: number;
   cells: HexCell[];
+  harmonized?: { unitLabel: string };
 };
 
 export type DetectionsResponse = {

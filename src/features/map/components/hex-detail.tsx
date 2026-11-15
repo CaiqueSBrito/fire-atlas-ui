@@ -3,6 +3,7 @@ import { SENSOR_META } from "@/lib/sensors";
 import { cn } from "@/lib/utils/cn";
 import type { HexCell } from "@/lib/utils/hex";
 
+const fmtValue = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
 const fmtKm = (km: number) => `${km.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km`;
 
 export function HexDetail({
@@ -13,8 +14,10 @@ export function HexDetail({
   view3d,
   onToggle3d,
   onClose,
+  harmonizedUnit,
 }: {
   cell: HexCell;
+  harmonizedUnit?: string;
   shown: number;
   total: number;
   truncated: boolean;
@@ -23,9 +26,11 @@ export function HexDetail({
   onClose: () => void;
 }) {
   const rows: Array<[string, string]> = [
-    ["Focos na célula", cell.count.toLocaleString("pt-BR")],
-    ["◆ MODIS", cell.modis.toLocaleString("pt-BR")],
-    ["● VIIRS", cell.viirs.toLocaleString("pt-BR")],
+    harmonizedUnit
+      ? ["Atividade harmonizada", fmtValue(cell.count)]
+      : ["Focos na célula", cell.count.toLocaleString("pt-BR")],
+    [harmonizedUnit ? "◆ MODIS (detecções)" : "◆ MODIS", cell.modis.toLocaleString("pt-BR")],
+    [harmonizedUnit ? "● VIIRS (detecções)" : "● VIIRS", cell.viirs.toLocaleString("pt-BR")],
     ["Resolução H3", `${cell.res} (aresta ≈ ${fmtKm(cell.edgeKm)})`],
     ["Centro", `${cell.center[1].toFixed(3)}°, ${cell.center[0].toFixed(3)}°`],
     ["Célula", cell.id],
@@ -55,6 +60,12 @@ export function HexDetail({
           </div>
         ))}
       </dl>
+      {harmonizedUnit && (
+        <p className="mt-2 text-caption text-ink-300">
+          {harmonizedUnit}: não é número de focos. MODIS e VIIRS mostram as detecções que entraram na
+          harmonização.
+        </p>
+      )}
       <Button variant="secondary" className="mt-4 w-full" onClick={onToggle3d}>
         {view3d ? "Voltar ao 2D" : "Ver em 3D"}
       </Button>
@@ -72,8 +83,10 @@ export function HexTopList({
   cells,
   selectedId,
   onSelect,
+  harmonized = false,
 }: {
   cells: HexCell[];
+  harmonized?: boolean;
   selectedId: string | null;
   onSelect: (cell: HexCell) => void;
 }) {
@@ -81,7 +94,7 @@ export function HexTopList({
   return (
     <section aria-labelledby="hex-top-title">
       <h2 id="hex-top-title" className="text-small font-semibold tracking-[-0.02em] text-ink-300">
-        Hexágonos com mais focos
+        {harmonized ? "Hexágonos com mais atividade harmonizada" : "Hexágonos com mais focos"}
       </h2>
       <p className="mt-1 text-caption text-ink-300">
         Alternativa ao mapa: selecione para ver os detalhes.
@@ -100,8 +113,8 @@ export function HexTopList({
                   : "border-space-600 hover:bg-space-800",
               )}
             >
-              <span className="font-mono font-semibold">{c.count.toLocaleString("pt-BR")}</span>
-              <span className="text-ink-300">focos</span>
+              <span className="font-mono font-semibold">{fmtValue(c.count)}</span>
+              <span className="text-ink-300">{harmonized ? "ativ." : "focos"}</span>
               <span className="truncate text-ink-300">
                 <span aria-hidden style={{ color: SENSOR_META.modis.hex }}>◆</span> {c.modis}{" "}
                 <span aria-hidden style={{ color: SENSOR_META.viirs.hex }}>●</span> {c.viirs}

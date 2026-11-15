@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { Hero } from "./hero";
 
 vi.mock("./hero-globe", () => ({ HeroGlobe: () => <div data-testid="hero-globe" /> }));
+vi.mock("./live-stats", () => ({ LiveStats: () => <div data-testid="live-stats" /> }));
 
 describe("Hero", () => {
   it("tem um único título principal", () => {
@@ -24,5 +25,12 @@ describe("Hero", () => {
     render(<Hero />);
     expect(screen.getByTestId("hero-globe")).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Explorar por região" })).toBeInTheDocument();
+  });
+
+  it("oferece as três entradas: mapa, calendário e análises", () => {
+    render(<Hero />);
+    expect(screen.getByRole("link", { name: "Calendário" })).toHaveAttribute("href", "/explore/calendar");
+    expect(screen.getByRole("link", { name: "Análises" })).toHaveAttribute("href", "/explore/statistics");
+    expect(screen.getByTestId("live-stats")).toBeInTheDocument();
   });
 });

@@ -6,6 +6,18 @@ const COVERAGE = [
   { sensor: "VIIRS", minDate: "2012-01-20", maxDate: "2026-11-13", detections: 981_204_377 },
 ];
 
+const ACTIVITY_CELLS = [
+  {
+    h3: "848141fffffffff",
+    resolution: 4,
+    harmonized: 12.5,
+    contributing: 3,
+    daysWithData: 5,
+    modisDetections: 14,
+    viirsDetections: 67,
+  },
+];
+
 const CELLS = [
   { sensor: "VIIRS", h3: "838141fffffffff", resolution: 3, count: 67, frpSum: 10, frpMax: 5 },
   { sensor: "MODIS", h3: "838141fffffffff", resolution: 3, count: 14, frpSum: 20, frpMax: 9 },
@@ -47,6 +59,15 @@ function route(url: URL): unknown {
       return { mode: "grid", count: 81, truncated: false, resolution: 3, cells: CELLS };
     case "/activity/calendar":
       return ACTIVITY_CALENDAR;
+    case "/activity/cells":
+      return {
+        resolution: 4,
+        count: 1,
+        truncated: false,
+        total: 12.5,
+        cells: ACTIVITY_CELLS,
+        meta: { unitLabelPt: "Atividade de fogo harmonizada (células ativas equivalentes ao MODIS Aqua)" },
+      };
     case "/activity/anomaly":
       return {
         month: "2026-11", current: 817.7, currentDaysWithData: 2, currentMonthComplete: false, baseline: [],
@@ -231,5 +252,44 @@ describe("calendário harmonizado pela API gold", () => {
     const out = await fetchDaySatellites("2026-11-12");
     expect(out.contributing).toEqual(["NOAA-20", "NOAA-21"]);
     expect(out.available).toEqual(["Aqua", "NOAA-20", "NOAA-21"]);
+  });
+});
+
+describe("atividade harmonizada mensal (Análises)", () => {
+  it("pede os 12 meses até o fim do período, por continente, e não inventa mês sem dado", async () => {
+    fetchMock.mockImplementation(async (input: URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/activity/monthly")) {
+        return new Response(
+          JSON.stringify({
+            months: [
+              { month: "2026-10", harmonized: 0, daysWithData: 0, daysInMonth: 31, complete: true },
+              { month: "2026-11", harmonized: 50.5, daysWithData: 13, daysInMonth: 30, complete: false },
+            ],
+            meta: { unitLabelPt: "Atividade de fogo harmonizada (células ativas equivalentes ao MODIS Aqua)", warnings: [] },
+          }),
+        );
+      }
+      return new Response(JSON.stringify(route(url)));
+    });
+    const { fetchHarmonizedMonthly } = await import("./activity");
+    const out = await fetchHarmonizedMonthly({ regionId: "south-america", bbox: BRASIL, customArea: false, to: "2026-11-13" });
+    const url = callTo("/activity/monthly")!;
+    expect(url.searchParams.get("continent")).toBe("South America");
+    expect(url.searchParams.get("start")).toBe("2025-12");
+    expect(url.searchParams.get("end")).toBe("2026-11");
+    expect(out!.months.map((m) => m.value)).toEqual([null, 50.5]);
+    expect(out!.unitLabel).toMatch(/MODIS Aqua/);
+  });
+
+  it("área personalizada vai por células H3", async () => {
+    const { fetchHarmonizedMonthly } = await import("./activity");
+    fetchMock.mockImplementation(async (input: URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/activity/monthly")) return new Response(JSON.stringify({ months: [] }));
+      return new Response(JSON.stringify(route(url)));
+    });
+    await fetchHarmonizedMonthly({ regionId: "world", bbox: [-50, -15, -45, -10], customArea: true, to: "2026-11-13" });
+    expect(callTo("/activity/monthly")!.searchParams.get("cells")).toBeTruthy();
   });
 });

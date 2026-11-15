@@ -11,7 +11,11 @@ const SOURCES = [
   },
   {
     name: "Harmonizado",
-    text: "Série consistente que combina os dois, sem perder a origem: dados originais e harmonizados continuam identificáveis.",
+    text: "Série que combina os dois na escala do MODIS Aqua (células ativas equivalentes), sem perder a origem. Em preparação: aparece quando o time de dados publicar.",
+  },
+  {
+    name: "Hexágonos H3",
+    text: "No mapa, os focos chegam somados por célula hexagonal, dia e sensor. Isso permite mostrar milhões de detecções com rapidez, mas uma célula não indica o ponto exato do fogo.",
   },
 ];
 
@@ -34,7 +38,7 @@ export function DataSources() {
         diretamente, porque têm resoluções espaciais, sensibilidades e
         horários de observação diferentes. Por isso a harmonização.
       </p>
-      <ul className="mt-6 grid gap-4 md:grid-cols-3">
+      <ul className="mt-6 grid gap-4 md:grid-cols-2">
         {SOURCES.map((s) => (
           <li
             key={s.name}

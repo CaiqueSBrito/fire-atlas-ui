@@ -13,6 +13,7 @@ import {
 } from "maplibre-gl";
 import {
   FLAT_MAX_ZOOM,
+  FORECAST_RAMP,
   GLOBE_CENTER,
   GLOBE_MAX_ZOOM,
   GLOBE_PROJECTION,
@@ -46,6 +47,7 @@ import {
 } from "@/lib/utils/hex";
 import { loadCountries } from "@/lib/utils/countries";
 import type { Bbox, FireDetection, SensorId } from "@/types/detections";
+import type { ForecastCell } from "@/types/forecast";
 
 setWorkerUrl("/maplibre-gl-worker.mjs");
 
@@ -258,6 +260,7 @@ export type FireMapProps = {
   onContinentPick?: (id: ContinentId) => void;
   onContinentHover?: (id: ContinentId | null) => void;
   onViewport?: (bbox: Bbox) => void;
+  forecastCells?: ForecastCell[] | null;
 };
 
 export default function FireMap({
@@ -288,6 +291,7 @@ export default function FireMap({
   onContinentPick,
   onContinentHover,
   onViewport,
+  forecastCells = null,
 }: FireMapProps) {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -406,6 +410,44 @@ export default function FireMap({
         source: "areas",
         layout: { visibility: "none", "line-join": "round" },
         paint: { "line-color": "#ffffff", "line-opacity": 0.95, "line-width": 2.4 },
+      } as never);
+      const forecastColor = [
+        "interpolate",
+        ["linear"],
+        ["get", "p"],
+        ...FORECAST_RAMP.flatMap((c, i) => [i / (FORECAST_RAMP.length - 1), c]),
+      ];
+      map.addSource("forecast", { type: "geojson", data: EMPTY as never });
+      map.addSource("forecast-points", { type: "geojson", data: EMPTY as never });
+      map.addLayer({
+        id: "forecast-fill",
+        type: "fill",
+        source: "forecast",
+        minzoom: 5,
+        layout: { visibility: "none" },
+        paint: { "fill-color": forecastColor, "fill-opacity": 0.55 },
+      } as never);
+      map.addLayer({
+        id: "forecast-line",
+        type: "line",
+        source: "forecast",
+        minzoom: 5,
+        layout: { visibility: "none" },
+        paint: { "line-color": "#c4a1ff", "line-width": 1.4, "line-dasharray": [2, 1.5] },
+      } as never);
+      map.addLayer({
+        id: "forecast-dot",
+        type: "circle",
+        source: "forecast-points",
+        maxzoom: 5.5,
+        layout: { visibility: "none" },
+        paint: {
+          "circle-color": forecastColor,
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 1, 2.5, 5, 5],
+          "circle-stroke-color": "#1a0f2e",
+          "circle-stroke-width": 1,
+          "circle-opacity": 0.9,
+        },
       } as never);
       map.addSource("heat", { type: "geojson", data: EMPTY as never });
       map.addLayer({
@@ -813,6 +855,31 @@ export default function FireMap({
     if (!map || !ready) return;
     setVisibility(map, "heat", showHeat);
   }, [showHeat, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const list = forecastCells ?? [];
+    setData(map, "forecast", {
+      type: "FeatureCollection",
+      features: list.map((c) => ({
+        type: "Feature",
+        geometry: { type: "Polygon", coordinates: [hexRing(c.id)] },
+        properties: { id: c.id, p: c.probability },
+      })),
+    } as never);
+    setData(map, "forecast-points", {
+      type: "FeatureCollection",
+      features: list.map((c) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [c.lon, c.lat] },
+        properties: { id: c.id, p: c.probability },
+      })),
+    } as never);
+    for (const id of ["forecast-fill", "forecast-line", "forecast-dot"]) {
+      setVisibility(map, id, Boolean(forecastCells));
+    }
+  }, [forecastCells, ready]);
 
   useEffect(() => {
     const date = imageryDate ?? imageryDateFor();

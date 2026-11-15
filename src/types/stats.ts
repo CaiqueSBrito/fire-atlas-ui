@@ -34,3 +34,17 @@ export type StatsResponse = {
   } | null;
   source: DataOrigin;
 };
+
+export type HarmonizedMonth = {
+  month: string;
+  value: number | null;
+  daysWithData: number;
+  daysInMonth: number;
+  complete: boolean;
+};
+
+export type HarmonizedMonthly = {
+  months: HarmonizedMonth[];
+  unitLabel: string;
+  warnings: string[];
+};

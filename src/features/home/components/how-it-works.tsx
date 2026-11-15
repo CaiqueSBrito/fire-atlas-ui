@@ -3,15 +3,15 @@ import { Section } from "./section";
 const STEPS = [
   {
     title: "Escolha a área e o período",
-    text: "Selecione uma região e um intervalo de datas para analisar.",
+    text: "Pelo botão Filtros: sensores, continente ou estado do Brasil, uma área desenhada no mapa ou digitada em coordenadas e o período, com atalhos de 7 e 30 dias, mês e ano.",
   },
   {
-    title: "Veja o calendário de atividade",
-    text: "O número de focos detectados do início dos anos 2000 até hoje, com escala de cores acessível e identificação em texto.",
+    title: "Explore o mapa",
+    text: "Os focos aparecem somados em hexágonos: de longe, células de centenas de quilômetros; ao aproximar, cada vez menores, até cerca de 7 km. Clique numa célula para ver quantos focos vieram de cada sensor.",
   },
   {
-    title: "Compare com o histórico",
-    text: "Anomalias frente a médias de vários anos, o mês atual contra a mediana histórica e exportação dos focos em CSV.",
+    title: "Acompanhe no calendário e nas análises",
+    text: "Cartas por dia com a contagem de cada sensor, série temporal, células com mais detecções, dias de atividade incomum e comparação com anos anteriores quando houver histórico carregado.",
   },
 ];
 
@@ -35,8 +35,8 @@ export function HowItWorks() {
         ))}
       </ol>
       <p className="mt-4 text-small text-ink-300">
-        Funcionalidades em construção: o mapa e as análises estão em
-        desenvolvimento.
+        Em preparação: a atividade harmonizada MODIS + VIIRS, que o time de dados está gerando e
+        aparecerá no calendário quando for publicada.
       </p>
     </Section>
   );

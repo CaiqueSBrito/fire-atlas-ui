@@ -36,6 +36,7 @@ export function LayerPanel({
   gridOnly = null,
   dots = true,
   heat,
+  forecast,
   onChange,
 }: {
   base: BasemapId;
@@ -43,11 +44,13 @@ export function LayerPanel({
   gridOnly?: { resolution: number } | null;
   dots?: boolean;
   heat: boolean;
+  forecast?: boolean;
   onChange: (next: {
     base?: BasemapId;
     plot?: PlotId;
     dots?: boolean;
     heat?: boolean;
+    forecast?: boolean;
   }) => void;
 }) {
   const plotName = useId();
@@ -99,6 +102,14 @@ export function LayerPanel({
           label="Mapa de calor"
           description="Densidade de focos, ponderada pela FRP quando informada"
         />
+        {forecast !== undefined && (
+          <Toggle
+            checked={forecast}
+            onChange={(next) => onChange({ forecast: next })}
+            label="Previsão de fogo (7 dias)"
+            description="Probabilidade estimada pelo modelo do time de dados, por hexágono; não é detecção observada"
+          />
+        )}
       </Group>
 
       <Group title="Configurações">

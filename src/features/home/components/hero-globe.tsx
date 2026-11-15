@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { REGIONS } from "@/config/regions";
+import { fetchTopHotspots, HOTSPOT_DAYS } from "@/lib/api/home";
 import { continentAt, type ContinentId } from "@/lib/utils/continent";
 import { loadCountries, type CountryCollection } from "@/lib/utils/countries";
 import { markIntroFly } from "@/lib/utils/intro-fly";
@@ -15,11 +16,20 @@ export function HeroGlobe() {
   const countries = useRef<CountryCollection | null>(null);
   const lastHover = useRef(0);
   const [hovered, setHovered] = useState<ContinentId | null>(null);
+  const [hotspots, setHotspots] = useState<Array<[number, number]> | null>(null);
 
   useEffect(() => {
     void loadCountries().then((loaded) => {
       countries.current = loaded;
     });
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchTopHotspots(controller.signal)
+      .then((points) => setHotspots(points))
+      .catch(() => setHotspots(null));
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -52,16 +62,27 @@ export function HeroGlobe() {
   return (
     <>
       <div aria-hidden className="absolute inset-0 -z-20">
-        <GlobeLoader onPick={onPick} onHover={onHover} />
+        <GlobeLoader onPick={onPick} onHover={onHover} hotspots={hotspots} />
       </div>
-      {label && (
+      <div className="pointer-events-none absolute bottom-6 right-6 z-10 hidden max-w-xs flex-col items-end gap-2 text-right lg:flex">
         <p
           aria-hidden
-          className="pointer-events-none absolute bottom-6 right-6 z-10 rounded-full border border-space-600 bg-space-900/85 px-4 py-2 text-small"
+          className="rounded-full border border-space-600 bg-space-900/85 px-4 py-2 text-small font-semibold tracking-[-0.02em]"
         >
-          Clique para explorar: <strong>{label}</strong>
+          {label ? (
+            <>
+              Clique para explorar: <strong>{label}</strong>
+            </>
+          ) : (
+            "Clique em um continente para explorar"
+          )}
         </p>
-      )}
+        <p className="text-caption text-ink-300">
+          {hotspots
+            ? `Pontos no globo: as células com mais detecções nos últimos ${HOTSPOT_DAYS} dias com dados.`
+            : "Pontos no globo ilustrativos."}
+        </p>
+      </div>
     </>
   );
 }

@@ -100,7 +100,7 @@ export function DayLiveMap({
           showPoints={grid ? false : (layers?.dots ?? true)}
           showHeat={layers?.heat ?? false}
           onViewport={(bbox) => setViewportState({ key: baseKey, bbox })}
-          label={`Mapa de focos de ${region.label} em ${date}. Arraste para deslocar; use os botões + e − para o zoom.`}
+          label={`${grid?.harmonized ? "Mapa da atividade harmonizada" : "Mapa de focos"} de ${region.label} em ${date}. Arraste para deslocar; use os botões + e − para o zoom.`}
         />
       )}
       {query.isFetching && (
@@ -127,7 +127,10 @@ export function DayLiveMap({
       )}
       {empty && !query.isFetching && (
         <p className="pointer-events-none absolute inset-x-3 top-3 z-10 rounded-xl border border-space-600 bg-space-900/90 p-3 text-center text-small text-ink-300">
-          Nenhuma detecção registrada neste recorte. Isso não significa que não houve fogo.
+          {grid?.harmonized
+            ? "Nenhuma atividade harmonizada registrada neste recorte."
+            : "Nenhuma detecção registrada neste recorte."}{" "}
+          Isso não significa que não houve fogo.
         </p>
       )}
     </div>

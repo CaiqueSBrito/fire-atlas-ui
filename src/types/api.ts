@@ -18,6 +18,12 @@ export type ApiDetectionsResponse = {
   message?: string | null;
 };
 
+export type ApiCountResponse = {
+  total: number;
+  sensors: Array<{ sensor: ApiSensor; detections: number; frpSum: number; daysWithData: number }>;
+  message?: string | null;
+};
+
 export type ApiActivityMeta = {
   region: string;
   start: string;
@@ -217,5 +223,39 @@ export type ApiForecastResponse = {
   items: ApiForecastItem[];
   source: string;
   method: string;
+  message?: string | null;
+};
+
+export type ApiActivityCell = {
+  h3: string;
+  resolution: number;
+  harmonized: number;
+  contributing: number;
+  daysWithData: number;
+  modisDetections: number;
+  viirsDetections: number;
+};
+
+export type ApiActivityCellsResponse = {
+  resolution: number;
+  count: number;
+  truncated: boolean;
+  total: number;
+  cells?: ApiActivityCell[] | null;
+  meta?: ApiActivityMeta | null;
+  message?: string | null;
+};
+
+export type ApiActivityMonthItem = {
+  month: string;
+  harmonized?: number | null;
+  daysWithData: number;
+  daysInMonth: number;
+  complete: boolean;
+};
+
+export type ApiActivityMonthlyResponse = {
+  months: ApiActivityMonthItem[];
+  meta?: ApiActivityMeta | null;
   message?: string | null;
 };

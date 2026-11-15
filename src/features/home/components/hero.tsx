@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { HeroGlobe } from "./hero-globe";
+import { LiveStats } from "./live-stats";
 import { RegionLinks } from "./region-links";
 
 export function Hero() {
@@ -15,28 +16,37 @@ export function Hero() {
         className="absolute inset-0 -z-10 bg-gradient-to-t from-space-950 via-space-950/70 to-transparent lg:bg-gradient-to-r lg:via-space-950/50"
       />
 
-      <div className="flex flex-1 items-end px-6 pb-12 sm:px-10 lg:items-center lg:pb-0">
-        <div className="flex max-w-xl flex-col items-start gap-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 items-end px-6 pb-12 pt-16 sm:px-10 lg:items-center lg:py-16">
+        <div className="flex max-w-3xl flex-col items-start gap-6">
           <p className="font-mono text-caption uppercase tracking-[0.2em] text-ember-400">
             NASA Space Apps 2026
           </p>
           <h1
             id="hero-title"
-            className="font-display text-display font-bold leading-[1.05] tracking-tight"
+            className="max-w-xl font-display text-display font-bold leading-[1.05] tracking-tight"
           >
             Focos de calor do planeta, em um só atlas.
           </h1>
-          <p className="text-lg text-ink-300">
+          <p className="max-w-xl text-lg text-ink-300">
             Explore as detecções dos satélites MODIS e VIIRS da NASA FIRMS em
             mapa, calendário e análises.
           </p>
-          <Link
-            href="/explore/map"
-            className={buttonVariants({ variant: "primary", size: "lg" })}
-          >
-            Explorar focos de calor
-            <span aria-hidden>→</span>
-          </Link>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/explore/map"
+              className={buttonVariants({ variant: "primary", size: "lg" })}
+            >
+              Explorar focos de calor
+              <span aria-hidden>→</span>
+            </Link>
+            <Link href="/explore/calendar" className={buttonVariants({ variant: "secondary" })}>
+              Calendário
+            </Link>
+            <Link href="/explore/statistics" className={buttonVariants({ variant: "secondary" })}>
+              Análises
+            </Link>
+          </div>
+          <LiveStats />
           <RegionLinks />
           <p className="font-mono text-caption text-ink-300">
             Dados: NASA FIRMS · MODIS + VIIRS

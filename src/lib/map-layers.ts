@@ -25,12 +25,15 @@ export const PLOT_OPTIONS: ReadonlyArray<{ id: PlotId; label: string; descriptio
 
 export const HEX_RAMP = ["#fff3b0", "#fdae61", "#f46d43", "#d73027", "#a50026"];
 
+export const FORECAST_RAMP = ["#ead9ff", "#c4a1ff", "#9b6bff", "#6d3fd6", "#3f1d8f"];
+
 export const mapLayerParsers = {
   base: parseAsStringLiteral(BASEMAPS).withDefault("streets"),
   heat: parseAsBoolean.withDefault(false),
   plot: parseAsStringLiteral(PLOTS).withDefault("points"),
   dots: parseAsBoolean.withDefault(true),
   areas: parseAsInteger.withDefault(0),
+  forecast: parseAsBoolean.withDefault(false),
 };
 
 export const TERRAIN_TILES =

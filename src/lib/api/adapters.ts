@@ -4,6 +4,7 @@ import type { HexCell } from "@/lib/utils/hex";
 import type {
   ApiActivityAnomalyResponse,
   ApiActivityAvailabilityResponse,
+  ApiActivityCellsResponse,
   ApiActivityDay,
   ApiCell,
   ApiCompareResponse,
@@ -116,6 +117,51 @@ export function toDetectionGrid(
     resolution: raw.resolution,
     maxResolution,
     cells: toHexCells(raw.cells ?? []),
+  };
+}
+
+export const HARMONIZED_UNIT_FALLBACK =
+  "Atividade de fogo harmonizada (células ativas equivalentes ao MODIS Aqua)";
+
+export const HARMONIZED_SOURCE: DataOrigin = {
+  name: "Fire Atlas API · gold/harmonized (MODIS + VIIRS harmonizados)",
+  simulated: false,
+};
+
+export function toActivityGrid(
+  raws: ApiActivityCellsResponse[],
+  maxResolution?: number,
+): DetectionsResponse {
+  const byId = new Map<string, HexCell>();
+  for (const raw of raws) {
+    for (const c of raw.cells ?? []) {
+      if (byId.has(c.h3)) continue;
+      const [lat, lng] = cellToLatLng(c.h3);
+      byId.set(c.h3, {
+        id: c.h3,
+        res: c.resolution,
+        count: c.harmonized,
+        modis: c.modisDetections,
+        viirs: c.viirsDetections,
+        center: [lng, lat],
+        edgeKm: getHexagonEdgeLengthAvg(c.resolution, "km"),
+      });
+    }
+  }
+  const cells = [...byId.values()];
+  const unitLabel = raws.find((r) => r.meta?.unitLabelPt)?.meta?.unitLabelPt ?? HARMONIZED_UNIT_FALLBACK;
+  return {
+    items: [],
+    grid: {
+      resolution: raws.length ? Math.min(...raws.map((r) => r.resolution)) : 0,
+      maxResolution,
+      cells,
+      harmonized: { unitLabel },
+    },
+    total: cells.reduce((acc, c) => acc + c.count, 0),
+    truncated: raws.some((r) => r.truncated),
+    harmonization: { available: false },
+    source: HARMONIZED_SOURCE,
   };
 }
 
