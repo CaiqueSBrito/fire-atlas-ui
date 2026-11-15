@@ -61,3 +61,6 @@ AGENTS.md
 !.env.example
 
 /public/maplibre-gl-worker.mjs
+
+# superdesign (arquivos temporários)
+/.superdesign/tmp/
