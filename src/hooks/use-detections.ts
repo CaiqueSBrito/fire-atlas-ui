@@ -78,7 +78,7 @@ export function useForecast() {
   const region = useMemo(() => regionQueryKey(filters.bbox), [filters.bbox]);
   const result = useQuery({
     queryKey: ["forecast", region],
-    queryFn: ({ signal }) => fetchForecast(filters.bbox, signal),
+    queryFn: ({ signal }) => fetchForecast(filters.bbox, signal, MAP_FORECAST_LIMIT),
     enabled,
     placeholderData: keepPreviousData,
   });

@@ -7,7 +7,12 @@ import { renderWithProviders } from "@/test/render";
 import type { ForecastCell, ForecastResponse } from "@/types/forecast";
 import { ForecastView } from "./forecast-view";
 
-vi.mock("@/lib/api/forecast", () => ({ fetchForecast: vi.fn() }));
+vi.mock("@/lib/api/forecast", () => ({ fetchForecast: vi.fn(), MAP_FORECAST_LIMIT: 2000 }));
+vi.mock("@/features/map/components/fire-map-loader", () => ({
+  FireMap: (p: { forecastCells?: Array<{ id: string }> | null }) => (
+    <div data-testid="forecast-map">{p.forecastCells?.length ?? 0} células</div>
+  ),
+}));
 
 const forecast = vi.mocked(fetchForecast);
 
@@ -101,7 +106,24 @@ describe("ForecastView (NASA-015)", () => {
     expect(rows[1]).toHaveTextContent("40,0%");
     expect(rows[1]).toHaveTextContent("Não");
     expect(within(rows[1]).getAllByText("—")).toHaveLength(3);
-    expect(screen.getByText(/As 2 de maior probabilidade entre 34\.791 células/)).toBeInTheDocument();
+    expect(screen.getByText(/As 2 células de maior probabilidade entre 34\.791 da região/)).toBeInTheDocument();
+  });
+
+  it("mostra as células no mapa, com lista clicável que abre o detalhe", async () => {
+    forecast.mockResolvedValue(available());
+    renderWithProviders(<ForecastView />);
+    expect(await screen.findByRole("heading", { name: "Mapa de risco de fogo" })).toBeInTheDocument();
+    const list = screen.getByRole("heading", { name: "10 maiores probabilidades" }).nextElementSibling as HTMLElement;
+    const items = within(list).getAllByRole("button");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent("Sinop (12 km), Brasil");
+    expect(items[0]).toHaveTextContent("98,5%");
+    await userEvent.click(items[0]);
+    expect(items[0]).toHaveAttribute("aria-pressed", "true");
+    const detail = screen.getByRole("region", { name: "Sinop (12 km), Brasil" });
+    expect(detail).toHaveTextContent("10,50° S, 55,50° O");
+    await userEvent.click(screen.getByRole("button", { name: "Ver a região inteira" }));
+    expect(screen.queryByRole("region", { name: "Sinop (12 km), Brasil" })).not.toBeInTheDocument();
   });
 
   it("região sem células não vira ausência de risco", async () => {

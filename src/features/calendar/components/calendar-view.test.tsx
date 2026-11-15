@@ -13,8 +13,13 @@ vi.mock("@/lib/api/activity", () => ({
   fetchDaySatellites: vi.fn(),
 }));
 vi.mock("./day-map", () => ({
-  DayMap: (p: { date: string; region: { id: string } }) => (
-    <div data-testid="day-map" data-date={p.date} data-region={p.region.id} />
+  DayMap: (p: { date: string; region: { id: string }; viewBbox?: number[] | null }) => (
+    <div
+      data-testid="day-map"
+      data-date={p.date}
+      data-region={p.region.id}
+      data-view={p.viewBbox ? p.viewBbox.join(",") : ""}
+    />
   ),
 }));
 
@@ -55,7 +60,10 @@ beforeEach(() => {
   satellites.mockResolvedValue({ date: "", contributing: ["NOAA-20"], available: [] });
 });
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  sessionStorage.clear();
+});
 
 const heading = () => screen.findByRole("heading", { level: 2, name: /de novembro de 2026/ });
 
@@ -127,5 +135,24 @@ describe("CalendarView", () => {
     renderWithProviders(<CalendarView />);
     await screen.findByRole("alert");
     expect(screen.queryByRole("button", { name: "Tentar novamente" })).not.toBeInTheDocument();
+  });
+
+  it("o mapa do dia abre no lugar escolhido no mapa principal (mesma região)", async () => {
+    sessionStorage.setItem("fire-atlas:map-place", "south-america|-56,-12,-54,-10");
+    renderWithProviders(<CalendarView />, { searchParams: "region=south-america" });
+    await heading();
+    expect(screen.getByTestId("day-map")).toHaveAttribute("data-view", "-56,-12,-54,-10");
+  });
+
+  it("lugar lembrado de outra região não é usado; bbox da URL tem prioridade", async () => {
+    sessionStorage.setItem("fire-atlas:map-place", "africa|10,0,20,10");
+    const { unmount } = renderWithProviders(<CalendarView />, { searchParams: "region=south-america" });
+    await heading();
+    expect(screen.getByTestId("day-map")).toHaveAttribute("data-view", "");
+    unmount();
+    sessionStorage.setItem("fire-atlas:map-place", "south-america|-56,-12,-54,-10");
+    renderWithProviders(<CalendarView />, { searchParams: "region=south-america&bbox=-50,-20,-45,-15" });
+    await heading();
+    expect(screen.getByTestId("day-map")).toHaveAttribute("data-view", "-50,-20,-45,-15");
   });
 });

@@ -8,25 +8,20 @@ import { REGIONS } from "@/config/regions";
 import { Unavailable } from "@/features/stats/components/unavailable";
 import { useForecast } from "@/hooks/use-detections";
 import { ApiError } from "@/lib/api/client";
-import type { ForecastCell, ForecastResponse } from "@/types/forecast";
+import type { Bbox } from "@/types/detections";
+import type { ForecastResponse } from "@/types/forecast";
+import { fmtCoords, fmtDate, fmtInt, fmtNum, fmtPct, place } from "../format";
+import { ForecastMap } from "./forecast-map";
 
 type Available = Extract<ForecastResponse, { status: "available" }>;
 
-const fmtDate = (d: string) => d.split("-").reverse().join("/");
-const fmtInt = (n: number) => n.toLocaleString("pt-BR");
-const fmtNum = (n: number | null, digits = 1) =>
-  n === null ? "—" : n.toLocaleString("pt-BR", { maximumFractionDigits: digits });
-const fmtPct = (p: number | null) =>
-  p === null
-    ? null
-    : (p * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const COORD = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+const TABLE_ROWS = 100;
 
 function PredictedBanner() {
   return (
     <p
       role="note"
-      className="rounded-xl border-2 border-dashed border-[#c4a1ff] bg-[#c4a1ff]/10 p-3 text-small"
+      className="rounded-xl border-2 border-dashed border-[#ff5a4f] bg-[#ff5a4f]/10 p-3 text-small"
     >
       <strong>PREVISÃO — não são detecções observadas.</strong> Probabilidade de fogo
       nos 7 dias seguintes à emissão, calculada pelo modelo do pipeline de dados.
@@ -63,28 +58,15 @@ function Card({
   );
 }
 
-function place(cell: ForecastCell) {
-  if (!cell.city && !cell.country) return "Sem localidade registrada";
-  const city = cell.city
-    ? `${cell.city}${cell.cityDistanceKm !== null ? ` (${fmtNum(cell.cityDistanceKm, 0)} km)` : ""}`
-    : null;
-  return [city, cell.country].filter(Boolean).join(", ");
-}
-
 function RiskTable({ data }: { data: Available }) {
+  const rows = data.cells.slice(0, TABLE_ROWS);
   return (
-    <section
-      aria-labelledby="risk-title"
-      className="rounded-2xl border border-space-600 bg-space-800 p-5"
-    >
-      <h2 id="risk-title" className="font-display text-lg font-bold">
-        Células de maior probabilidade
-      </h2>
+    <details className="group rounded-2xl border border-space-600 bg-space-800 p-5">
+      <summary className="cursor-pointer font-display text-lg font-bold">
+        Ver tabela das células ({fmtInt(rows.length)} de maior probabilidade)
+      </summary>
       <p className="mt-1 text-small text-ink-300">
-        {data.truncated
-          ? `As ${fmtInt(data.cells.length)} de maior probabilidade entre ${fmtInt(data.summary.cells)} células da região.`
-          : `Todas as ${fmtInt(data.cells.length)} células com previsão na região.`}{" "}
-        Cidade mais próxima e distância segundo a base de lugares.
+        Os mesmos dados do mapa, em texto. Cidade mais próxima e distância segundo a base de lugares.
       </p>
       <div className="mt-3 max-h-[32rem] overflow-auto rounded-lg border border-space-600">
         <table className="w-full text-small">
@@ -104,17 +86,14 @@ function RiskTable({ data }: { data: Available }) {
             </tr>
           </thead>
           <tbody>
-            {data.cells.map((c, i) => (
+            {rows.map((c, i) => (
               <tr key={c.id} className="border-t border-space-600">
                 <td className="px-3 py-1.5 font-mono text-ink-300">{i + 1}</td>
                 <th scope="row" className="px-3 py-1.5 text-left font-normal">
                   {place(c)}
                   <span className="block font-mono text-caption text-ink-300">{c.id}</span>
                 </th>
-                <td className="px-3 py-1.5 font-mono">
-                  {Math.abs(c.lat).toLocaleString("pt-BR", COORD)}° {c.lat < 0 ? "S" : "N"},{" "}
-                  {Math.abs(c.lon).toLocaleString("pt-BR", COORD)}° {c.lon < 0 ? "O" : "L"}
-                </td>
+                <td className="px-3 py-1.5 font-mono">{fmtCoords(c)}</td>
                 <td className="px-3 py-1.5 text-right font-mono">{fmtPct(c.probability)}%</td>
                 <td className="px-3 py-1.5 text-right font-mono">{fmtNum(c.detections24h, 0)}</td>
                 <td className="px-3 py-1.5 text-right font-mono">{fmtNum(c.detections7d, 0)}</td>
@@ -127,11 +106,11 @@ function RiskTable({ data }: { data: Available }) {
           </tbody>
         </table>
       </div>
-    </section>
+    </details>
   );
 }
 
-function Report({ data }: { data: Available }) {
+function Report({ data, regionBbox }: { data: Available; regionBbox: Bbox }) {
   const { summary } = data;
   return (
     <div className="flex flex-col gap-6">
@@ -169,7 +148,15 @@ function Report({ data }: { data: Available }) {
           description="O modelo não gerou previsão para esta área na emissão mais recente. Isso não significa ausência de risco de fogo."
         />
       ) : (
-        <RiskTable data={data} />
+        <>
+          <ForecastMap
+            cells={data.cells}
+            totalCells={data.summary.cells}
+            truncated={data.truncated}
+            regionBbox={regionBbox}
+          />
+          <RiskTable data={data} />
+        </>
       )}
 
       <section
@@ -223,7 +210,7 @@ export function ForecastView() {
   } else if (data) {
     body = (
       <div aria-busy={isFetching}>
-        <Report data={data} />
+        <Report data={data} regionBbox={filters.bbox} />
       </div>
     );
   }

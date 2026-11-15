@@ -24,6 +24,7 @@ import {
   TERRAIN_TILES,
   gibsTiles,
   globeZoom,
+  flatMinZoom,
   imageryDateFor,
   type BasemapId,
   type PlotId,
@@ -434,7 +435,7 @@ export default function FireMap({
         source: "forecast",
         minzoom: 5,
         layout: { visibility: "none" },
-        paint: { "line-color": "#c4a1ff", "line-width": 1.4, "line-dasharray": [2, 1.5] },
+        paint: { "line-color": "#ff5a4f", "line-width": 1.4, "line-dasharray": [2, 1.5] },
       } as never);
       map.addLayer({
         id: "forecast-dot",
@@ -663,6 +664,22 @@ export default function FireMap({
     const map = mapRef.current;
     if (!map || !ready) return;
     map.setProjection((projection === "globe" ? GLOBE_PROJECTION : { type: "mercator" }) as never);
+  }, [projection, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    if (projection === "globe") {
+      map.setMinZoom(0);
+      return;
+    }
+    const lockWorld = () => map.setMinZoom(flatMinZoom(map.getContainer().clientWidth));
+    map.once("moveend", lockWorld);
+    map.on("resize", lockWorld);
+    return () => {
+      map.off("moveend", lockWorld);
+      map.off("resize", lockWorld);
+    };
   }, [projection, ready]);
 
   useEffect(() => {

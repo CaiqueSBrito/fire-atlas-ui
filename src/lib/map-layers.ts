@@ -25,7 +25,7 @@ export const PLOT_OPTIONS: ReadonlyArray<{ id: PlotId; label: string; descriptio
 
 export const HEX_RAMP = ["#fff3b0", "#fdae61", "#f46d43", "#d73027", "#a50026"];
 
-export const FORECAST_RAMP = ["#ead9ff", "#c4a1ff", "#9b6bff", "#6d3fd6", "#3f1d8f"];
+export const FORECAST_RAMP = ["#ffc9c4", "#ff8a80", "#ff4a3d", "#d7261e", "#8b0d0d"];
 
 export const mapLayerParsers = {
   base: parseAsStringLiteral(BASEMAPS).withDefault("streets"),
@@ -43,6 +43,12 @@ export const TERRAIN_3D = { zoom: 10.5, pitch: 60, bearing: -20, exaggeration: 1
 
 export const GLOBE_MAX_ZOOM = 1.8;
 export const FLAT_MAX_ZOOM = 14;
+
+const WORLD_TILE_PX = 512;
+
+export function flatMinZoom(containerWidth: number): number {
+  return Math.max(0, Math.log2(Math.max(1, containerWidth) / WORLD_TILE_PX));
+}
 
 export const GLOBE_CENTER: [number, number] = [-35, 12];
 

@@ -87,3 +87,18 @@ describe("mapas base", () => {
   });
 
 });
+
+describe("flatMinZoom", () => {
+  it("o mundo (512 px no zoom 0) ocupa a largura da tela uma vez", async () => {
+    const { flatMinZoom } = await import("./map-layers");
+    expect(flatMinZoom(512)).toBe(0);
+    expect(flatMinZoom(1024)).toBe(1);
+    expect(flatMinZoom(1600)).toBeCloseTo(Math.log2(1600 / 512));
+  });
+
+  it("tela estreita ou sem largura não passa de zoom 0", async () => {
+    const { flatMinZoom } = await import("./map-layers");
+    expect(flatMinZoom(300)).toBe(0);
+    expect(flatMinZoom(0)).toBe(0);
+  });
+});

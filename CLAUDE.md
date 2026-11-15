@@ -78,6 +78,9 @@ Next o error boundary recebe **`retry`** (não `reset`).
    zoom animado até a região, achatando para o mapa 2D (projeção interpola para mercator entre os
    zooms 1,8 e 2,4). Os continentes são regiões em `config/regions.ts`, também no filtro e no
    calendário. Vindo da home, o mapa já começa no globo e faz o voo (`introFly`).
+   No 2D (mercator), depois do voo, o zoom mínimo vira `flatMinZoom(largura)` (o mundo ocupa a largura da tela uma vez,
+   sem cópias lado a lado); recalcula ao redimensionar e volta a 0 no globo. Não use `setMaxBounds`/`renderWorldCopies`
+   aqui: com a projeção que interpola globo→mercator o MapLibre 6 quebra ("Cannot read properties of null").
 3. **Inclinação automática:** selecionar um ponto ou um hexágono H3 (mapa ou lista) dá zoom
    (`TERRAIN_3D.zoom`, ou `hexFocusZoom(res)` no hexágono) e inclina a vista com relevo (AWS Terrain
    Tiles, DEM Terrarium, hillshade; 60°, exagero 1,6). Fechar o detalhe ou clicar no vazio volta à
@@ -103,6 +106,12 @@ agregados usa o centro das células; não é temperatura medida). Não há camad
 removida a pedido do time). Vegetação usa imagens GIBS com a data do fim do período limitada a 3 dias atrás
 (`imageryDateFor`); legendas usam as paletas oficiais (`lib/map-layers.ts`). O worker do MapLibre
 é copiado para `public/` por `scripts/copy-maplibre-worker.mjs`.
+
+**Mapa principal → calendário (mesmo lugar):** o `MapExplorer` grava em `sessionStorage` (`lib/utils/map-place.ts`,
+chave `fire-atlas:map-place`) a região e o lugar atual: o hexágono selecionado (`hexBbox`), senão a detecção selecionada,
+senão a área visível (ou a área desenhada). O botão "Calendário" do mapa leva esse lugar em `bbox`; vindo pelo menu, o
+`CalendarView` usa o lugar lembrado se a região for a mesma (`useSyncExternalStore`). O `bbox` da URL tem prioridade e trocar
+a região no calendário o descarta. O mapa do dia fica fixo nesse lugar ao trocar de dia.
 
 O mapa do **dia no calendário** (`DayLiveMap`) é o mesmo do mapa normal: com a API real faz a mesma consulta
 (blocos, área visível, resolução fina ao aproximar, `areas`, `heat`, `base` da URL), só que para um dia. Sem grade
@@ -168,12 +177,16 @@ sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é
   contorno (nunca zero), tabela equivalente e unidade obrigatória. Sem API não aparece.
 - Previsão no mapa (URL `forecast=true`, interruptor "Previsão de fogo (7 dias)" em Sobreposições, só com API):
   `useMapForecast` chama `/forecast` na área visível com `limit=2000` (`MAP_FORECAST_LIMIT`). O `FireMap` desenha os
-  hexágonos res 6 em roxo tracejado (cor pela probabilidade, `FORECAST_RAMP`) a partir do zoom 5 e pontos no centro com
+  hexágonos res 6 em vermelho tracejado (cor pela probabilidade, `FORECAST_RAMP`) a partir do zoom 5 e pontos no centro com
   zoom afastado. Legenda com emissão e o grupo "Previsão" no painel (aviso "PREVISÃO — não são detecções observadas" e as
   10 maiores probabilidades, `ForecastLayerList`). Indisponível/erro aparecem no grupo; nunca simula.
-- Previsão: `/forecast?cells&limit=100` (gold/forecast, célula H3 res 6, emissão mais recente). A API devolve `summary`
-  (células, ativas, maior e média da probabilidade na região inteira) e as células ordenadas, com cidade mais próxima e
-  país de `h3_places`. Só a região dos filtros vale; período e sensores não se aplicam. Sem emissão publicada: "Indisponível".
+- Previsão: `/forecast?cells&limit=2000` (`MAP_FORECAST_LIMIT`; gold/forecast, célula H3 res 6, emissão mais recente). A API
+  devolve `summary` (células, ativas, maior e média da probabilidade na região inteira) e as células ordenadas, com cidade
+  mais próxima e país de `h3_places`. Só a região dos filtros vale; período e sensores não se aplicam. Sem emissão
+  publicada: "Indisponível". A página mostra o **mapa de risco** (`features/forecast/components/forecast-map.tsx`: `FireMap`
+  com `forecastCells`, pontos no zoom afastado e hexágonos vermelhos tracejados ao aproximar, escala `FORECAST_RAMP`), a lista das
+  10 maiores (clicar aproxima o mapa e abre o detalhe) e a tabela das 100 maiores recolhida em `<details>` como alternativa
+  em texto. Sem WebGL o quadro do mapa vira aviso e a lista/tabela continuam. Formatadores em `features/forecast/format.ts`.
 - HTTP: timeout de **45 s**, cobrindo cabeçalhos e corpo; a API pode consumir 30 s por consulta Athena. O `detail`
   RFC 7807 também é mostrado no 503. Rede, timeout, 429 e 5xx (exceto 501) permitem retry; 400/404/501 não.
   React Query faz no máximo 2 novas tentativas com backoff (600 ms, 1,2 s), mantém staleTime de 5 min e não refaz

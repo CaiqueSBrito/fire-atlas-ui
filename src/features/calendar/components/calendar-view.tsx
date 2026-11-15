@@ -1,5 +1,6 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { useQueryStates } from "nuqs";
 import { ErrorState } from "@/components/feedback/error-state";
 import { Select } from "@/components/ui/select";
@@ -8,6 +9,7 @@ import { useMapLayers } from "@/hooks/use-map-layers";
 import { cn } from "@/lib/utils/cn";
 import { ApiError } from "@/lib/api/client";
 import { parseBbox, validateBbox } from "@/lib/utils/bbox";
+import { parseMapPlace, readMapPlaceRaw, subscribeMapPlace } from "@/lib/utils/map-place";
 import {
   formatMonthTitle,
   isValidDate,
@@ -57,7 +59,14 @@ export function CalendarView() {
   const month = isValidMonth(params.month) ? params.month : monthOf(urlDate ?? today);
   const region = getRegion(params.region);
   const parsedBbox = parseBbox(params.bbox);
-  const viewBbox = parsedBbox && !validateBbox(parsedBbox) ? parsedBbox : null;
+  const placeRaw = useSyncExternalStore(subscribeMapPlace, readMapPlaceRaw, () => null);
+  const remembered = parseMapPlace(placeRaw);
+  const viewBbox =
+    parsedBbox && !validateBbox(parsedBbox)
+      ? parsedBbox
+      : remembered && remembered.region === region.id
+        ? remembered.bbox
+        : null;
 
   const monthQuery = useActivityMonth(month, region.id);
   const anomalyQuery = useMonthAnomaly(month, region.id);
@@ -130,7 +139,7 @@ export function CalendarView() {
             >
               ‹
             </button>
-            <MonthPicker month={month} onChange={(m) => setParams({ month: m, date: null })} />
+            <MonthPicker month={month} date={date} onSelectDate={selectDate} />
             <button
               type="button"
               aria-label="Próximo mês"

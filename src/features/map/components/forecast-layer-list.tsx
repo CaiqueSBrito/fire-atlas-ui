@@ -16,7 +16,7 @@ export function ForecastLayerList({
     <section aria-labelledby="forecast-list-title" className="flex flex-col gap-2">
       <p
         role="note"
-        className="rounded-xl border-2 border-dashed border-[#c4a1ff] bg-[#c4a1ff]/10 p-3 text-caption text-ink-100"
+        className="rounded-xl border-2 border-dashed border-[#ff5a4f] bg-[#ff5a4f]/10 p-3 text-caption text-ink-100"
       >
         <strong>PREVISÃO — não são detecções observadas.</strong> Probabilidade de fogo nos próximos 7 dias,
         emissão de {issueDate.split("-").reverse().join("/")}.
@@ -34,7 +34,7 @@ export function ForecastLayerList({
               key={c.id}
               className="flex min-h-11 w-full items-center gap-2 rounded-lg border border-space-600 px-3 text-small"
             >
-              <span className="font-mono font-semibold text-[#c4a1ff]">{pct(c.probability)}</span>
+              <span className="font-mono font-semibold text-[#ff5a4f]">{pct(c.probability)}</span>
               <span className="truncate text-ink-100">
                 {c.city ? `perto de ${c.city}` : `${c.lat.toFixed(1)}°, ${c.lon.toFixed(1)}°`}
                 {c.country ? ` · ${c.country}` : ""}

@@ -118,7 +118,7 @@ export function MapLegend({
             low="0%"
             mid="50%"
             high="100%"
-            note={`Hexágonos roxos tracejados (pontos com zoom afastado). Emissão de ${forecastIssue.split("-").reverse().join("/")}. Estimativa de modelo, não detecção observada.`}
+            note={`Hexágonos vermelhos tracejados (pontos com zoom afastado). Emissão de ${forecastIssue.split("-").reverse().join("/")}. Estimativa de modelo, não detecção observada.`}
           />
         )}
         {showHeat && (

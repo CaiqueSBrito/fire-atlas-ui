@@ -18,6 +18,7 @@ import { hexFocusZoom, sameHexInfo, type HexCell, type HexInfo } from "@/lib/uti
 import { computeHotAreas } from "@/lib/utils/hot-areas";
 import { clearIntroFly, peekIntroFly } from "@/lib/utils/intro-fly";
 import { formatBboxParam } from "@/lib/utils/bbox";
+import { hexBbox, saveMapPlace } from "@/lib/utils/map-place";
 import type { Bbox, FireDetection } from "@/types/detections";
 import { DetectionDetail } from "./detection-detail";
 import { DetectionList } from "./detection-list";
@@ -194,14 +195,24 @@ export function MapExplorer() {
 
   const showDetections = !grid && (layers.plot === "points" || layers.dots);
 
+  const place: Bbox | null = hexSelected
+    ? hexBbox(hexSelected.id)
+    : selected
+      ? [selected.lon - 0.25, selected.lat - 0.25, selected.lon + 0.25, selected.lat + 0.25]
+      : (viewport ?? (filters.customArea ? filters.bbox : null));
+  const placeParam = place ? formatBboxParam(place) : null;
   const calendarParams = new URLSearchParams({ region: filters.regionId, date: filters.to });
-  if (viewport) calendarParams.set("bbox", formatBboxParam(viewport));
+  if (placeParam) calendarParams.set("bbox", placeParam);
   if (layers.base !== "streets") calendarParams.set("base", layers.base);
   if (plot !== "points") calendarParams.set("plot", plot);
   if (!layers.dots) calendarParams.set("dots", "false");
   if (layers.heat) calendarParams.set("heat", "true");
   if (layers.areas) calendarParams.set("areas", String(layers.areas));
   const calendarHref = `/explore/calendar?${calendarParams.toString()}`;
+
+  useEffect(() => {
+    if (placeParam) saveMapPlace({ region: filters.regionId, bbox: placeParam.split(",").map(Number) as Bbox });
+  }, [placeParam, filters.regionId]);
 
   const mapProps = {
     detections: items,
