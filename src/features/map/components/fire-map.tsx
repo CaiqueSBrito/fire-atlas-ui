@@ -46,7 +46,6 @@ import {
 } from "@/lib/utils/hex";
 import { loadCountries } from "@/lib/utils/countries";
 import type { Bbox, FireDetection, SensorId } from "@/types/detections";
-import type { ForecastArea } from "@/types/forecast";
 
 setWorkerUrl("/maplibre-gl-worker.mjs");
 
@@ -240,7 +239,6 @@ export type FireMapProps = {
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   showMatches: boolean;
-  forecastAreas?: ForecastArea[];
   label: string;
   basemap?: BasemapId;
   showHeat?: boolean;
@@ -271,7 +269,6 @@ export default function FireMap({
   selectedId,
   onSelect,
   showMatches,
-  forecastAreas,
   label,
   basemap = "satellite",
   showHeat = false,
@@ -484,19 +481,6 @@ export default function FireMap({
         type: "line",
         source: "aoi",
         paint: { "line-color": "#3aa6ff", "line-width": 2, "line-dasharray": [3, 2] },
-      });
-      map.addSource("forecast", { type: "geojson", data: EMPTY as never });
-      map.addLayer({
-        id: "forecast-fill",
-        type: "fill",
-        source: "forecast",
-        paint: { "fill-color": "#c4a1ff", "fill-opacity": 0.18 },
-      });
-      map.addLayer({
-        id: "forecast-line",
-        type: "line",
-        source: "forecast",
-        paint: { "line-color": "#c4a1ff", "line-width": 2, "line-dasharray": [1, 1.5] },
       });
       setZoom(map.getZoom());
       setReady(true);
@@ -844,15 +828,6 @@ export default function FireMap({
     if (!map || !ready) return;
     setData(map, "aoi", aoi ? { type: "FeatureCollection", features: [polygon(aoi)] } : EMPTY);
   }, [aoi, ready]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready) return;
-    setData(map, "forecast", {
-      type: "FeatureCollection",
-      features: (forecastAreas ?? []).map((a) => polygon(a.bbox, { id: a.id })),
-    });
-  }, [forecastAreas, ready]);
 
   useEffect(() => {
     const map = mapRef.current;

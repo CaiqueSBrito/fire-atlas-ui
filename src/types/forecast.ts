@@ -1,21 +1,32 @@
-import type { Bbox } from "./detections";
-
-export type ForecastArea = {
+export type ForecastCell = {
   id: string;
-  label: string;
-  bbox: Bbox;
-  frpPredicted?: { value: number; unit: string } | null;
-  confidence?: { metric: string; value: number } | null;
+  lat: number;
+  lon: number;
+  probability: number;
+  detections24h: number | null;
+  detections7d: number | null;
+  frpMean7d: number | null;
+  active: boolean | null;
+  country: string | null;
+  city: string | null;
+  cityDistanceKm: number | null;
+};
+
+export type ForecastSummary = {
+  cells: number;
+  activeCells: number;
+  maxProbability: number | null;
+  meanProbability: number | null;
 };
 
 export type ForecastResponse =
   | {
       status: "available";
-      model: { name: string; version?: string };
-      region: string;
-      horizon: { from: string; to: string };
-      areas: ForecastArea[];
-      limitations: string[];
-      generatedAt?: string;
+      issueDate: string;
+      summary: ForecastSummary;
+      cells: ForecastCell[];
+      truncated: boolean;
+      source: string;
+      method: string;
     }
   | { status: "unavailable"; reason: string };

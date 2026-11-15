@@ -43,13 +43,12 @@ export function useStats() {
 
 export function useForecast() {
   const { filters } = useResolvedFilters();
+  const enabled = filters.problem === null;
   const result = useQuery({
-    queryKey: ["forecast", filters.regionId, filters.bbox, filters.from, filters.to],
-    queryFn: ({ signal }) =>
-      fetchForecast(filters.regionId, filters.bbox, signal, {
-        from: filters.from,
-        to: filters.to,
-      }),
+    queryKey: ["forecast", filters.bbox],
+    queryFn: ({ signal }) => fetchForecast(filters.bbox, signal),
+    enabled,
+    placeholderData: keepPreviousData,
   });
-  return { ...result, filters };
+  return { ...result, filters, enabled };
 }

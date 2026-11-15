@@ -18,19 +18,75 @@ export type ApiDetectionsResponse = {
   message?: string | null;
 };
 
-export type ApiSensorDay = { count: number; frpSum: number };
-
-export type ApiCalendarDay = {
-  date: string;
-  modis: ApiSensorDay;
-  viirs: ApiSensorDay;
+export type ApiActivityMeta = {
+  region: string;
+  start: string;
+  end: string;
+  resolution: number;
+  unitLabelPt: string;
+  unitLabelEn: string;
+  source: string;
+  method: string;
+  areaKm2Estimate?: number | null;
+  smallArea: boolean;
+  warnings: string[];
 };
 
-export type ApiCalendarResponse = {
+export type ApiTemperatureBin = {
+  key: string;
+  fromK?: number | null;
+  toK?: number | null;
+  harmonized: number;
+};
+
+export type ApiActivityDay = {
+  date: string;
+  harmonized: number | null;
+  contributing: number;
+  hasData: boolean;
+  basis?: string | null;
+  temperature?: ApiTemperatureBin[] | null;
+};
+
+export type ApiActivityCalendarResponse = {
   month: string;
-  resolution?: number;
-  daysWithFire: number;
-  days: ApiCalendarDay[];
+  daysWithData: number;
+  days: ApiActivityDay[];
+  meta?: ApiActivityMeta | null;
+  message?: string | null;
+};
+
+export type ApiActivityAnomalyResponse = {
+  month: string;
+  current: number | null;
+  currentDaysWithData: number;
+  currentMonthComplete: boolean;
+  baseline: { year: number; harmonized: number; daysWithData: number }[];
+  yearsWithData: number;
+  minYears: number;
+  baselineMedian: number | null;
+  ratioToMedian: number | null;
+  deviationPct: number | null;
+  sufficient: boolean;
+  note: string | null;
+  meta?: ApiActivityMeta | null;
+};
+
+export type ApiSatelliteDay = {
+  date: string;
+  platform: string;
+  units: number;
+  typicalUnits: number;
+  available: boolean;
+  contributes: boolean;
+};
+
+export type ApiActivityAvailabilityResponse = {
+  start: string;
+  end: string;
+  count: number;
+  days: ApiSatelliteDay[];
+  source?: string | null;
   message?: string | null;
 };
 
@@ -136,8 +192,36 @@ export type ApiSource = {
   maxDate?: string | null;
 };
 
-export type ApiPredictionResponse = {
-  available: boolean;
-  status: string;
-  reason?: string | null;
+export type ApiForecastItem = {
+  h3: string;
+  region?: string | null;
+  probability7d: number;
+  detections24h?: number | null;
+  detections3d?: number | null;
+  detections7d?: number | null;
+  frpMean7d?: number | null;
+  active?: boolean | null;
+  countryName?: string | null;
+  cityName?: string | null;
+  cityDistanceKm?: number | null;
+};
+
+export type ApiForecastSummary = {
+  cells: number;
+  activeCells: number;
+  maxProbability?: number | null;
+  meanProbability?: number | null;
+};
+
+export type ApiForecastResponse = {
+  issueDate?: string | null;
+  latestIssueDate?: string | null;
+  region: string;
+  summary?: ApiForecastSummary | null;
+  count: number;
+  truncated: boolean;
+  items: ApiForecastItem[];
+  source: string;
+  method: string;
+  message?: string | null;
 };

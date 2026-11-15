@@ -8,21 +8,18 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(nav.search),
 }));
 
-import { NAV_ITEMS } from "@/config/navigation";
 import { MainNav } from "./main-nav";
 
 afterEach(() => {
   nav.pathname = "/explore/map";
   nav.search = "";
-  vi.unstubAllEnvs();
-  vi.resetModules();
 });
 
 describe("MainNav (RN03)", () => {
   it("lista as seções disponíveis", () => {
     render(<MainNav />);
     const links = screen.getAllByRole("link").map((a) => a.textContent);
-    expect(links).toEqual(["Início", "Mapa", "Calendário", "Análises"]);
+    expect(links).toEqual(["Início", "Mapa", "Calendário", "Análises", "Previsões"]);
   });
 
   it("marca a seção atual com aria-current", () => {
@@ -64,18 +61,5 @@ describe("MainNav (RN03)", () => {
   it("é uma navegação rotulada", () => {
     render(<MainNav />);
     expect(screen.getByRole("navigation", { name: "Seções principais" })).toBeInTheDocument();
-  });
-});
-
-describe("NAV_ITEMS (previsão condicionada)", () => {
-  it("não inclui previsões por padrão", () => {
-    expect(NAV_ITEMS.map((i) => i.href)).not.toContain("/explore/forecasts");
-  });
-
-  it("inclui previsões quando a feature está ligada", async () => {
-    vi.stubEnv("NEXT_PUBLIC_FEATURE_FORECAST", "true");
-    vi.resetModules();
-    const mod = await import("@/config/navigation");
-    expect(mod.NAV_ITEMS.map((i) => i.href)).toContain("/explore/forecasts");
   });
 });

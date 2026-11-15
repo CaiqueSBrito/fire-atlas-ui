@@ -1,20 +1,18 @@
 import { describe, expect, it } from "vitest";
 import type {
-  ApiCalendarResponse,
   ApiCompareResponse,
   ApiDetectionsResponse,
+  ApiForecastResponse,
   ApiHistoricalResponse,
   ApiRankingResponse,
   ApiTimeseriesResponse,
 } from "@/types/api";
 import {
-  dayCounts,
-  dayStatus,
   mergeDetections,
   sensorParam,
   toDetectionsResponse,
+  toForecastResponse,
   toHexCells,
-  toMonthDays,
   toStatsResponse,
 } from "./adapters";
 
@@ -322,41 +320,36 @@ describe("toStatsResponse", () => {
   });
 });
 
-describe("calendário", () => {
-  const raw: ApiCalendarResponse = {
-    month: "2026-10",
-    daysWithFire: 1,
-    days: [
-      { date: "2026-10-11", modis: { count: 0, frpSum: 0 }, viirs: { count: 0, frpSum: 0 } },
-      { date: "2026-10-12", modis: { count: 29, frpSum: 1 }, viirs: { count: 85, frpSum: 1 } },
-      { date: "2026-10-13", modis: { count: 0, frpSum: 0 }, viirs: { count: 0, frpSum: 0 } },
-    ],
+describe("toForecastResponse", () => {
+  const raw: ApiForecastResponse = {
+    issueDate: "2026-11-15",
+    latestIssueDate: "2026-11-15",
+    region: "h3:1 celulas",
+    summary: { cells: 3, activeCells: 1, maxProbability: 0.9, meanProbability: 0.47 },
+    count: 1,
+    truncated: true,
+    items: [{ h3: "838141fffffffff", probability7d: 0.9, detections7d: 65, active: true, cityName: "Cidade" }],
+    source: "gold/forecast",
+    method: "m",
   };
 
-  it("distingue atividade, zero registrado e dia sem dados", () => {
-    expect(toMonthDays(raw, (d) => d >= "2026-10-12")).toEqual([
-      { date: "2026-10-11", status: "unavailable" },
-      { date: "2026-10-12", status: "activity", counts: { MODIS: 29, VIIRS: 85 } },
-      { date: "2026-10-13", status: "none" },
-    ]);
+  it("sem emissão no serviço vira indisponível com a explicação da API, sem números", () => {
+    const out = toForecastResponse({ ...raw, issueDate: null, summary: null, items: [], message: "Nenhuma previsao importada." });
+    expect(out).toEqual({ status: "unavailable", reason: "Nenhuma previsao importada." });
   });
 
-  it("ausência de dados nunca vira 'sem fogo'", () => {
-    expect(toMonthDays(raw, () => false).map((d) => d.status)).toEqual([
-      "unavailable",
-      "activity",
-      "unavailable",
-    ]);
-  });
-
-  it("contagem do dia vem do calendário", () => {
-    expect(dayCounts(raw, "2026-10-12")).toEqual({ MODIS: 29, VIIRS: 85 });
-    expect(dayCounts(raw, "2026-11-01")).toBeNull();
-  });
-
-  it("status do dia", () => {
-    expect(dayStatus(3, false)).toBe("activity");
-    expect(dayStatus(0, true)).toBe("none");
-    expect(dayStatus(0, false)).toBe("unavailable");
+  it("preserva os valores do serviço e deixa ausentes como nulos", () => {
+    const out = toForecastResponse(raw);
+    if (out.status !== "available") throw new Error("esperava previsão");
+    expect(out.summary).toEqual({ cells: 3, activeCells: 1, maxProbability: 0.9, meanProbability: 0.47 });
+    expect(out.cells[0]).toMatchObject({
+      id: "838141fffffffff",
+      probability: 0.9,
+      detections7d: 65,
+      detections24h: null,
+      frpMean7d: null,
+      country: null,
+      city: "Cidade",
+    });
   });
 });

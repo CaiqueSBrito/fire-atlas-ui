@@ -2,22 +2,34 @@ import { cellToLatLng, getHexagonEdgeLengthAvg } from "h3-js";
 import { shiftDate } from "@/lib/utils/dates";
 import type { HexCell } from "@/lib/utils/hex";
 import type {
-  ApiCalendarResponse,
+  ApiActivityAnomalyResponse,
+  ApiActivityAvailabilityResponse,
+  ApiActivityDay,
   ApiCell,
   ApiCompareResponse,
   ApiDetectionsResponse,
+  ApiForecastItem,
+  ApiForecastResponse,
   ApiHistoricalResponse,
   ApiRankingResponse,
   ApiSensor,
   ApiTimeseriesResponse,
 } from "@/types/api";
-import type { DayStatus, MonthDay, SensorCounts } from "@/types/calendar";
+import type {
+  ActivityDay,
+  DaySatellites,
+  DayStatus,
+  MonthAnomaly,
+  TemperatureBasis,
+  TemperatureBin,
+} from "@/types/calendar";
 import type {
   DataOrigin,
   DetectionGrid,
   DetectionsResponse,
   SensorId,
 } from "@/types/detections";
+import type { ForecastCell, ForecastResponse } from "@/types/forecast";
 import type { SeriesPoint, StatsResponse } from "@/types/stats";
 
 export const API_SOURCE: DataOrigin = {
@@ -28,6 +40,46 @@ export const API_SOURCE: DataOrigin = {
 export function sensorParam(sensors: SensorId[]): string {
   if (sensors.length === 1) return sensors[0].toUpperCase();
   return "BOTH";
+}
+
+function toForecastCell(item: ApiForecastItem): ForecastCell {
+  const [lat, lon] = cellToLatLng(item.h3);
+  return {
+    id: item.h3,
+    lat,
+    lon,
+    probability: item.probability7d,
+    detections24h: item.detections24h ?? null,
+    detections7d: item.detections7d ?? null,
+    frpMean7d: item.frpMean7d ?? null,
+    active: item.active ?? null,
+    country: item.countryName ?? null,
+    city: item.cityName ?? null,
+    cityDistanceKm: item.cityDistanceKm ?? null,
+  };
+}
+
+export function toForecastResponse(raw: ApiForecastResponse): ForecastResponse {
+  if (!raw.issueDate || !raw.summary) {
+    return {
+      status: "unavailable",
+      reason: raw.message ?? "Nenhuma previsão foi importada para o serviço.",
+    };
+  }
+  return {
+    status: "available",
+    issueDate: raw.issueDate,
+    summary: {
+      cells: raw.summary.cells,
+      activeCells: raw.summary.activeCells,
+      maxProbability: raw.summary.maxProbability ?? null,
+      meanProbability: raw.summary.meanProbability ?? null,
+    },
+    cells: raw.items.map(toForecastCell),
+    truncated: raw.truncated,
+    source: raw.source,
+    method: raw.method,
+  };
 }
 
 const lower = (sensor: ApiSensor): SensorId =>
@@ -233,32 +285,57 @@ export function toStatsResponse(
   };
 }
 
-function countsOf(day: { modis: { count: number }; viirs: { count: number } }): SensorCounts {
-  return { MODIS: day.modis.count, VIIRS: day.viirs.count };
+export const ACTIVITY_SOURCE: DataOrigin = {
+  name: "NASA FIRMS · atividade harmonizada (escala MODIS Aqua)",
+  simulated: false,
+};
+
+const BASES: readonly TemperatureBasis[] = ["viirs", "aqua", "terra"];
+
+function toTemperature(day: ApiActivityDay): TemperatureBin[] | null {
+  if (!day.hasData || !day.temperature?.length) return null;
+  return day.temperature.map((b) => ({
+    key: b.key,
+    fromK: b.fromK ?? null,
+    toK: b.toK ?? null,
+    value: b.harmonized,
+  }));
 }
 
-export function toMonthDays(
-  raw: ApiCalendarResponse,
-  isCovered: (date: string) => boolean,
-): MonthDay[] {
-  return raw.days.map((day) => {
-    const counts = countsOf(day);
-    if (counts.MODIS! + counts.VIIRS! > 0) {
-      return { date: day.date, status: "activity" as DayStatus, counts };
-    }
-    return { date: day.date, status: isCovered(day.date) ? "none" : "unavailable" };
-  });
+export function toActivityDay(day: ApiActivityDay): ActivityDay {
+  const value = day.hasData ? (day.harmonized ?? 0) : null;
+  const status: DayStatus =
+    value === null ? "unavailable" : value > 0 ? "activity" : "none";
+  return {
+    date: day.date,
+    status,
+    value,
+    contributing: day.contributing,
+    basis: day.hasData ? (BASES.find((b) => b === day.basis) ?? null) : null,
+    temperature: toTemperature(day),
+  };
 }
 
-export function dayCounts(
-  raw: ApiCalendarResponse,
+export function toMonthAnomaly(raw: ApiActivityAnomalyResponse): MonthAnomaly {
+  return {
+    sufficient: raw.sufficient,
+    current: raw.current,
+    baselineMedian: raw.baselineMedian,
+    deviationPct: raw.deviationPct,
+    yearsWithData: raw.yearsWithData,
+    minYears: raw.minYears,
+    note: raw.note,
+  };
+}
+
+export function toDaySatellites(
+  raw: ApiActivityAvailabilityResponse,
   date: string,
-): SensorCounts | null {
-  const day = raw.days.find((d) => d.date === date);
-  return day ? countsOf(day) : null;
-}
-
-export function dayStatus(total: number, covered: boolean): DayStatus {
-  if (total > 0) return "activity";
-  return covered ? "none" : "unavailable";
+): DaySatellites {
+  const rows = raw.days.filter((d) => d.date === date);
+  return {
+    date,
+    contributing: rows.filter((d) => d.contributes).map((d) => d.platform),
+    available: rows.filter((d) => d.available).map((d) => d.platform),
+  };
 }
