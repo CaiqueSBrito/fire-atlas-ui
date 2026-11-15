@@ -18,27 +18,36 @@ NEXT_PUBLIC_API_URL=http://localhost:8080/api/v2
 Reinicie o servidor Next ao mudar a URL. Sem essa variável, mapa e análises usam dados simulados identificados;
 a previsão permanece indisponível. O backend fica no repositório `fire-atlas-api`.
 
-## Integração com o Athena
+## Dados: gold baixada para o PostgreSQL
 
-O frontend continua acessando a API REST, nunca o Athena nem credenciais AWS diretamente. O backend consulta a gold
-no S3 sem materializar os dados no Postgres. Os DTOs de mapa, calendário, análises e previsão foram preservados.
+O frontend só acessa a API REST (`/api/v2`), nunca o data lake nem credenciais AWS. No backend, `scripts/atualizar.sh`
+baixa a camada gold do data lake para o PostgreSQL (padrão: últimos 7 dias, todas as resoluções H3; por exemplo,
+`scripts/atualizar.sh 30 0,1,2,3,4` carrega 30 dias nas resoluções 0 a 4), e a API lê só essas tabelas. Por isso, o
+front só consulta o que o script baixou:
 
-- `/meta/sources` foi removido. A cobertura vem de `/meta/coverage`, com período por sensor e cache compartilhado de
-  10 minutos; as resoluções H3 da gold são 0–6.
-- O cliente HTTP espera até **45 segundos**, incluindo a transferência do corpo. Não usa `no-store`: respeita o
+- Resoluções e datas disponíveis vêm das importações `COMPLETED` de `GET /meta/sources` (`lib/api/coverage.ts`,
+  cache de 1 minuto), separadas pela tabela que cada tela consulta:
+  - mapa principal e mapa do dia no calendário (`/activity/cells`), calendário e atividade mensal das Análises:
+    `gold/harmonized/cells/`;
+  - indicadores, série, ranking e histórico das Análises e números da home: `gold/map_grid/`;
+  - previsão: `gold/forecast/` (a tabela é H3 res 6 e a API aceita a região em qualquer resolução de 0 a 6).
+- Uma importação conta só com linhas carregadas (`rowsLoaded > 0`), no período `minDate`–`maxDate`; reimportar
+  substitui o período `periodStart`–`periodEnd` daquela resolução. Dia sem importação aparece como "sem dado",
+  nunca como zero.
+- Sem importação concluída da tabela da tela, a página mostra "Nenhum dado importado" e pede para rodar
+  `scripts/atualizar.sh` no backend (na previsão, o aviso aparece como "Indisponível").
+- O cliente HTTP espera até **20 segundos**, incluindo a transferência do corpo. Não usa `no-store`: respeita o
   `Cache-Control` da API.
-- O detalhe RFC 7807 é mostrado também no **503**. Falhas de rede, timeout, 429 e 5xx (exceto 501) permitem até duas
-  novas tentativas com backoff. Rejeições 400/404 e recurso não implementado 501 não são repetidos automaticamente.
+- O detalhe RFC 7807 é mostrado também nos erros 5xx. Falhas de rede, timeout, 429 e 5xx (exceto 501) permitem até
+  duas novas tentativas (600 ms entre elas). Rejeições 400/404 e recurso não implementado 501 não são repetidos.
 - React Query mantém os dados frescos por 5 minutos e não repete consultas ao focar a janela. As chaves de cache
-  usam as células H3 realmente consultadas, ordenadas; pequenos movimentos que cobrem as mesmas células reutilizam
-  os resultados. Modo simulado mantém sua chave por bbox.
+  usam as células H3 consultadas, calculadas nas resoluções importadas da tabela da tela; pequenos movimentos que
+  cobrem as mesmas células reutilizam os resultados. Modo simulado mantém sua chave por bbox.
 - O mapa mantém o debounce de 350 ms, a margem de 25% e a área de consulta enquanto o viewport continuar nela.
-  Mudanças de filtro/área cancelam os pedidos anteriores no cliente. Cancelar o HTTP não garante interromper uma
-  consulta já iniciada no Athena.
-- O período padrão é de 7 dias. Intervalos acima de 366 dias são bloqueados também quando vêm diretamente pela URL.
-  Datas históricas desde 2000 continuam acessíveis, sem depender de uma primeira carga local.
+  Mudanças de filtro/área cancelam os pedidos anteriores no cliente.
+- O período padrão é de 7 dias, igual à janela padrão do script. Intervalos acima de 366 dias são bloqueados também
+  quando vêm diretamente pela URL.
 - Resultados truncados são sinalizados nos mapas principal e diário; a previsão distingue o top-N da região inteira.
-- **Estados de carregamento não foram alterados** nesta adaptação.
 
 Detalhes de arquitetura e contratos: `CLAUDE.md`.
 
@@ -50,6 +59,5 @@ npm run lint
 npx tsc --noEmit
 ```
 
-Para verificar integração real, execute a API e abra `/explore/map`, `/explore/calendar`, `/explore/statistics` e
-`/explore/forecasts`. A API pode emitir várias consultas Athena por página; o tempo HTTP total não é o de uma única
-consulta SQL.
+Para verificar integração real, rode `scripts/atualizar.sh` no backend, suba a API e abra `/explore/map`,
+`/explore/calendar`, `/explore/statistics` e `/explore/forecasts`.

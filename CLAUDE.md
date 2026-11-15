@@ -125,16 +125,17 @@ simulam falha e vazio). Mapa e estatísticas usam as mesmas contagens.
 
 Com `NEXT_PUBLIC_API_URL=http://localhost:8080/api/v2` (prefixo `/api/v2` incluso; na `main` do back a `/api/v1` é a API antiga por pontos e **não serve** a este front; `.env.local`,
 exemplo em `.env.example`; reiniciar o `npm run dev` ao mudar) usa a API Spring Boot real
-(backend `fire-atlas-api`, PostGIS na porta **5433** via `docker compose up -d`). A camada gold é consultada direto no
-S3 pelo Athena; não existe mais importação da gold, `ingest-gold` nem sincronização ao subir a API.
-A fonte é a **camada gold** do data lake (Delta Lake `gold/map_grid`): uma linha por **célula H3, dia e
+(backend `fire-atlas-api`, PostGIS na porta **5433** via `docker compose up -d`). A gold é **baixada do data lake para o
+PostgreSQL** por `scripts/atualizar.sh` no backend (`DATALAKE_BUCKET=… scripts/atualizar.sh [dias=7] [resoluções]`, ex.:
+`scripts/atualizar.sh 30 0,1,2,3,4`); a `/api/v2` lê só essas tabelas. Logo, só existe a janela e as resoluções que o
+script carregou: nem toda resolução 0–6 nem toda data. A fonte é a **camada gold** (Delta Lake `gold/map_grid`): uma linha por **célula H3, dia e
 sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é só hexágonos H3
 (`DetectionsResponse.grid`), sem pontos, sem lista de detecções e sem `matchId`. Tipos do contrato em
 `types/api.ts`; `lib/api/adapters.ts` traduz para os tipos da UI.
 - Região: a API não aceita `bbox` (400), só `cells` (índices H3 em hexadecimal). `lib/utils/h3-region.ts`
-  converte a área em células na resolução mais fina **disponível** (gold: 0–6) que caiba em 380 células (a URL passa
+  converte a área em células na resolução mais fina **importada** na tabela da tela que caiba em 380 células (a URL passa
   de ~8 KB com ~450 e o Tomcat devolve 400; o teto de 2000 da API é inalcançável por GET). Áreas grandes
-  usam resolução menor (Brasil → 2, mundo → 0); a região vira a união dos hexágonos (aproximação).
+  usam resolução menor (com todas as resoluções importadas: Brasil → 2, mundo → 0); a região vira a união dos hexágonos (aproximação).
 - Zoom progressivo (só com API real e sem área desenhada): o mapa consulta a **área visível** (`onViewport`
   do `FireMap`, `hooks/use-query-area.ts` + `lib/utils/viewport-area.ts`): espera 350 ms parados, amplia 25%
   e só refaz a consulta ao sair da área ou aproximar bastante. A API devolve hexágonos mais finos quanto
@@ -148,11 +149,21 @@ sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é
 - Áreas de calor (URL `areas=0|25|10|5`, só com dados agregados): `lib/utils/hot-areas.ts` pega as X% de
   células mais intensas, junta as vizinhas (`gridDisk`) e contorna cada mancha (`cellsToMultiPolygon`); o
   `FireMap` desenha contorno branco e esmaece as demais; `HotAreaList` lista as maiores (alternativa textual).
-- Datas disponíveis vêm de `/meta/coverage` (`lib/api/coverage.ts`, cache compartilhado de 10 min); o retorno é uma
-  lista por sensor com `minDate`, `maxDate` e `detections`. `/meta/sources` foi removido. As resoluções da gold são
-  0–6, independentemente de importações. O histórico pode ser consultado desde 2000; ausência de dado não é zero.
+- Resoluções e datas disponíveis vêm das importações `COMPLETED` de `/meta/sources` (`lib/api/coverage.ts`,
+  `coverageFromSources`, cache de 1 min compartilhado; `hooks/use-region-key.ts` usa a mesma cobertura para a chave
+  React Query). Cada tela usa a tabela que consulta (`CoverageTable`): `cells` = `gold/harmonized/cells/` (mapa principal,
+  mapa do dia, calendário com estados/mundo/continentes/Brasil, atividade mensal das Análises); `grid` = `gold/map_grid/`
+  (indicadores, série, ranking e histórico das Análises; home pela resolução 0); `forecast` = `gold/forecast/` (sem
+  resolução na chave; a tabela é res 6 e a API compara ancestrais, então aceita células de 0 a 6). A resolução vem de
+  `resolution=N` do `sourceKey`; só conta importação com `rowsLoaded > 0`, no período `minDate`–`maxDate` (sem eles,
+  `periodStart`–`periodEnd`); reimportar substitui `periodStart`–`periodEnd` daquela resolução (a API devolve as mais
+  recentes primeiro). `isCovered(cov, dia, res)` usa a resolução consultada: dia zerado fora do período importado vira
+  `null` na série (ausência de dado não é zero). Sem importação concluída da tabela, `requireCoverage` lança
+  `NotImportedError` (não recuperável) e `QueryErrorState` mostra "Nenhum dado importado" com o pedido de rodar
+  `scripts/atualizar.sh`; na previsão o aviso vira `status: "unavailable"`.
 - **Mapa (normal e do dia no calendário) = atividade harmonizada por célula**: `fetchDetections` chama
-  `/activity/cells?cells&start&end&zoom` (rota do back na branch `feat/activity-cells`, já no Athena; `harmonized_cells`),
+  `/activity/cells?cells&start&end&zoom` (`harmonized_cell`, resoluções de `gold/harmonized/cells/`; `zoom` = resolução
+  mais fina importada, entre 3 e 6, porque a API não tem zoom abaixo da res 3),
   em blocos como antes. `HexCell.count` = valor harmonizado (fracionário), `modis`/`viirs` = detecções que entraram na
   harmonização; `DetectionGrid.harmonized.unitLabel` liga os textos com unidade (detalhe, lista, legenda, total). O filtro
   de sensores não se aplica. Dia = dia local de fogo. A cor usa `colorFloor`: com valores < 1 a escala log começa no menor
@@ -187,24 +198,25 @@ sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é
   com `forecastCells`, pontos no zoom afastado e hexágonos vermelhos tracejados ao aproximar, escala `FORECAST_RAMP`), a lista das
   10 maiores (clicar aproxima o mapa e abre o detalhe) e a tabela das 100 maiores recolhida em `<details>` como alternativa
   em texto. Sem WebGL o quadro do mapa vira aviso e a lista/tabela continuam. Formatadores em `features/forecast/format.ts`.
-- HTTP: timeout de **45 s**, cobrindo cabeçalhos e corpo; a API pode consumir 30 s por consulta Athena. O `detail`
-  RFC 7807 também é mostrado no 503. Rede, timeout, 429 e 5xx (exceto 501) permitem retry; 400/404/501 não.
-  React Query faz no máximo 2 novas tentativas com backoff (600 ms, 1,2 s), mantém staleTime de 5 min e não refaz
-  consultas ao focar a janela. `AbortSignal` cancela chamadas antigas quando os filtros/viewport mudam; isso não
-  garante cancelamento de uma execução já iniciada no Athena.
+- HTTP: timeout de **20 s** (API em Postgres local), cobrindo cabeçalhos e corpo. O `detail` RFC 7807 também é mostrado
+  nos 5xx. Rede, timeout, 429 e 5xx (exceto 501) permitem retry; 400/404/501 e `NotImportedError` não.
+  React Query faz no máximo 2 novas tentativas (600 ms entre elas), mantém staleTime de 5 min e não refaz
+  consultas ao focar a janela. `AbortSignal` cancela chamadas antigas quando os filtros/viewport mudam.
 - Cache: HTTP `Cache-Control` da API é preservado (sem `no-store`); células H3 são ordenadas e as chaves React Query
-  usam os conjuntos de células efetivamente consultados, evitando consultas novas por pequenas mudanças do bbox.
-- Período padrão continua curto (7 dias); o limite de 366 dias também é validado em URLs diretas. Calendário mantém
-  acesso ao ano 2000. `truncated` gera aviso visível no mapa principal e no mapa diário; previsões já mostram o top-N.
-- Estados de carregamento existentes foram preservados, sem novos spinners/skeletons nesta adaptação ao Athena.
+  usam os conjuntos de células efetivamente consultados (`regionQueryKey` nas resoluções importadas da tabela da tela),
+  evitando consultas novas por pequenas mudanças do bbox. A consulta espera a cobertura carregar antes de rodar.
+- Período padrão continua curto (7 dias, a janela padrão do script); o limite de 366 dias também é validado em URLs
+  diretas. O calendário navega até 2000, mas só há dado nas janelas importadas. `truncated` gera aviso visível no mapa
+  principal e no mapa diário; previsões já mostram o top-N.
 
 Regras de não-invenção: FRP, ranking, períodos críticos, harmonizado e correspondências
 só aparecem quando a API os fornece (senão "Indisponível"). Correspondência entre sensores
 vem só da harmonização validada (`matchId`). A previsão nunca é simulada: sem serviço,
 mostra indisponibilidade. Ausência de ponto nunca é apresentada como ausência de fogo.
-Home: com a API real, o globo mostra as 12 células com mais detecções dos últimos 7 dias com dado (`lib/api/home.ts`,
-`fetchTopHotspots`) e a faixa `LiveStats` mostra a soma global dos últimos 30 dias por sensor; sem API ou com falha, a faixa
-some e o globo volta aos 8 pontos **ilustrativos** (a legenda diz qual é o caso). Nos testes, simule falha com função comum
+Home: com a API real, o globo mostra as 12 células com mais detecções nos últimos 7 dias importados (`lib/api/home.ts`,
+`fetchTopHotspots`) e a faixa `LiveStats` mostra a soma global por sensor dos últimos 30 dias importados (o período vem
+da última janela contínua da res 0 da `gold/map_grid/`, limitado ao que foi carregado); sem a res 0 importada, sem API
+ou com falha, a faixa some e o globo volta aos 8 pontos **ilustrativos** (a legenda diz qual é o caso). Nos testes, simule falha com função comum
 no `vi.mock` (um `vi.fn` que rejeita é registrado pelo Vitest como erro do teste).
 
 ## Estrutura de pastas
@@ -217,7 +229,7 @@ src/
   components/
     ui/           # primitivos (Button, Select, Tabs…) sem regra de negócio
     layout/       # Header, Nav, Shell
-    feedback/     # Loading, ErrorState (com retry), EmptyState
+    feedback/     # Loading, ErrorState (com retry), EmptyState, QueryErrorState (erro da consulta ou "Nenhum dado importado")
   lib/api/        # cliente HTTP do Spring Boot + funções por recurso
   lib/utils/
   hooks/          # hooks genéricos
