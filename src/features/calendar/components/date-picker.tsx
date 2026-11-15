@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { fieldClass } from "@/components/ui/field";
 import { Chevron } from "@/components/ui/select";
 import { useDismiss } from "@/hooks/use-dismiss";
 import {
@@ -20,10 +21,27 @@ type DatePickerProps = {
   id: string;
   value: string;
   onChange: (date: string) => void;
+  /** Nome do campo, lido por leitores de tela (padrão: "Data"). */
+  label?: string;
+  /** Datas fora do intervalo ficam desativadas. */
+  min?: string;
+  max?: string;
+  /** Onde o calendário abre em relação ao campo. */
+  placement?: "bottom" | "top";
+  align?: "left" | "right";
 };
 
 // Seletor de data próprio (o nativo do navegador destoa do tema escuro).
-export function DatePicker({ id, value, onChange }: DatePickerProps) {
+export function DatePicker({
+  id,
+  value,
+  onChange,
+  label = "Data",
+  min,
+  max,
+  placement = "bottom",
+  align = "left",
+}: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const [month, setMonth] = useState(monthOf(value));
   const [pickingMonth, setPickingMonth] = useState(false);
@@ -32,29 +50,44 @@ export function DatePicker({ id, value, onChange }: DatePickerProps) {
 
   useDismiss(open, ref, () => setOpen(false));
 
+  const outOfRange = (date: string) =>
+    Boolean((min && date < min) || (max && date > max));
+
   const pick = (date: string) => {
+    if (outOfRange(date)) return;
     onChange(date);
     setOpen(false);
   };
 
   return (
-    <div ref={ref} className="relative min-w-0 flex-1">
+    <div
+      ref={ref}
+      className="relative min-w-0 flex-1"
+      onKeyDown={(e) => {
+        // Esc fecha só o calendário (não o modal que o contém).
+        if (e.key === "Escape" && open) {
+          e.stopPropagation();
+          e.nativeEvent.stopImmediatePropagation();
+          setOpen(false);
+        }
+      }}
+    >
       <button
         id={id}
         type="button"
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={`Data: ${formatShort(value)}`}
+        aria-label={`${label}: ${formatShort(value)}`}
         onClick={() => {
           setMonth(monthOf(value));
           setPickingMonth(false);
           setOpen((o) => !o);
         }}
-        className={`flex w-full items-center justify-between gap-2 rounded-xl border bg-space-900 px-3 py-2.5 text-left text-small text-ink-100 transition-colors ${
-          open ? "border-ember-400" : "border-space-600 hover:border-ink-300"
+        className={`${fieldClass} w-full justify-between text-left ${
+          open ? "border-ember-400 ring-4 ring-ember-400/20" : ""
         }`}
       >
-        <span className="font-mono">{formatShort(value)}</span>
+        <span className="truncate font-mono">{formatShort(value)}</span>
         <Chevron open={open} />
       </button>
 
@@ -62,7 +95,9 @@ export function DatePicker({ id, value, onChange }: DatePickerProps) {
         <div
           role="dialog"
           aria-label="Escolher data"
-          className="pop-in absolute left-0 top-full z-30 mt-2 w-72 rounded-2xl border border-space-600 bg-space-900 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.6)]"
+          className={`pop-in absolute z-40 w-72 rounded-2xl border border-space-600 bg-space-900 p-3 shadow-[0_18px_50px_rgba(0,0,0,0.6)] ${
+            placement === "top" ? "bottom-full mb-1.5" : "top-full mt-1.5"
+          } ${align === "right" ? "right-0" : "left-0"}`}
         >
           <div className="flex items-center justify-between">
             <button
@@ -128,9 +163,10 @@ export function DatePicker({ id, value, onChange }: DatePickerProps) {
                   key={date}
                   type="button"
                   onClick={() => pick(date)}
+                  disabled={outOfRange(date)}
                   aria-pressed={selected}
                   aria-current={date === today ? "date" : undefined}
-                  className={`aspect-square rounded-lg font-mono text-caption transition ${
+                  className={`aspect-square rounded-lg font-mono text-caption transition disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent ${
                     selected
                       ? "bg-ember-400 font-bold text-space-950"
                       : date === today
@@ -149,7 +185,8 @@ export function DatePicker({ id, value, onChange }: DatePickerProps) {
           <button
             type="button"
             onClick={() => pick(today)}
-            className="mt-2 w-full rounded-lg border border-space-600 py-1.5 text-caption hover:border-ember-400"
+            disabled={outOfRange(today)}
+            className="mt-2 w-full rounded-lg border border-space-600 py-1.5 text-caption hover:border-ember-400 disabled:cursor-not-allowed disabled:opacity-40"
           >
             Ir para hoje
           </button>

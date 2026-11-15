@@ -1,6 +1,7 @@
 "use client";
 
 import { ErrorState } from "@/components/feedback/error-state";
+import { fieldClass, fieldLabelClass } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { REGIONS, getRegion } from "@/config/regions";
 import { hasApi } from "@/lib/api/client";
@@ -13,11 +14,6 @@ import { DatePicker } from "./date-picker";
 import { STATUS_META } from "./day-tile";
 import type { DayMapLayers } from "./day-live-map";
 import { DayMap } from "./day-map";
-
-const VIEWS: { id: ImageryKind; label: string }[] = [
-  { id: "thermal", label: "Térmica" },
-  { id: "geographic", label: "Geográfica" },
-];
 
 const REGION_OPTIONS = REGIONS.map((r) => ({ value: r.id, label: r.label }));
 const TIME_OPTIONS = (
@@ -102,16 +98,16 @@ export function DetailView({
         <div>
           <label
             htmlFor="detail-date"
-            className="mb-1 block text-small text-ink-300"
+            className={fieldLabelClass}
           >
             Data
           </label>
-          <div className="flex gap-1">
+          <div className="flex gap-2">
             <button
               type="button"
               aria-label="Dia anterior"
               onClick={() => onChange({ date: shiftDate(date, -1) })}
-              className="rounded-xl border border-space-600 px-3 hover:border-ember-400"
+              className={`${fieldClass} w-12 shrink-0 justify-center px-0 text-lg hover:text-ember-400`}
             >
               ‹
             </button>
@@ -125,7 +121,7 @@ export function DetailView({
               aria-label="Próximo dia"
               disabled={date >= todayUtc()}
               onClick={() => onChange({ date: shiftDate(date, 1) })}
-              className="rounded-xl border border-space-600 px-3 hover:border-ember-400 disabled:opacity-40"
+              className={`${fieldClass} w-12 shrink-0 justify-center px-0 text-lg hover:text-ember-400`}
             >
               ›
             </button>
@@ -188,29 +184,7 @@ export function DetailView({
           aria-label="Mapa de focos"
           className="rounded-2xl border border-space-600 bg-space-900/80 p-5 shadow-[0_10px_40px_rgba(0,0,0,0.35)] backdrop-blur"
         >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="font-display text-lg font-bold">Mapa de focos</h3>
-            <div role="group" aria-label="Tipo de imagem" className="flex gap-1">
-              {VIEWS.map((v) => {
-                const ok = available.has(v.id);
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    disabled={!ok}
-                    aria-pressed={activeView === v.id}
-                    title={ok ? undefined : "Imagem indisponível para esta data/região"}
-                    onClick={() =>
-                      onChange({ view: activeView === v.id ? null : v.id })
-                    }
-                    className="rounded-lg border border-space-600 px-3 py-1 text-small aria-pressed:border-ember-400 aria-pressed:text-ember-400 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {v.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <h3 className="font-display text-lg font-bold">Mapa de focos</h3>
           <div className="mt-3 aspect-[3/2] max-h-[30rem] w-full overflow-hidden rounded-xl border border-space-600">
             {data && data.status !== "unavailable" ? (
               <DayMap
@@ -237,9 +211,6 @@ export function DetailView({
           <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-caption text-ink-300">
             <li><span aria-hidden="true" className="text-fire-400">●</span> VIIRS</li>
             <li><span aria-hidden="true" className="text-ember-400">◆</span> MODIS</li>
-            {!available.size && (
-              <li>Sem imagens térmica/geográfica disponíveis para esta seleção.</li>
-            )}
           </ul>
         </section>
       </div>

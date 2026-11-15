@@ -129,7 +129,7 @@ function Available({ data }: { data: Available }) {
         </ul>
       </section>
 
-      <section aria-labelledby="limits-title" className="rounded-2xl border border-space-600 bg-space-900 p-5">
+      <section aria-labelledby="limits-title" className="surface-card p-5">
         <h2 id="limits-title" className="font-display text-lg font-bold">Limitações do modelo</h2>
         {data.limitations.length ? (
           <ul className="mt-2 list-disc pl-5 text-small text-ink-300">

@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
-import { fieldClass } from "@/components/ui/field";
+import { DatePicker } from "@/features/calendar/components/date-picker";
+import { fieldClass, fieldLabelClass } from "@/components/ui/field";
 import { REGIONS } from "@/config/regions";
 import { useResolvedFilters } from "@/hooks/use-filters";
 import {
@@ -31,12 +32,12 @@ type Draft = {
 };
 
 const chip =
-  "inline-flex items-center gap-2 rounded-full border px-4 text-base font-semibold leading-6 tracking-[-0.02em] transition-colors duration-200";
+  "inline-flex items-center gap-2 rounded-full border px-4 text-small font-semibold leading-6 tracking-[-0.02em] transition-colors duration-200";
 
-const sectionTitle = "mb-3 text-small font-semibold tracking-[-0.02em] text-ink-300";
+const sectionTitle = "mb-3 text-caption font-semibold uppercase tracking-[0.2em] text-ember-400";
 
-const selectedClass = "border-ember-400 bg-space-800 text-ink-100";
-const idleClass = "border-space-600 text-ink-300 hover:border-ink-300";
+const selectedClass = "border-ember-400 bg-ember-400/15 text-ink-100 shadow-[0_0_16px_rgba(255,176,46,0.15)]";
+const idleClass = "border-space-600 bg-space-950/40 text-ink-100 hover:border-ember-400/60";
 
 function daysBetween(from: string, to: string): number {
   return Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 864e5) + 1;
@@ -147,18 +148,17 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
       title="Filtros"
       footer={
         <>
-          <Button variant="ghost" onClick={reset}>
+          <Button variant="secondary" onClick={reset}>
             Limpar
           </Button>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" onClick={onClose}>
+            <Button variant="secondary" onClick={onClose}>
               Cancelar
             </Button>
             <Button
-              variant="secondary"
+              variant="accent"
               onClick={apply}
               disabled={Boolean(problem)}
-              className="border-ember-400 bg-ember-400 text-space-950 hover:brightness-110"
             >
               Aplicar
             </Button>
@@ -181,7 +181,7 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
                   className="peer sr-only"
                 />
                 <span
-                  className={`${chip} h-12 border-space-600 text-ink-300 peer-checked:border-ink-300 peer-checked:bg-space-800 peer-checked:text-ink-100 peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-(--focus-ring)`}
+                  className={`${chip} h-12 border-space-600 bg-space-950/40 text-ink-100 peer-checked:border-ember-400 peer-checked:bg-ember-400/15 peer-checked:text-ink-100 peer-focus-visible:outline-3 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-(--focus-ring)`}
                 >
                   <span aria-hidden style={{ color: SENSOR_META[id].hex }}>
                     {SENSOR_META[id].symbol}
@@ -243,37 +243,48 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
             Área personalizada
           </h3>
           {draft.bbox && (
-            <p className="mb-3 rounded-xl border border-space-600 p-3 font-mono text-small">
-              {draft.bbox}
-            </p>
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-ember-400/50 bg-ember-400/10 px-4 py-3">
+              <p className="min-w-0 truncate font-mono text-small text-ink-100">{draft.bbox}</p>
+              <button
+                type="button"
+                onClick={() => setDraft((d) => ({ ...d, bbox: null }))}
+                className="shrink-0 text-small font-semibold text-ember-400 underline-offset-4 hover:underline"
+              >
+                Remover
+              </button>
+            </div>
           )}
           <div className="flex flex-wrap gap-2">
             {canDraw ? (
               <Button variant="secondary" onClick={startDrawing} disabled={Boolean(problem)}>
                 Desenhar no mapa
               </Button>
-            ) : (
-              <p className="text-small text-ink-300">Para desenhar a área, abra a página do Mapa.</p>
-            )}
+            ) : null}
             <Button
-              variant="ghost"
+              variant="secondary"
               aria-expanded={showCoords}
               onClick={() => setShowCoords((v) => !v)}
             >
               Digitar coordenadas
+              <span aria-hidden className={`text-caption transition-transform ${showCoords ? "rotate-180" : ""}`}>
+                ▾
+              </span>
             </Button>
-            {draft.bbox && (
-              <Button variant="ghost" onClick={() => setDraft((d) => ({ ...d, bbox: null }))}>
-                Remover área
-              </Button>
-            )}
           </div>
+          {!canDraw && (
+            <p className="mt-2 text-caption text-ink-300">
+              Para desenhar a área, abra a página do Mapa.
+            </p>
+          )}
           {showCoords && (
-            <div className="mt-3">
+            <div className="mt-3 rounded-xl border border-space-600 bg-space-950/50 p-4">
               <AreaFields
                 bbox={draft.bbox}
                 fallback={filters.bbox}
-                onChange={(bbox) => setDraft((d) => ({ ...d, bbox }))}
+                onChange={(bbox) => {
+                  setDraft((d) => ({ ...d, bbox }));
+                  if (bbox) setShowCoords(false);
+                }}
               />
             </div>
           )}
@@ -308,36 +319,34 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
           </div>
           {preset === "custom" && (
             <div className="mt-3 grid grid-cols-2 gap-3">
-              <label className="flex flex-col gap-2 text-small font-semibold tracking-[-0.02em] text-ink-300">
-                De
-                <input
-                  type="date"
+              <div>
+                <span id="f-de" className={fieldLabelClass}>De</span>
+                <DatePicker
+                  id="f-de-btn"
+                  label="De"
                   value={effectiveFrom}
                   max={effectiveTo}
-                  onChange={(e) =>
-                    setDraft((d) => ({
-                      ...d,
-                      period: { from: e.target.value || null, to: effectiveTo },
-                    }))
+                  placement="top"
+                  onChange={(d) =>
+                    setDraft((x) => ({ ...x, period: { from: d, to: effectiveTo } }))
                   }
-                  className={`${fieldClass} [color-scheme:dark]`}
                 />
-              </label>
-              <label className="flex flex-col gap-2 text-small font-semibold tracking-[-0.02em] text-ink-300">
-                Até
-                <input
-                  type="date"
+              </div>
+              <div>
+                <span id="f-ate" className={fieldLabelClass}>Até</span>
+                <DatePicker
+                  id="f-ate-btn"
+                  label="Até"
                   value={effectiveTo}
                   min={effectiveFrom}
-                  onChange={(e) =>
-                    setDraft((d) => ({
-                      ...d,
-                      period: { from: effectiveFrom, to: e.target.value || null },
-                    }))
+                  max={today}
+                  placement="top"
+                  align="right"
+                  onChange={(d) =>
+                    setDraft((x) => ({ ...x, period: { from: effectiveFrom, to: d } }))
                   }
-                  className={`${fieldClass} [color-scheme:dark]`}
                 />
-              </label>
+              </div>
             </div>
           )}
         </section>

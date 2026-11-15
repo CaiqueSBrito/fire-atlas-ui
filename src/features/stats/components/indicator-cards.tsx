@@ -23,7 +23,7 @@ function Card({
 }) {
   const missing = value === null || value === undefined;
   return (
-    <div className="rounded-2xl border border-space-600 bg-space-800 p-5">
+    <div className="surface-card p-5">
       <p className="flex items-center gap-2 text-small text-ink-300">
         {symbol && (
           <span aria-hidden style={{ color }}>

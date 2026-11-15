@@ -168,55 +168,32 @@ describe("DetailView — alterações sem voltar ao calendário (RN06 / CA03)", 
   });
 });
 
-describe("DetailView — térmica / geográfica só com imagem (RN07)", () => {
-  it("sem imagens: os dois botões ficam desativados", async () => {
+describe("DetailView — imagem térmica / geográfica (RN07)", () => {
+  it("não mostra botões de alternância de imagem", async () => {
     setup();
     await screen.findByRole("article");
-    expect(screen.getByRole("button", { name: "Térmica" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Geográfica" })).toBeDisabled();
-    expect(
-      screen.getByText(/Sem imagens térmica\/geográfica disponíveis/),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Térmica" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Geográfica" })).toBeNull();
   });
 
-  it("habilita só o tipo que existe", async () => {
-    mockedFetchDay.mockResolvedValue(makeDay(ACTIVE, "bahia", "all", [THERMAL]));
-    setup();
-    await screen.findByRole("article");
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Térmica" })).toBeEnabled(),
-    );
-    expect(screen.getByRole("button", { name: "Geográfica" })).toBeDisabled();
-  });
-
-  it("alternar avisa o pai e, ativo, mostra a imagem com fonte e data", async () => {
+  it("view na URL com imagem correspondente mostra a imagem com fonte e data", async () => {
     mockedFetchDay.mockResolvedValue(
       makeDay(ACTIVE, "bahia", "all", [THERMAL, GEOGRAPHIC]),
     );
-    const { onChange } = setup({ view: "thermal" });
+    setup({ view: "thermal" });
     const card = await screen.findByRole("article");
-    const toggle = screen.getByRole("button", { name: "Térmica" });
-    await waitFor(() => expect(toggle).toBeEnabled());
-    expect(toggle).toHaveAttribute("aria-pressed", "true");
-    expect(within(card).getByRole("img", { name: /térmica/ })).toHaveAttribute(
-      "src",
-      THERMAL.url,
+    await waitFor(() =>
+      expect(within(card).getByRole("img", { name: /térmica/ })).toHaveAttribute(
+        "src",
+        THERMAL.url,
+      ),
     );
     expect(within(card).getByText(/NASA GIBS · imagem de 04\/11\/2026/)).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: "Geográfica" }));
-    expect(onChange).toHaveBeenCalledWith({ view: "geographic" });
-    await userEvent.click(toggle); // desligar o ativo
-    expect(onChange).toHaveBeenLastCalledWith({ view: null });
   });
 
   it("view na URL sem imagem correspondente é ignorada", async () => {
     setup({ view: "geographic" });
     const card = await screen.findByRole("article");
     expect(within(card).queryByRole("img", { name: /geográfica/ })).toBeNull();
-    expect(screen.getByRole("button", { name: "Geográfica" })).toHaveAttribute(
-      "aria-pressed",
-      "false",
-    );
   });
 });

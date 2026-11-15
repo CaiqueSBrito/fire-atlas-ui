@@ -8,7 +8,7 @@ describe("Hero", () => {
   it("tem um único título principal", () => {
     render(<Hero />);
     expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
-      "Focos de calor do planeta, em um só atlas.",
+      "MODIS e VIIRS, um só calendário de queimadas.",
     );
   });
 

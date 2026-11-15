@@ -60,7 +60,7 @@ export function StatsDashboard() {
           </div>
         </div>
 
-        <section aria-labelledby="meta-title" className="rounded-2xl border border-space-600 bg-space-900 p-5 text-small text-ink-300">
+        <section aria-labelledby="meta-title" className="surface-card p-5 text-small text-ink-300">
           <h2 id="meta-title" className="font-display text-base font-bold text-ink-100">
             Metadados
           </h2>

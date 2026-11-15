@@ -46,7 +46,9 @@ export function AreaFields({
             key={f.key}
             className="flex flex-col gap-2 text-small font-semibold tracking-[-0.02em] text-ink-300"
           >
-            {f.label}
+            <span>
+              {f.label} <span className="font-normal text-ink-300/70">({f.hint})</span>
+            </span>
             <input
               inputMode="decimal"
               value={values[f.key]}
@@ -55,7 +57,7 @@ export function AreaFields({
               }
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? "area-error" : undefined}
-              placeholder={f.hint}
+              placeholder="0"
               className={`${fieldClass} w-full font-mono`}
             />
           </label>
@@ -67,14 +69,9 @@ export function AreaFields({
         </p>
       )}
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" variant="secondary">
+        <Button type="submit" variant="accent">
           Usar esta área
         </Button>
-        {bbox && (
-          <Button variant="ghost" onClick={() => onChange(null)}>
-            Remover área
-          </Button>
-        )}
       </div>
     </form>
   );

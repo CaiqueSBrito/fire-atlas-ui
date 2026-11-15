@@ -1,7 +1,7 @@
 import type { ButtonHTMLAttributes } from "react";
 import { cn } from "@/lib/utils/cn";
 
-type Variant = "primary" | "secondary" | "ghost";
+type Variant = "primary" | "secondary" | "ghost" | "accent";
 type Size = "md" | "lg";
 
 const base =
@@ -13,6 +13,8 @@ const variants: Record<Variant, string> = {
   secondary:
     "border border-space-600 bg-space-800 text-ink-100 hover:border-ink-300",
   ghost: "text-ink-300 hover:text-ink-100",
+  accent:
+    "border border-ember-400 bg-ember-400 text-space-950 hover:brightness-110",
 };
 
 const sizes: Record<Size, string> = {

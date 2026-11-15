@@ -54,10 +54,18 @@ export function HeroGlobe() {
       <div aria-hidden className="absolute inset-0 -z-20">
         <GlobeLoader onPick={onPick} onHover={onHover} />
       </div>
+      {!label && (
+        <p
+          aria-hidden
+          className="pointer-events-none absolute bottom-6 right-6 z-10 hidden text-caption uppercase tracking-[0.2em] text-ink-300 sm:block"
+        >
+          Arraste o globo · clique num continente
+        </p>
+      )}
       {label && (
         <p
           aria-hidden
-          className="pointer-events-none absolute bottom-6 right-6 z-10 rounded-full border border-space-600 bg-space-900/85 px-4 py-2 text-small"
+          className="pointer-events-none absolute bottom-6 right-6 z-10 rounded-full border border-ember-400/40 bg-space-900/85 px-4 py-2 text-small backdrop-blur"
         >
           Clique para explorar: <strong>{label}</strong>
         </p>

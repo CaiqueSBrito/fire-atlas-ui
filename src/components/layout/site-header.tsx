@@ -3,7 +3,7 @@ import { MainNav } from "./main-nav";
 
 export function SiteHeader() {
   return (
-    <header className="border-b border-space-600 bg-space-950">
+    <header className="sticky top-0 z-40 border-b border-space-600 bg-space-950/90 backdrop-blur">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-6 gap-y-1 px-4 py-2">
         <Logo />
         <div className="order-last w-full md:order-none md:w-auto">

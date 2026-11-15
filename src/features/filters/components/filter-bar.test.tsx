@@ -1,4 +1,4 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useDrawMode } from "@/providers/draw-mode";
@@ -113,8 +113,8 @@ describe("FilterBar — modal de filtros", () => {
     expect(within(dialog).getByRole("checkbox", { name: /VIIRS/ })).toBeChecked();
     expect(within(dialog).getByRole("radio", { name: "Brasil" })).toHaveAttribute("aria-checked", "true");
     expect(within(dialog).getByRole("button", { name: "Personalizado" })).toHaveAttribute("aria-pressed", "true");
-    expect(within(dialog).getByLabelText("De")).toHaveValue("2026-10-01");
-    expect(within(dialog).getByLabelText("Até")).toHaveValue("2026-10-31");
+    expect(within(dialog).getByRole("button", { name: "De: 01/10/2026" })).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "Até: 31/10/2026" })).toBeInTheDocument();
   });
 
   it("aplica sensores, local e período de uma vez", async () => {
@@ -155,12 +155,25 @@ describe("FilterBar — modal de filtros", () => {
   });
 
   it("período personalizado invertido ou longo demais bloqueia o Aplicar", async () => {
-    renderWithProviders(<FilterBar />);
+    renderWithProviders(<FilterBar />, { searchParams: "?from=2024-01-01&to=2026-10-31" });
     const dialog = await openModal();
-    await userEvent.click(within(dialog).getByRole("button", { name: "Personalizado" }));
-    fireEvent.change(within(dialog).getByLabelText("De"), { target: { value: "2024-01-01" } });
     expect(within(dialog).getByRole("alert")).toHaveTextContent("período máximo");
     expect(within(dialog).getByRole("button", { name: "Aplicar" })).toBeDisabled();
+  });
+
+  it("escolhe a data inicial no calendário próprio e Esc fecha só o calendário", async () => {
+    renderWithProviders(<FilterBar />, { searchParams: "?from=2026-10-10&to=2026-10-20" });
+    const dialog = await openModal();
+    await userEvent.click(within(dialog).getByRole("button", { name: "De: 10/10/2026" }));
+    expect(screen.getByRole("dialog", { name: "Escolher data" })).toBeInTheDocument();
+    // depois do fim do período, o dia fica desativado
+    expect(within(screen.getByRole("dialog", { name: "Escolher data" })).getByRole("button", { name: "25" })).toBeDisabled();
+    await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog", { name: "Escolher data" })).not.toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Filtros" })).toBeInTheDocument();
+    await userEvent.click(within(dialog).getByRole("button", { name: "De: 10/10/2026" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Escolher data" })).getByRole("button", { name: "5" }));
+    expect(within(dialog).getByRole("button", { name: "De: 05/10/2026" })).toBeInTheDocument();
   });
 
   it("busca filtra as regiões", async () => {

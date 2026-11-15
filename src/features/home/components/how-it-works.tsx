@@ -17,20 +17,23 @@ const STEPS = [
 
 export function HowItWorks() {
   return (
-    <Section id="how" title="O que a plataforma propõe">
-      <ol className="grid gap-4 md:grid-cols-3">
+    <Section id="how" index="02" title="O que a plataforma propõe">
+      <ol className="divide-y divide-space-600 border-y border-space-600">
         {STEPS.map((step, i) => (
-          <li
-            key={step.title}
-            className="rounded-2xl border border-space-600 bg-space-800 p-6"
-          >
-            <span className="font-mono text-small text-ember-400">
-              Passo {i + 1}
+          <li key={step.title} className="grid grid-cols-[3.5rem_1fr] gap-4 py-6">
+            <span
+              aria-hidden
+              className="font-display text-4xl font-bold leading-none text-space-600"
+            >
+              {String(i + 1).padStart(2, "0")}
             </span>
-            <h3 className="mt-1 font-display text-xl font-bold">
-              {step.title}
-            </h3>
-            <p className="mt-2 text-ink-300">{step.text}</p>
+            <div>
+              <h3 className="font-display text-xl font-bold">
+                <span className="sr-only">Passo {i + 1}: </span>
+                {step.title}
+              </h3>
+              <p className="mt-1 max-w-xl text-ink-300">{step.text}</p>
+            </div>
           </li>
         ))}
       </ol>

@@ -7,7 +7,7 @@ export function LoadingState({
     <div
       role="status"
       aria-live="polite"
-      className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-space-600 bg-space-900 p-10 text-center"
+      className="flex flex-col items-center justify-center gap-4 surface-card p-10 text-center"
     >
       <span
         aria-hidden

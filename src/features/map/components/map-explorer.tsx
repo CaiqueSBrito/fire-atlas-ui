@@ -294,7 +294,7 @@ export function MapExplorer() {
             onClick={() => setPanelOpen(true)}
             aria-controls="painel-mapa"
             aria-expanded="false"
-            className="absolute bottom-4 left-4 z-10 inline-flex h-12 items-center gap-2 rounded-full border-2 border-ember-400 bg-space-900/95 px-4 text-base font-semibold leading-6 tracking-[-0.02em] text-ink-100 shadow-lg transition-colors duration-200 hover:bg-space-800"
+            className="reopen-bar absolute bottom-4 left-4 z-10 inline-flex h-12 items-center gap-2 rounded-full border-2 border-ember-400 bg-space-900/95 px-4 text-base font-semibold leading-6 tracking-[-0.02em] text-ink-100 shadow-lg transition-colors duration-200 hover:bg-space-800"
           >
             <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4 text-ember-400" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 6h16M4 12h16M4 18h16" />
@@ -378,11 +378,16 @@ export function MapExplorer() {
         )}
       </div>
 
+      <div
+        className="side-wrap map-side order-2 lg:order-1 lg:shrink-0 lg:self-start"
+        data-open={panelOpen}
+      >
+        <div className="side-inner" inert={!panelOpen}>
       <aside
         id="painel-mapa"
         aria-label="Painel do mapa"
-        hidden={!panelOpen}
-        className="order-2 flex w-full flex-col gap-5 rounded-t-[32px] border border-space-600 bg-space-900 p-4 text-small leading-5 tracking-[-0.03em] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] lg:order-1 lg:m-3 lg:max-h-[calc(100svh-10.5rem)] lg:w-[16.5rem] lg:shrink-0 lg:self-start lg:overflow-y-auto lg:rounded-[32px]"
+        aria-hidden={!panelOpen}
+        className="flex w-full flex-col gap-5 rounded-t-[32px] border border-space-600 bg-space-900 p-4 text-small leading-5 tracking-[-0.03em] lg:m-3 lg:max-h-[calc(100svh-10.5rem)] lg:w-[16.5rem] lg:overflow-y-auto lg:rounded-[32px]"
       >
         <button
           type="button"
@@ -422,6 +427,8 @@ export function MapExplorer() {
           )}
         </Group>
       </aside>
+        </div>
+      </div>
     </main>
   );
 }

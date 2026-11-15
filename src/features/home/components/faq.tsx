@@ -21,14 +21,14 @@ const QUESTIONS = [
 
 export function Faq() {
   return (
-    <Section id="faq" title="Perguntas frequentes">
-      <div className="flex max-w-3xl flex-col gap-3">
+    <Section id="faq" index="04" title="Perguntas frequentes">
+      <div className="divide-y divide-space-600 border-y border-space-600">
         {QUESTIONS.map((item) => (
           <details
             key={item.q}
-            className="group rounded-2xl border border-space-600 bg-space-800 p-5"
+            className="group py-4"
           >
-            <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-4 font-semibold">
+            <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-4 font-display text-lg font-semibold">
               {item.q}
               <span
                 aria-hidden
@@ -37,7 +37,7 @@ export function Faq() {
                 +
               </span>
             </summary>
-            <p className="mt-3 text-ink-300">{item.a}</p>
+            <p className="mt-2 max-w-2xl pr-8 text-ink-300">{item.a}</p>
           </details>
         ))}
       </div>

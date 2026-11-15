@@ -34,7 +34,7 @@ export function Toggle({
         aria-describedby={description ? `${id}-desc` : undefined}
         onClick={() => onChange(!checked)}
         className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition-colors focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--focus-ring) ${
-          checked ? "border-ember-400 bg-ember-400" : "border-space-600 bg-space-700"
+          checked ? "border-ember-400 bg-ember-400" : "border-space-600 bg-space-600"
         }`}
       >
         <span

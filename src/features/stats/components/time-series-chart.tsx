@@ -79,7 +79,7 @@ export function TimeSeriesChart({
   const point = active !== null ? series[active] : null;
 
   return (
-    <figure aria-labelledby={titleId} className="rounded-2xl border border-space-600 bg-space-800 p-5">
+    <figure aria-labelledby={titleId} className="surface-card p-5">
       <figcaption id={titleId} className="font-display text-lg font-bold">
         Detecções por dia
         <span className="ml-2 text-small font-normal text-ink-300">(detecções/dia)</span>

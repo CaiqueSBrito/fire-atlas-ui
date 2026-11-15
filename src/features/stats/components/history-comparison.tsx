@@ -5,7 +5,7 @@ const fmt = (n: number) => n.toLocaleString("pt-BR");
 
 export function HistoryComparison({ history }: { history: StatsResponse["history"] }) {
   return (
-    <section aria-labelledby="history-title" className="rounded-2xl border border-space-600 bg-space-800 p-5">
+    <section aria-labelledby="history-title" className="surface-card p-5">
       <h2 id="history-title" className="font-display text-lg font-bold">
         Comparação histórica
       </h2>

@@ -76,7 +76,7 @@ export function Dialog({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="relative flex max-h-[92svh] w-full max-w-xl flex-col rounded-t-[32px] border border-space-600 bg-space-900 p-4 shadow-2xl sm:rounded-[32px]"
+        className="relative flex max-h-[92svh] w-full max-w-xl flex-col rounded-t-[32px] border border-space-600 panel-surface p-4 shadow-2xl sm:rounded-[32px]"
       >
         <div className="flex items-center justify-between gap-3 px-2 pb-3 pt-1">
           <h2 id={titleId} className="font-display text-xl font-bold">
