@@ -50,12 +50,12 @@ describe("apiFetch", () => {
     });
   });
 
-  it("preserva o motivo RFC 7807 do 503 para o usuário", async () => {
+  it("preserva o motivo RFC 7807 de um 5xx para o usuário", async () => {
     const { apiFetch } = await loadClient();
-    const detail = "Fonte temporariamente indisponível.";
-    fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail }), { status: 503 }));
+    const detail = "Banco de dados indisponível.";
+    fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail }), { status: 500 }));
     await expect(apiFetch("/forecast")).rejects.toMatchObject({
-      message: expect.stringContaining(detail), status: 503, recoverable: true,
+      message: expect.stringContaining(detail), status: 500, recoverable: true,
     });
   });
 

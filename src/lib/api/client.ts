@@ -1,7 +1,6 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
 
-// O Athena pode consumir 30 s no backend; a margem inclui a transferência e a leitura do JSON.
-const TIMEOUT_MS = 45_000;
+const TIMEOUT_MS = 20_000;
 
 export const hasApi = Boolean(BASE_URL);
 
@@ -64,7 +63,10 @@ export async function apiFetch<T>(
   } catch (error) {
     if (signal?.aborted) throw signal.reason;
     if (timeout.aborted) {
-      throw new ApiError("A consulta ultrapassou 45 s. Reduza o período ou a área e tente novamente.", 408);
+      throw new ApiError(
+        `A consulta ultrapassou ${TIMEOUT_MS / 1000} s. Reduza o período ou a área e tente novamente.`,
+        408,
+      );
     }
     if (error instanceof ApiError) throw error;
     throw new ApiError("Não foi possível conectar ao servidor.");

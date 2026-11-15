@@ -15,8 +15,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
             refetchOnWindowFocus: false,
             retry: (count, error) =>
               count < 2 && !(error instanceof ApiError && !error.recoverable),
-            // falha do data lake costuma ser transitoria (throttle/tempo): espera crescente em vez de martelar
-            retryDelay: (attempt) => Math.min(4_000, 600 * 2 ** attempt),
+            retryDelay: 600,
           },
         },
       }),
