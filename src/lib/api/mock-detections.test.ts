@@ -83,8 +83,8 @@ describe("estatísticas × mapa (NASA-014)", () => {
 
 describe("previsão (NASA-015)", () => {
   it("sem serviço configurado informa indisponibilidade e nenhuma estimativa (RN04)", async () => {
-    const r = await fetchForecast("brasil", q.bbox);
+    const r = await fetchForecast(q.bbox);
     expect(r.status).toBe("unavailable");
-    expect(JSON.stringify(r)).not.toMatch(/areas|frpPredicted|confidence/);
+    expect(JSON.stringify(r)).not.toMatch(/probability|cells|summary/);
   });
 });

@@ -1,26 +1,27 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { fetchDay, fetchMonth } from "@/lib/api/calendar";
-import type { PassTime } from "@/types/calendar";
+import { fetchActivityMonth, fetchDaySatellites, fetchMonthAnomaly } from "@/lib/api/activity";
 
-export function useMonthQuery(month: string, region: string) {
+export function useActivityMonth(month: string, region: string) {
   return useQuery({
-    queryKey: ["calendar", "month", month, region],
-    queryFn: ({ signal }) => fetchMonth(month, region, signal),
+    queryKey: ["calendar", "activity", month, region],
+    queryFn: ({ signal }) => fetchActivityMonth(month, region, signal),
+    placeholderData: keepPreviousData,
   });
 }
 
-export function useDayQuery(
-  date: string | null,
-  region: string,
-  passTime: PassTime,
-) {
+export function useMonthAnomaly(month: string, region: string) {
   return useQuery({
-    queryKey: ["calendar", "day", date, region, passTime],
-    queryFn: ({ signal }) => fetchDay(date!, region, passTime, signal),
+    queryKey: ["calendar", "anomaly", month, region],
+    queryFn: ({ signal }) => fetchMonthAnomaly(month, region, signal),
+  });
+}
+
+export function useDaySatellites(date: string | null) {
+  return useQuery({
+    queryKey: ["calendar", "satellites", date],
+    queryFn: ({ signal }) => fetchDaySatellites(date!, signal),
     enabled: !!date,
-    // mantém a carta anterior enquanto a nova seleção carrega (RN06/CA03)
-    placeholderData: keepPreviousData,
   });
 }
