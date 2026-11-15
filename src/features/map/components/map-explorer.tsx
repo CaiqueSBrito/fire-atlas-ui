@@ -5,12 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { useDetections, useMapForecast } from "@/hooks/use-detections";
 import { useResolvedFilters } from "@/hooks/use-filters";
 import { useMapLayers } from "@/hooks/use-map-layers";
 import { useQueryArea } from "@/hooks/use-query-area";
 import { useDrawMode } from "@/providers/draw-mode";
-import { ApiError, hasApi } from "@/lib/api/client";
+import { hasApi } from "@/lib/api/client";
 import { getRegion } from "@/config/regions";
 import { imageryDateFor } from "@/lib/map-layers";
 import type { ContinentId } from "@/lib/utils/continent";
@@ -113,16 +114,7 @@ export function MapExplorer() {
   } else if (enabled && isPending) {
     overlay = <LoadingState label="Carregando detecções…" />;
   } else if (error) {
-    overlay = (
-      <ErrorState
-        message={error.message}
-        onRetry={
-          error instanceof ApiError && !error.recoverable
-            ? undefined
-            : () => void refetch()
-        }
-      />
-    );
+    overlay = <QueryErrorState error={error} onRetry={() => void refetch()} />;
   } else if (data && (grid ? grid.cells.length === 0 : data.items.length === 0)) {
     overlay = (
       <EmptyState

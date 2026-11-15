@@ -16,18 +16,23 @@ export type HomeSummary = {
   viirs: number;
 };
 
+const WORLD_RESOLUTION = 0;
 const worldCells = () => getRes0Cells().join(",");
 
-async function lastDay(): Promise<string | null> {
-  const coverage = await fetchCoverage();
-  return coverage.maxDate;
+async function latestWindow(days: number): Promise<{ from: string; to: string } | null> {
+  const coverage = await fetchCoverage("grid");
+  const periods = coverage.periods[WORLD_RESOLUTION] ?? [];
+  const last = periods[periods.length - 1];
+  if (!last) return null;
+  const from = shiftDate(last.to, -(days - 1));
+  return { from: from > last.from ? from : last.from, to: last.to };
 }
 
 export async function fetchHomeSummary(signal?: AbortSignal): Promise<HomeSummary | null> {
   if (!hasApi) return null;
-  const to = await lastDay();
-  if (!to) return null;
-  const from = shiftDate(to, -(SUMMARY_DAYS - 1));
+  const period = await latestWindow(SUMMARY_DAYS);
+  if (!period) return null;
+  const { from, to } = period;
   const raw = await apiFetch<ApiCountResponse>(
     "/detections/count",
     { cells: worldCells(), start: from, end: to, sensor: "BOTH" },
@@ -43,11 +48,11 @@ export async function fetchTopHotspots(
   limit = HOTSPOT_LIMIT,
 ): Promise<Array<[number, number]> | null> {
   if (!hasApi) return null;
-  const to = await lastDay();
-  if (!to) return null;
+  const period = await latestWindow(HOTSPOT_DAYS);
+  if (!period) return null;
   const raw = await apiFetch<ApiDetectionsResponse>(
     "/detections",
-    { cells: worldCells(), start: shiftDate(to, -(HOTSPOT_DAYS - 1)), end: to, sensor: "BOTH", zoom: "3" },
+    { cells: worldCells(), start: period.from, end: period.to, sensor: "BOTH", zoom: "3" },
     signal,
   );
   const totals = new Map<string, number>();

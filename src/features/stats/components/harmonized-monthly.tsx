@@ -1,7 +1,7 @@
 "use client";
 
 import { useId } from "react";
-import { ErrorState } from "@/components/feedback/error-state";
+import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { HARMONIZED_META } from "@/lib/sensors";
 import { monthShortName } from "@/lib/utils/dates";
 import type { HarmonizedMonth, HarmonizedMonthly } from "@/types/stats";
@@ -114,9 +114,9 @@ export function HarmonizedMonthlyPanel({
   let body: React.ReactNode;
   if (error) {
     body = (
-      <ErrorState
+      <QueryErrorState
         title="Não foi possível carregar a atividade harmonizada"
-        message={error.message}
+        error={error}
         onRetry={onRetry}
       />
     );

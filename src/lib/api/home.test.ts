@@ -1,16 +1,33 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const COVERAGE = [
-  { sensor: "MODIS", minDate: "2000-11-01", maxDate: "2026-11-13", detections: 1 },
-  { sensor: "VIIRS", minDate: "2012-01-20", maxDate: "2026-11-13", detections: 1 },
-];
+const gridImport = (resolution: number, minDate: string, maxDate: string) => ({
+  product: "map_grid",
+  sensor: "MODIS,VIIRS",
+  sourceKey: `gold/map_grid/resolution=${resolution}/year=2026@v313`,
+  bbox: "global",
+  periodStart: minDate,
+  periodEnd: "2026-11-15",
+  status: "COMPLETED",
+  error: null,
+  rowsLoaded: 10,
+  rowsRejected: 0,
+  expectedRows: 10,
+  verified: true,
+  sourceSha256: null,
+  minDate,
+  maxDate,
+  loadedAt: "2026-11-15T12:00:00Z",
+});
+
+const SOURCES = [gridImport(0, "2026-09-01", "2026-11-13"), gridImport(3, "2026-09-01", "2026-11-13")];
+let sources: unknown[] = SOURCES;
 
 const fetchMock = vi.fn();
 const calls = () => fetchMock.mock.calls.map((c) => new URL(String(c[0])));
 
 function respond(url: URL) {
   const path = url.pathname.replace("/api/v2", "");
-  if (path === "/meta/coverage") return COVERAGE;
+  if (path === "/meta/sources") return sources;
   if (path === "/detections/count") {
     return {
       total: 5000,
@@ -45,6 +62,7 @@ async function load(withApi = true) {
 
 beforeEach(() => {
   fetchMock.mockReset();
+  sources = SOURCES;
   fetchMock.mockImplementation(async (input: URL) => new Response(JSON.stringify(respond(new URL(String(input))))));
   vi.stubGlobal("fetch", fetchMock);
 });
@@ -54,7 +72,7 @@ afterEach(() => {
 });
 
 describe("fetchHomeSummary", () => {
-  it("soma o planeta inteiro nos últimos 30 dias que têm dado", async () => {
+  it("soma o planeta inteiro nos últimos 30 dias importados", async () => {
     const { fetchHomeSummary } = await load();
     const out = await fetchHomeSummary();
     expect(out).toEqual({ from: "2026-10-15", to: "2026-11-13", total: 5000, modis: 300, viirs: 4700 });
@@ -62,6 +80,19 @@ describe("fetchHomeSummary", () => {
     expect(url.searchParams.get("cells")!.split(",")).toHaveLength(122);
     expect(url.searchParams.get("start")).toBe("2026-10-15");
     expect(url.searchParams.get("end")).toBe("2026-11-13");
+  });
+
+  it("com a janela curta do script, soma só os dias importados", async () => {
+    sources = [gridImport(0, "2026-11-08", "2026-11-13")];
+    const { fetchHomeSummary } = await load();
+    expect(await fetchHomeSummary()).toMatchObject({ from: "2026-11-08", to: "2026-11-13" });
+  });
+
+  it("sem a resolução 0 da grade importada, não mostra números do planeta", async () => {
+    sources = [gridImport(3, "2026-11-08", "2026-11-13")];
+    const { fetchHomeSummary } = await load();
+    expect(await fetchHomeSummary()).toBeNull();
+    expect(calls().some((u) => u.pathname.endsWith("/detections/count"))).toBe(false);
   });
 
   it("sem API configurada não consulta nada nem inventa números", async () => {

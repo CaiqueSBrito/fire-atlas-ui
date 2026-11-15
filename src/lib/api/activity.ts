@@ -17,7 +17,7 @@ import {
   toMonthAnomaly,
 } from "./adapters";
 import { apiFetch, hasApi } from "./client";
-import { fetchCoverage } from "./coverage";
+import { requireCoverage } from "./coverage";
 import { mockActivityMonth, mockDaySatellites, mockMonthAnomaly } from "./mock-activity";
 
 export const UNIT_LABEL_FALLBACK =
@@ -34,11 +34,15 @@ const CONTINENTS: Record<string, string> = {
 
 const COUNTRIES: Record<string, string> = { brasil: "BR" };
 
-export async function activityRegionParams(region: string): Promise<Record<string, string>> {
-  if (CONTINENTS[region]) return { continent: CONTINENTS[region] };
-  if (COUNTRIES[region]) return { country: COUNTRIES[region] };
-  const coverage = await fetchCoverage();
-  return { cells: cellsForBbox(getRegion(region).bbox, coverage.resolutions).cells.join(",") };
+async function harmonizedCells(bbox: Bbox): Promise<Record<string, string>> {
+  const coverage = await requireCoverage("cells");
+  return { cells: cellsForBbox(bbox, coverage.resolutions).cells.join(",") };
+}
+
+async function activityRegionParams(region: string): Promise<Record<string, string>> {
+  if (!CONTINENTS[region] && !COUNTRIES[region]) return harmonizedCells(getRegion(region).bbox);
+  await requireCoverage("cells");
+  return CONTINENTS[region] ? { continent: CONTINENTS[region] } : { country: COUNTRIES[region] };
 }
 
 export async function fetchActivityMonth(
@@ -112,7 +116,7 @@ export async function fetchHarmonizedMonthly(
   if (!hasApi) return null;
   const end = monthOf(area.to);
   const region = area.customArea
-    ? { cells: cellsForBbox(area.bbox, (await fetchCoverage()).resolutions).cells.join(",") }
+    ? await harmonizedCells(area.bbox)
     : await activityRegionParams(area.regionId);
   const raw = await apiFetch<ApiActivityMonthlyResponse>(
     "/activity/monthly",

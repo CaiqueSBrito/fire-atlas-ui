@@ -2,13 +2,12 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ErrorState } from "@/components/feedback/error-state";
+import { QueryErrorState } from "@/components/feedback/query-error-state";
 import type { Region } from "@/config/regions";
 import { FireMap } from "@/features/map/components/fire-map-loader";
 import { useQueryArea } from "@/hooks/use-query-area";
+import { useRegionKey } from "@/hooks/use-region-key";
 import { fetchDetections } from "@/lib/api/detections";
-import { ApiError } from "@/lib/api/client";
-import { regionQueryKey } from "@/lib/api/query-region";
 import type { BasemapId, PlotId } from "@/lib/map-layers";
 import { SENSORS } from "@/lib/sensors";
 import { gridPlotPoints } from "@/lib/utils/hex";
@@ -46,12 +45,13 @@ export function DayLiveMap({
   const [viewportState, setViewportState] = useState<{ key: string; bbox: Bbox } | null>(null);
   const viewport = viewportState?.key === baseKey ? viewportState.bbox : null;
   const area = useQueryArea(viewport, base, true);
-  const queryRegion = useMemo(() => regionQueryKey(area, true), [area]);
+  const queryRegion = useRegionKey(area, "cells", true);
 
   const query = useQuery({
-    queryKey: ["calendar", "day-grid", date, queryRegion],
+    queryKey: ["calendar", "day-grid", date, queryRegion.key],
     queryFn: ({ signal }) =>
       fetchDetections({ sensors: [...SENSORS], from: date, to: date, bbox: area }, null, signal),
+    enabled: queryRegion.ready,
     placeholderData: keepPreviousData,
   });
 
@@ -113,10 +113,10 @@ export function DayLiveMap({
       )}
       {query.isError && (
         <div className="absolute inset-x-3 top-3 z-10">
-          <ErrorState
+          <QueryErrorState
             title="Não foi possível carregar o mapa"
-            message={query.error instanceof Error ? query.error.message : undefined}
-            onRetry={query.error instanceof ApiError && !query.error.recoverable ? undefined : () => void query.refetch()}
+            error={query.error}
+            onRetry={() => void query.refetch()}
           />
         </div>
       )}

@@ -69,7 +69,7 @@ export function LiveStats() {
         </div>
       </dl>
       <p className="mt-2 text-caption text-ink-300">
-        Planeta inteiro, {br(data.from)} a {br(data.to)} (últimos 30 dias com dados). Detecções de
+        Planeta inteiro, {br(data.from)} a {br(data.to)} (período mais recente importado, até 30 dias). Detecções de
         satélite, não número de incêndios; MODIS e VIIRS não são diretamente comparáveis.
       </p>
     </section>

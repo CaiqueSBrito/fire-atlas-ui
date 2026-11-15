@@ -1,5 +1,6 @@
 import { screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { NotImportedError } from "@/lib/api/coverage";
 import { fetchDetections } from "@/lib/api/detections";
 import { detectionsResponse } from "@/test/detection-fixtures";
 import { renderWithProviders } from "@/test/render";
@@ -94,6 +95,14 @@ describe("MapExplorer com dados agregados por célula H3", () => {
     mocked.mockResolvedValue({ ...gridResponse(), truncated: true });
     renderWithProviders(<MapExplorer />);
     expect(await screen.findByRole("note")).toBeVisible();
+  });
+
+  it("sem importação concluída mostra o estado vazio pedindo para rodar o script, sem nova tentativa", async () => {
+    mocked.mockRejectedValue(new NotImportedError("cells"));
+    renderWithProviders(<MapExplorer />);
+    expect(await screen.findByRole("heading", { name: "Nenhum dado importado" })).toBeInTheDocument();
+    expect(screen.getByText(/scripts\/atualizar\.sh/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tentar novamente" })).not.toBeInTheDocument();
   });
 
   it("sem células informa vazio sem afirmar ausência de fogo", async () => {

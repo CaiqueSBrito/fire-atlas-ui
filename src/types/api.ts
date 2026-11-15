@@ -184,12 +184,23 @@ export type ApiHistoricalResponse = {
   sensors: ApiHistoricalSensor[];
 };
 
-/** GET /meta/coverage: periodo coberto por sensor, lido direto do data lake. */
-export type ApiCoverage = {
+export type ApiSource = {
+  product: string;
   sensor: string;
+  sourceKey: string;
+  bbox: string | null;
+  periodStart: string;
+  periodEnd: string;
+  status: "COMPLETED" | "FAILED";
+  error: string | null;
+  rowsLoaded: number;
+  rowsRejected: number;
+  expectedRows: number | null;
+  verified: boolean;
+  sourceSha256: string | null;
   minDate: string | null;
   maxDate: string | null;
-  detections: number;
+  loadedAt: string;
 };
 
 export type ApiForecastItem = {

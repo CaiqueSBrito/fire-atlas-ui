@@ -2,12 +2,11 @@
 
 import { useSyncExternalStore } from "react";
 import { useQueryStates } from "nuqs";
-import { ErrorState } from "@/components/feedback/error-state";
+import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { Select } from "@/components/ui/select";
 import { REGIONS, getRegion } from "@/config/regions";
 import { useMapLayers } from "@/hooks/use-map-layers";
 import { cn } from "@/lib/utils/cn";
-import { ApiError } from "@/lib/api/client";
 import { parseBbox, validateBbox } from "@/lib/utils/bbox";
 import { parseMapPlace, readMapPlaceRaw, subscribeMapPlace } from "@/lib/utils/map-place";
 import {
@@ -161,10 +160,7 @@ export function CalendarView() {
 
       {monthQuery.isError && !data ? (
         <div className="mt-6">
-          <ErrorState
-            message={monthQuery.error instanceof Error ? monthQuery.error.message : "Falha ao carregar o mês."}
-            onRetry={monthQuery.error instanceof ApiError && !monthQuery.error.recoverable ? undefined : () => void monthQuery.refetch()}
-          />
+          <QueryErrorState error={monthQuery.error} onRetry={() => void monthQuery.refetch()} />
         </div>
       ) : (
         <div className="mt-6 grid gap-6 lg:grid-cols-12" aria-busy={monthQuery.isFetching}>
@@ -194,10 +190,10 @@ export function CalendarView() {
               />
             )}
             {monthQuery.isError && data && (
-              <ErrorState
+              <QueryErrorState
                 title="Não foi possível atualizar o mês"
-                message={monthQuery.error instanceof Error ? monthQuery.error.message : undefined}
-                onRetry={monthQuery.error instanceof ApiError && !monthQuery.error.recoverable ? undefined : () => void monthQuery.refetch()}
+                error={monthQuery.error}
+                onRetry={() => void monthQuery.refetch()}
               />
             )}
           </div>

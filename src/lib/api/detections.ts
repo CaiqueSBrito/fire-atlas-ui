@@ -11,7 +11,7 @@ import type { DetectionQuery, DetectionsResponse } from "@/types/detections";
 import type { StatsResponse } from "@/types/stats";
 import { sensorParam, toActivityGrid, toStatsResponse } from "./adapters";
 import { apiFetch, hasApi } from "./client";
-import { fetchCoverage, isCovered, type Coverage } from "./coverage";
+import { isCovered, requireCoverage, type Coverage, type CoverageTable } from "./coverage";
 import { mockDetections, type MockMode } from "./mock-detections";
 import { mockStats } from "./mock-stats";
 
@@ -21,19 +21,19 @@ const MIN_ZOOM = 3;
 const MAX_ZOOM = 6;
 
 export function finestResolution(coverage: Coverage): number {
-  return coverage.resolutions.length ? Math.max(...coverage.resolutions) : MIN_ZOOM;
+  return Math.max(...coverage.resolutions);
 }
 
 export function zoomFor(coverage: Coverage): string {
   return String(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, finestResolution(coverage))));
 }
 
-
-export async function regionParams(q: DetectionQuery) {
-  const coverage = await fetchCoverage();
+export async function regionParams(q: DetectionQuery, table: CoverageTable) {
+  const coverage = await requireCoverage(table);
   const region = cellsForBbox(q.bbox, coverage.resolutions);
   return {
     coverage,
+    resolution: region.resolution,
     params: {
       cells: region.cells.join(","),
       start: q.from,
@@ -51,7 +51,7 @@ export async function fetchDetections(
   if (!hasApi) return mockDetections(q, mock, signal);
   const tiles = await Promise.all(
     splitBbox(q.bbox).map(async (tile) => {
-      const { coverage, params } = await regionParams({ ...q, bbox: tile });
+      const { coverage, params } = await regionParams({ ...q, bbox: tile }, "cells");
       const raw = await apiFetch<ApiActivityCellsResponse>(
         "/activity/cells",
         { cells: params.cells, start: params.start, end: params.end, zoom: zoomFor(coverage) },
@@ -81,7 +81,7 @@ export async function fetchStats(
   signal?: AbortSignal,
 ): Promise<StatsResponse> {
   if (!hasApi) return mockStats(q, mock, signal);
-  const { coverage, params } = await regionParams(q);
+  const { coverage, resolution, params } = await regionParams(q, "grid");
   const [compare, timeseries, ranking, historical] = await Promise.all([
     apiFetch<ApiCompareResponse>("/compare", params, signal),
     apiFetch<ApiTimeseriesResponse>("/timeseries", params, signal),
@@ -107,7 +107,7 @@ export async function fetchStats(
     ),
   ]);
   return toStatsResponse(q.sensors, compare, timeseries, {
-    isCovered: (date) => isCovered(coverage, date),
+    isCovered: (date) => isCovered(coverage, date, resolution),
     ranking,
     historical,
   });

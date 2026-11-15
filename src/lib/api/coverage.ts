@@ -1,54 +1,146 @@
-import type { ApiCoverage } from "@/types/api";
-import { apiFetch } from "./client";
+import { shiftDate } from "@/lib/utils/dates";
+import type { ApiSource } from "@/types/api";
+import { ApiError, apiFetch } from "./client";
+
+export type CoverageTable = "cells" | "grid" | "forecast";
+
+export type DatePeriod = { from: string; to: string };
 
 export type Coverage = {
   resolutions: number[];
+  periods: Record<number, DatePeriod[]>;
   minDate: string | null;
   maxDate: string | null;
 };
 
-/**
- * A gold publica H3 de 0 a 6 em todas as tabelas e a API consulta o data lake direto (Athena): não há mais
- * importação parcial, então toda resolução está sempre disponível. Antes isso era deduzido das importações
- * concluídas em /meta/sources, rota que deixou de existir.
- */
-export const GOLD_RESOLUTIONS = [0, 1, 2, 3, 4, 5, 6];
+const TABLES: Record<CoverageTable, { prefix: string; label: string }> = {
+  cells: { prefix: "gold/harmonized/cells/", label: "atividade harmonizada (gold/harmonized/cells)" },
+  grid: { prefix: "gold/map_grid/", label: "grade de detecções (gold/map_grid)" },
+  forecast: { prefix: "gold/forecast/", label: "previsão (gold/forecast)" },
+};
 
-/** O período coberto muda uma vez por dia; cada consulta ao lake custa segundos, então o cache vale mais. */
-const TTL_MS = 10 * 60_000;
+export const FORECAST_RESOLUTION = 6;
+export const COVERAGE_TTL_MS = 60_000;
 
-let cached: { at: number; value: Promise<Coverage> } | null = null;
+const RESOLUTION = /\/resolution=(\d+)\//;
 
-export function coverageFromApi(entries: ApiCoverage[]): Coverage {
+const EMPTY: Coverage = { resolutions: [], periods: {}, minDate: null, maxDate: null };
+
+export function notImportedMessage(table: CoverageTable): string {
+  return `O backend ainda não tem nenhuma importação concluída de ${TABLES[table].label}. Rode scripts/atualizar.sh no fire-atlas-api para baixar a camada gold para o PostgreSQL e recarregue a página.`;
+}
+
+export class NotImportedError extends ApiError {
+  constructor(public readonly table: CoverageTable) {
+    super(notImportedMessage(table), undefined, false);
+    this.name = "NotImportedError";
+  }
+}
+
+function without(periods: DatePeriod[], cut: DatePeriod): DatePeriod[] {
+  const out: DatePeriod[] = [];
+  for (const p of periods) {
+    if (p.to < cut.from || p.from > cut.to) {
+      out.push(p);
+      continue;
+    }
+    if (p.from < cut.from) out.push({ from: p.from, to: shiftDate(cut.from, -1) });
+    if (p.to > cut.to) out.push({ from: shiftDate(cut.to, 1), to: p.to });
+  }
+  return out;
+}
+
+function merged(periods: DatePeriod[]): DatePeriod[] {
+  const out: DatePeriod[] = [];
+  for (const p of [...periods].sort((a, b) => a.from.localeCompare(b.from))) {
+    const last = out[out.length - 1];
+    if (last && p.from <= shiftDate(last.to, 1)) {
+      if (p.to > last.to) last.to = p.to;
+    } else {
+      out.push({ ...p });
+    }
+  }
+  return out;
+}
+
+function loadedPeriod(source: ApiSource): DatePeriod | null {
+  if (source.rowsLoaded <= 0) return null;
+  return { from: source.minDate ?? source.periodStart, to: source.maxDate ?? source.periodEnd };
+}
+
+function bounds(periods: DatePeriod[]): Pick<Coverage, "minDate" | "maxDate"> {
   let minDate: string | null = null;
   let maxDate: string | null = null;
-  for (const entry of entries) {
-    if (entry.minDate && (!minDate || entry.minDate < minDate)) minDate = entry.minDate;
-    if (entry.maxDate && (!maxDate || entry.maxDate > maxDate)) maxDate = entry.maxDate;
+  for (const p of periods) {
+    if (!minDate || p.from < minDate) minDate = p.from;
+    if (!maxDate || p.to > maxDate) maxDate = p.to;
   }
-  return { resolutions: minDate ? [...GOLD_RESOLUTIONS] : [], minDate, maxDate };
+  return { minDate, maxDate };
 }
 
-export function isCovered(coverage: Coverage, date: string): boolean {
-  return (
-    coverage.minDate !== null &&
-    coverage.maxDate !== null &&
-    date >= coverage.minDate &&
-    date <= coverage.maxDate
-  );
+export function coverageFromSources(sources: ApiSource[], table: CoverageTable): Coverage {
+  const { prefix } = TABLES[table];
+  const chronological = sources
+    .filter((s) => s.status === "COMPLETED" && s.sourceKey.startsWith(prefix))
+    .reverse();
+
+  if (table === "forecast") {
+    const loaded = chronological.map(loadedPeriod).filter((p): p is DatePeriod => p !== null);
+    if (!loaded.length) return EMPTY;
+    return {
+      resolutions: Array.from({ length: FORECAST_RESOLUTION + 1 }, (_, r) => r),
+      periods: {},
+      ...bounds(loaded),
+    };
+  }
+
+  const byResolution = new Map<number, DatePeriod[]>();
+  for (const source of chronological) {
+    const match = RESOLUTION.exec(source.sourceKey);
+    if (!match) continue;
+    const resolution = Number(match[1]);
+    const kept = without(byResolution.get(resolution) ?? [], {
+      from: source.periodStart,
+      to: source.periodEnd,
+    });
+    const loaded = loadedPeriod(source);
+    byResolution.set(resolution, merged(loaded ? [...kept, loaded] : kept));
+  }
+
+  const periods: Record<number, DatePeriod[]> = {};
+  for (const [resolution, list] of byResolution) {
+    if (list.length) periods[resolution] = list;
+  }
+  const resolutions = Object.keys(periods).map(Number).sort((a, b) => a - b);
+  return { resolutions, periods, ...bounds(Object.values(periods).flat()) };
 }
 
-export function fetchCoverage(): Promise<Coverage> {
+export function isCovered(coverage: Coverage, date: string, resolution?: number): boolean {
+  const periods =
+    resolution === undefined ? Object.values(coverage.periods).flat() : coverage.periods[resolution] ?? [];
+  return periods.some((p) => date >= p.from && date <= p.to);
+}
+
+let cached: { at: number; value: Promise<Record<CoverageTable, Coverage>> } | null = null;
+
+export function fetchCoverage(table: CoverageTable): Promise<Coverage> {
   const now = Date.now();
-  if (cached && now - cached.at < TTL_MS) return cached.value;
-  const value = apiFetch<ApiCoverage[]>("/meta/coverage").then(coverageFromApi);
-  cached = { at: now, value };
-  value.catch(() => {
-    if (cached?.value === value) cached = null;
-  });
-  return value;
+  if (!cached || now - cached.at >= COVERAGE_TTL_MS) {
+    const value = apiFetch<ApiSource[]>("/meta/sources").then((sources) => ({
+      cells: coverageFromSources(sources, "cells"),
+      grid: coverageFromSources(sources, "grid"),
+      forecast: coverageFromSources(sources, "forecast"),
+    }));
+    cached = { at: now, value };
+    value.catch(() => {
+      if (cached?.value === value) cached = null;
+    });
+  }
+  return cached.value.then((all) => all[table]);
 }
 
-export function resetCoverageCache() {
-  cached = null;
+export async function requireCoverage(table: CoverageTable): Promise<Coverage> {
+  const coverage = await fetchCoverage(table);
+  if (!coverage.resolutions.length) throw new NotImportedError(table);
+  return coverage;
 }

@@ -3,10 +3,10 @@
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { QueryErrorState } from "@/components/feedback/query-error-state";
 import { PageSection } from "@/components/layout/page-section";
 import { REGIONS } from "@/config/regions";
 import { useHarmonizedMonthly, useStats } from "@/hooks/use-detections";
-import { ApiError } from "@/lib/api/client";
 import { SENSOR_META } from "@/lib/sensors";
 import { HarmonizedMonthlyPanel } from "./harmonized-monthly";
 import { HistoryComparison } from "./history-comparison";
@@ -33,12 +33,7 @@ export function StatsDashboard() {
   } else if (enabled && isPending) {
     body = <LoadingState label="Carregando indicadores…" />;
   } else if (error) {
-    body = (
-      <ErrorState
-        message={error.message}
-        onRetry={error instanceof ApiError && !error.recoverable ? undefined : () => void refetch()}
-      />
-    );
+    body = <QueryErrorState error={error} onRetry={() => void refetch()} />;
   } else if (data) {
     const empty =
       data.series.length === 0 ||

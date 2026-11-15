@@ -1,14 +1,13 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
 import { fetchHarmonizedMonthly } from "@/lib/api/activity";
 import { hasApi } from "@/lib/api/client";
 import { fetchDetections, fetchStats } from "@/lib/api/detections";
 import { fetchForecast, MAP_FORECAST_LIMIT } from "@/lib/api/forecast";
-import { regionQueryKey } from "@/lib/api/query-region";
 import type { Bbox, DetectionQuery } from "@/types/detections";
 import { useResolvedFilters } from "./use-filters";
+import { useRegionKey } from "./use-region-key";
 
 function useQueryParams(area?: Bbox | null) {
   const ctx = useResolvedFilters();
@@ -25,11 +24,11 @@ function useQueryParams(area?: Bbox | null) {
 
 export function useDetections(area?: Bbox | null) {
   const { query, mock, enabled, filters } = useQueryParams(area);
-  const region = useMemo(() => regionQueryKey(query.bbox, true), [query.bbox]);
+  const region = useRegionKey(query.bbox, "cells", true);
   const result = useQuery({
-    queryKey: ["detections", query.from, query.to, [...query.sensors].sort(), region, mock],
+    queryKey: ["detections", query.from, query.to, [...query.sensors].sort(), region.key, mock],
     queryFn: ({ signal }) => fetchDetections(query, mock, signal),
-    enabled,
+    enabled: enabled && region.ready,
     placeholderData: keepPreviousData,
   });
   return { ...result, filters, enabled };
@@ -37,11 +36,11 @@ export function useDetections(area?: Bbox | null) {
 
 export function useStats() {
   const { query, mock, enabled, filters } = useQueryParams();
-  const region = useMemo(() => regionQueryKey(query.bbox), [query.bbox]);
+  const region = useRegionKey(query.bbox, "grid");
   const result = useQuery({
-    queryKey: ["stats", query.from, query.to, [...query.sensors].sort(), region, mock],
+    queryKey: ["stats", query.from, query.to, [...query.sensors].sort(), region.key, mock],
     queryFn: ({ signal }) => fetchStats(query, mock, signal),
-    enabled,
+    enabled: enabled && region.ready,
     placeholderData: keepPreviousData,
   });
   return { ...result, filters, enabled };
@@ -75,11 +74,11 @@ export function useMapForecast(area: Bbox, enabled: boolean) {
 export function useForecast() {
   const { filters } = useResolvedFilters();
   const enabled = filters.problem === null;
-  const region = useMemo(() => regionQueryKey(filters.bbox), [filters.bbox]);
+  const region = useRegionKey(filters.bbox, "forecast");
   const result = useQuery({
-    queryKey: ["forecast", region],
+    queryKey: ["forecast", region.key],
     queryFn: ({ signal }) => fetchForecast(filters.bbox, signal, MAP_FORECAST_LIMIT),
-    enabled,
+    enabled: enabled && region.ready,
     placeholderData: keepPreviousData,
   });
   return { ...result, filters, enabled };

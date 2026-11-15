@@ -79,7 +79,7 @@ export function HeroGlobe() {
         </p>
         <p className="text-caption text-ink-300">
           {hotspots
-            ? `Pontos no globo: as células com mais detecções nos últimos ${HOTSPOT_DAYS} dias com dados.`
+            ? `Pontos no globo: as células com mais detecções no período mais recente importado (até ${HOTSPOT_DAYS} dias).`
             : "Pontos no globo ilustrativos."}
         </p>
       </div>

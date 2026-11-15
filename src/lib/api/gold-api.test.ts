@@ -1,10 +1,35 @@
 // Os módulos capturam a URL e a cobertura em memória: reimporta após vi.resetModules para isolar cada cenário.
+import { getResolution } from "h3-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const COVERAGE = [
-  { sensor: "MODIS", minDate: "2000-11-01", maxDate: "2026-11-13", detections: 115_180_459 },
-  { sensor: "VIIRS", minDate: "2012-01-20", maxDate: "2026-11-13", detections: 981_204_377 },
+const imported = (sourceKey: string, product: string) => ({
+  product,
+  sensor: "MODIS,VIIRS",
+  sourceKey,
+  bbox: "global",
+  periodStart: "2026-11-08",
+  periodEnd: "2026-11-15",
+  status: "COMPLETED",
+  error: null,
+  rowsLoaded: 10,
+  rowsRejected: 0,
+  expectedRows: 10,
+  verified: true,
+  sourceSha256: null,
+  minDate: "2026-11-08",
+  maxDate: "2026-11-13",
+  loadedAt: "2026-11-15T12:00:00Z",
+});
+
+const SOURCES = [
+  imported("gold/map_grid/resolution=1/year=2026@v313", "map_grid"),
+  imported("gold/map_grid/resolution=3/year=2026@v313", "map_grid"),
+  imported("gold/harmonized/cells/resolution=2/year=2026@v7", "harmonized_cells"),
+  imported("gold/harmonized/cells/resolution=4/year=2026@v7", "harmonized_cells"),
+  imported("gold/forecast/@v12", "forecast"),
 ];
+
+let sources: unknown[] = SOURCES;
 
 const ACTIVITY_CELLS = [
   {
@@ -53,8 +78,8 @@ const callTo = (path: string) => calls().find((u) => u.pathname.endsWith(path));
 function route(url: URL): unknown {
   const path = url.pathname.replace("/api/v2", "");
   switch (path) {
-    case "/meta/coverage":
-      return COVERAGE;
+    case "/meta/sources":
+      return sources;
     case "/detections":
       return { mode: "grid", count: 81, truncated: false, resolution: 3, cells: CELLS };
     case "/activity/calendar":
@@ -107,6 +132,7 @@ beforeEach(() => {
   vi.resetModules();
   vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8080/api/v2");
   vi.stubGlobal("fetch", fetchMock);
+  sources = SOURCES;
   fetchMock.mockReset();
   fetchMock.mockImplementation(async (input: URL) => {
     try {
@@ -126,7 +152,7 @@ const BRASIL: [number, number, number, number] = [-74, -34, -34, 6];
 const query = { sensors: ["modis", "viirs"] as ("modis" | "viirs")[], from: "2026-11-01", to: "2026-11-13", bbox: BRASIL };
 
 describe("mapa pela API gold (atividade harmonizada por célula)", () => {
-  it("consulta /activity/cells por células H3 (nunca bbox) na resolução mais fina da gold", async () => {
+  it("consulta /activity/cells por células H3 (nunca bbox) nas resoluções importadas da gold harmonizada", async () => {
     const { fetchDetections } = await import("./detections");
     const out = await fetchDetections(query, null);
     const url = callTo("/activity/cells")!;
@@ -135,9 +161,10 @@ describe("mapa pela API gold (atividade harmonizada por célula)", () => {
     const cells = url.searchParams.get("cells")!.split(",");
     expect(cells.length).toBeGreaterThan(1);
     expect(cells.length).toBeLessThanOrEqual(380);
+    expect(new Set(cells.map(getResolution))).toEqual(new Set([2]));
     expect(url.searchParams.get("start")).toBe("2026-11-01");
     expect(url.searchParams.get("end")).toBe("2026-11-13");
-    expect(url.searchParams.get("zoom")).toBe("6");
+    expect(url.searchParams.get("zoom")).toBe("4");
     expect(out.grid?.cells).toHaveLength(1);
     expect(out.grid?.cells[0]).toMatchObject({ count: 12.5, modis: 14, viirs: 67, res: 4 });
     expect(out.grid?.harmonized?.unitLabel).toMatch(/equivalentes ao MODIS Aqua/);
@@ -166,15 +193,54 @@ describe("mapa pela API gold (atividade harmonizada por célula)", () => {
     await fetchDetections({ ...query, bbox: [-180, -60, 180, 80] }, null);
     expect(String(fetchMock.mock.calls.find((c) => String(c[0]).includes("/activity/cells"))![0]).length).toBeLessThan(8000);
   });
+
+  it("sem importação da gold harmonizada o mapa avisa para rodar o script, sem consultar /activity/cells", async () => {
+    sources = SOURCES.filter((s) => !s.sourceKey.startsWith("gold/harmonized/"));
+    const { fetchDetections } = await import("./detections");
+    await expect(fetchDetections(query, null)).rejects.toMatchObject({
+      name: "NotImportedError",
+      recoverable: false,
+      message: expect.stringContaining("scripts/atualizar.sh"),
+    });
+    expect(callTo("/activity/cells")).toBeUndefined();
+  });
 });
 
 describe("estatísticas pela API gold", () => {
-  it("monta indicadores, série e as consultas opcionais", async () => {
+  it("monta indicadores, série e as consultas opcionais pelas resoluções importadas da map_grid", async () => {
     const { fetchStats } = await import("./detections");
     const out = await fetchStats(query, null);
     expect(out.bySensor).toEqual({ modis: 14, viirs: 0 });
     expect(out.series).toEqual([{ date: "2026-11-12", modis: 14 }]);
     expect(out.history).toBeNull();
+    const cells = callTo("/compare")!.searchParams.get("cells")!.split(",");
+    expect(new Set(cells.map(getResolution))).toEqual(new Set([1]));
+    expect(callTo("/rankings/cells")!.searchParams.get("resolution")).toBe("3");
+  });
+
+  it("dia zerado fora do período importado vira sem dado, não zero", async () => {
+    fetchMock.mockImplementation(async (input: URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/timeseries")) {
+        return new Response(
+          JSON.stringify({
+            method: "m",
+            threshold: 3.5,
+            series: [
+              { date: "2026-11-01", sensor: "MODIS", count: 0, frpSum: 0, unusual: false },
+              { date: "2026-11-09", sensor: "MODIS", count: 0, frpSum: 0, unusual: false },
+            ],
+          }),
+        );
+      }
+      return new Response(JSON.stringify(route(url)));
+    });
+    const { fetchStats } = await import("./detections");
+    const out = await fetchStats(query, null);
+    expect(out.series).toEqual([
+      { date: "2026-11-01", modis: null },
+      { date: "2026-11-09", modis: 0 },
+    ]);
   });
 
   it("falha no ranking ou no histórico não derruba o painel", async () => {
@@ -242,6 +308,23 @@ describe("calendário harmonizado pela API gold", () => {
     expect(url.searchParams.has("bbox")).toBe(false);
   });
 
+  it("estados vão por células nas resoluções importadas da gold harmonizada", async () => {
+    const { fetchActivityMonth } = await import("./activity");
+    await fetchActivityMonth("2026-11", "para");
+    const cells = callTo("/activity/calendar")!.searchParams.get("cells")!.split(",");
+    expect(cells.every((c) => [2, 4].includes(getResolution(c)))).toBe(true);
+  });
+
+  it("sem importação da gold harmonizada o calendário avisa para rodar o script", async () => {
+    sources = SOURCES.filter((s) => !s.sourceKey.startsWith("gold/harmonized/cells/"));
+    const { fetchActivityMonth } = await import("./activity");
+    await expect(fetchActivityMonth("2026-11", "south-america")).rejects.toMatchObject({
+      name: "NotImportedError",
+      message: expect.stringContaining("scripts/atualizar.sh"),
+    });
+    expect(callTo("/activity/calendar")).toBeUndefined();
+  });
+
   it("anomalia sem anos suficientes fica indisponível", async () => {
     const { fetchMonthAnomaly } = await import("./activity");
     const out = await fetchMonthAnomaly("2026-11", "south-america");
@@ -293,5 +376,16 @@ describe("atividade harmonizada mensal (Análises)", () => {
     });
     await fetchHarmonizedMonthly({ regionId: "world", bbox: [-50, -15, -45, -10], customArea: true, to: "2026-11-13" });
     expect(callTo("/activity/monthly")!.searchParams.get("cells")).toBeTruthy();
+  });
+});
+
+describe("previsão pela API gold", () => {
+  it("sem importação da previsão fica indisponível com o aviso do script", async () => {
+    sources = SOURCES.filter((s) => !s.sourceKey.startsWith("gold/forecast/"));
+    const { fetchForecast } = await import("./forecast");
+    const out = await fetchForecast(BRASIL);
+    expect(out.status).toBe("unavailable");
+    expect(out.status === "unavailable" && out.reason).toMatch(/scripts\/atualizar\.sh/);
+    expect(callTo("/forecast")).toBeUndefined();
   });
 });

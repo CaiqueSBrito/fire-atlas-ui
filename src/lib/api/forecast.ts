@@ -4,7 +4,7 @@ import type { Bbox } from "@/types/detections";
 import type { ForecastResponse } from "@/types/forecast";
 import { toForecastResponse } from "./adapters";
 import { apiFetch, hasApi } from "./client";
-import { fetchCoverage } from "./coverage";
+import { fetchCoverage, notImportedMessage } from "./coverage";
 
 export const FORECAST_LIMIT = 100;
 
@@ -21,7 +21,10 @@ export async function fetchForecast(
       reason: "O serviço de previsões não está configurado neste ambiente.",
     };
   }
-  const coverage = await fetchCoverage();
+  const coverage = await fetchCoverage("forecast");
+  if (!coverage.resolutions.length) {
+    return { status: "unavailable", reason: notImportedMessage("forecast") };
+  }
   const { cells } = cellsForBbox(bbox, coverage.resolutions);
   const raw = await apiFetch<ApiForecastResponse>(
     "/forecast",
