@@ -46,22 +46,21 @@ Os textos da home seguem o enunciado oficial — não inventar dados/números.
 | `/` | Home: cabeçalho + hero (globo + botão vermelho) + seções (desafio, proposta, dados, FAQ) + rodapé |
 | `/explore` | Redireciona para `/explore/map` |
 | `/explore/map` | Mapa interativo MapLibre + base NASA GIBS, camadas MODIS ◆ / VIIRS ●, pontos ou hexágonos H3, área por desenho ou coordenadas, detalhes da detecção (NASA-012) |
-| `/explore/calendar` | Calendário de queimadas (cartas interativas, sidebar retrátil própria) — feature NASA-013 |
+| `/explore/calendar` | Calendário de queimadas: atividade harmonizada por dia, barras por faixa de temperatura de brilho, mapa do dia e resumo do mês — feature NASA-013 |
 | `/explore/statistics` | Dashboard: indicadores, série temporal, histórico/anomalia, ranking e períodos críticos (NASA-014) |
-| `/explore/forecasts` | Previsões (NASA-015) — **só existe com `NEXT_PUBLIC_FEATURE_FORECAST=true`** (404 caso contrário) |
+| `/explore/forecasts` | Previsões (NASA-015): relatório no padrão das Análises — indicadores da região, tabela das células de maior probabilidade de fogo em 7 dias e metadados |
 
-O **calendário é uma rota própria** (`/explore/calendar`, feature `features/calendar`, com
-sidebar retrátil, região e estado na URL: `month`, `date`, `region`, `time`, `view`).
-A barra de filtros global (satélite/período) fica oculta nessa rota. O painel "Mapa de focos"
-da carta do dia usa o mapa real (`DayMap` → `FireMap`) e cai no `RegionPlot` esquemático
-quando não há WebGL (`lib/utils/webgl.ts`); a mini-carta dourada continua esquemática.
-Ao trocar de dia o mapa enquadra, com animação, a área dos focos do dia (`bboxOfPoints`);
-sem focos volta a enquadrar a região.
+O **calendário é uma rota própria** (`/explore/calendar`, feature `features/calendar`; estado na URL: `month`,
+`date`, `region`, `bbox`). A barra de filtros global fica oculta nessa rota. Layout (design system da home,
+`.superdesign/design-system.md`): chips de região + seletor de mês e "Hoje"; à esquerda o mapa do dia (`DayMap`) e as
+barras do mês (`MonthBars`: uma barra por dia, empilhada por faixa de temperatura, da mais fria embaixo à mais
+quente; dia sem dado tracejado); à direita o "Dia selecionado" (`DayPanel`: valor harmonizado, satélites,
+lista por temperatura) e o "Resumo do mês" (`MonthSummary`). Sem `date` na URL abre hoje, ou o último dia com dado.
 
 **Padrão:** rotas (URLs e nomes de pastas em `app/`) sempre em inglês; textos da interface em português.
 
 `src/app/explore/layout.tsx` é o shell compartilhado (`SiteHeader` + filtros + `children`).
-Cada página renderiza o próprio `<main id="conteudo">` (o calendário é largura total;
+Cada página renderiza o próprio `<main id="conteudo">` (o calendário monta o próprio container `max-w-7xl`;
 as demais usam `PageSection`).
 `explore/loading.tsx` e `explore/error.tsx` cobrem todas as seções (RN05). Nesta versão do
 Next o error boundary recebe **`retry`** (não `reset`).
@@ -106,7 +105,8 @@ removida a pedido do time). Vegetação usa imagens GIBS com a data do fim do pe
 é copiado para `public/` por `scripts/copy-maplibre-worker.mjs`.
 
 O mapa do **dia no calendário** (`DayLiveMap`) é o mesmo do mapa normal: com a API real faz a mesma consulta
-(blocos, área visível, resolução fina ao aproximar, `areas`, `heat`, `base` da URL), só que para um dia.
+(blocos, área visível, resolução fina ao aproximar, `areas`, `heat`, `base` da URL), só que para um dia. Sem grade
+(mock) desenha pontos; sem WebGL desenha o `RegionPlot` esquemático com os mesmos dados.
 
 ## Dados (mock x API)
 
@@ -116,7 +116,8 @@ simulam falha e vazio). Mapa e estatísticas usam as mesmas contagens.
 
 Com `NEXT_PUBLIC_API_URL=http://localhost:8080/api/v2` (prefixo `/api/v2` incluso; na `main` do back a `/api/v1` é a API antiga por pontos e **não serve** a este front; `.env.local`,
 exemplo em `.env.example`; reiniciar o `npm run dev` ao mudar) usa a API Spring Boot real
-(`fire-atlas-api`, branch `main`, PostGIS na porta **5433** via `docker compose up -d`; carga: `ingest-gold` ou `scripts/atualizar.sh`).
+(`fire-atlas-api`, branch `main`, PostGIS na porta **5433** via `docker compose up -d`; carga: **automática ao subir a API** com
+`DATALAKE_BUCKET` no `.env` da API — sincroniza a gold em segundo plano, só o que mudou; manual: `ingest-gold` ou `scripts/atualizar.sh`).
 A fonte é a **camada gold** do data lake (Delta Lake `gold/map_grid`): uma linha por **célula H3, dia e
 sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é só hexágonos H3
 (`DetectionsResponse.grid`), sem pontos, sem lista de detecções e sem `matchId`. Tipos do contrato em
@@ -146,14 +147,22 @@ sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é
   `/compare/historical` (histórico/anomalia: só com 3+ anos anteriores, senão "Indisponível"). Ranking e
   histórico são opcionais (falha neles não derruba o painel). "Períodos críticos" = dias consecutivos com
   `unusual` do `/timeseries`. Dia sem dado vira `null` na série.
-- Calendário: `/calendar` (mês) e, no detalhe do dia, `/detections` de um dia (grade) + `/calendar`
-  (contagem exata). A API devolve 0 tanto para "sem foco" quanto para "sem dado": a cobertura decide
-  (`unavailable` fora de `minDate..maxDate`). **Passagem diurna/noturna não existe** na gold: o seletor
-  "Horário" só oferece "Dia inteiro".
-- Previsão: a branch gold não tem `/predictions` (500); a página só existe com a feature flag.
+- Calendário (atividade **harmonizada**, gold/harmonized): `/activity/calendar` (mês: `harmonized`, `contributing`,
+  `hasData`, `basis` e `temperature` por dia), `/activity/anomaly` (mês × mediana dos anos anteriores, `years=5`;
+  sem 3 anos: "Indisponível") e `/activity/availability` (satélites que contribuíram no dia; vale para o mundo).
+  Região: continentes por `continent` (nome em inglês), Brasil por `country=BR`, mundo e estados por `cells`
+  (a API recusa `bbox`). Unidade: **células ativas equivalentes ao MODIS Aqua, não é nº de focos** (mostrar
+  `meta.unitLabelPt`). `hasData=false` = sem dado (nunca zero). `temperature` = 7 faixas de temperatura de brilho
+  (`lt320`, `320`…`350`, `ge360`, `none`) que somam `harmonized`; vem `null` enquanto o lake não tiver as colunas
+  `harmonized_t_*` (a UI mostra a barra de uma cor e "Faixas de temperatura indisponíveis"). `basis`: `viirs` =
+  VIIRS I-4, `aqua`/`terra` = MODIS 21/22 (escalas diferentes). Não há MODIS × VIIRS separados no calendário.
+- Previsão: `/forecast?cells&limit=100` (gold/forecast, célula H3 res 6, emissão mais recente). A API devolve `summary`
+  (células, ativas, maior e média da probabilidade na região inteira) e as células ordenadas, com cidade mais próxima e
+  país de `h3_places`. Só a região dos filtros vale; período e sensores não se aplicam. Sem emissão importada: "Indisponível".
 - Erros 4xx mostram o `detail` da API; 5xx/rede permitem "Tentar novamente".
-- O banco só tem o que foi importado (`scripts/importar.sh INICIO FIM RESOLUCOES` na API; `/meta/coverage`).
-  Hoje: 2026, resoluções 0–6 (a 6 é o máximo que a API aceita), global; o banco tem ~6,4 GB. Rodar `ANALYZE daily_h3` depois de cargas grandes. Sem anos anteriores não há comparação histórica.
+- O banco só tem o que foi importado (`/meta/sources`, `/meta/coverage`). A sincronização automática traz de 1º de janeiro do
+  ano atual até hoje (`LAKE_SYNC_START` na API muda a primeira carga); resoluções 0–6 (a 6 é o máximo que a API aceita), global.
+  Rodar `ANALYZE daily_h3` depois de cargas grandes. Sem anos anteriores não há comparação histórica.
 
 Regras de não-invenção: FRP, ranking, períodos críticos, harmonizado e correspondências
 só aparecem quando a API os fornece (senão "Indisponível"). Correspondência entre sensores
@@ -184,8 +193,8 @@ public/textures/  # texturas do globo
 Convenções: arquivos `kebab-case.tsx`, componentes `PascalCase`, imports via
 alias `@/`. Server Components por padrão; `"use client"` só onde há
 interação (globo, mapa, filtros). Features não importam umas das outras —
-só de `components/`, `lib/`, `hooks/`, `types/` (exceções já existentes: previsão reutiliza o
-mapa e o `Unavailable` de stats). Filtros: `lib/filters.ts` + `hooks/use-filters.ts`.
+só de `components/`, `lib/`, `hooks/`, `types/` (exceção já existente: previsão reutiliza o
+`Unavailable` de stats). Filtros: `lib/filters.ts` + `hooks/use-filters.ts`.
 **Não escrever comentários no código** (pedido do time); nomes claros e CLAUDE.md bastam.
 
 ## Filtros (barra + modal)
