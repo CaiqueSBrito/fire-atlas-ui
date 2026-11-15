@@ -44,6 +44,17 @@ describe("resolveFilters (RN03 — filtros)", () => {
     expect(f.problem).toMatch(/posterior/);
   });
 
+  it("aceita 366 dias e bloqueia 367 dias mesmo quando o período vem da URL", () => {
+    expect(resolveFilters({ ...base, from: "2025-11-15", to: "2026-11-15" }, TODAY).problem).toBeNull();
+    expect(resolveFilters({ ...base, from: "2025-11-14", to: "2026-11-15" }, TODAY).problem).not.toBeNull();
+  });
+
+  it("aceita períodos históricos sem restringir ao ano da primeira carga", () => {
+    const filters = resolveFilters({ ...base, from: "2000-11-01", to: "2000-11-30" }, TODAY);
+    expect(filters.problem).toBeNull();
+    expect([filters.from, filters.to]).toEqual(["2000-11-01", "2000-11-30"]);
+  });
+
   it("região predefinida usa o bbox dela; área personalizada tem prioridade", () => {
     expect(resolveFilters({ ...base, region: "brasil" }, TODAY).bbox).toEqual([-74, -34, -34, 6]);
     const f = resolveFilters({ ...base, region: "brasil", bbox: "-60,-10,-50,0" }, TODAY);

@@ -7,6 +7,8 @@ import type { Region } from "@/config/regions";
 import { FireMap } from "@/features/map/components/fire-map-loader";
 import { useQueryArea } from "@/hooks/use-query-area";
 import { fetchDetections } from "@/lib/api/detections";
+import { ApiError } from "@/lib/api/client";
+import { regionQueryKey } from "@/lib/api/query-region";
 import type { BasemapId, PlotId } from "@/lib/map-layers";
 import { SENSORS } from "@/lib/sensors";
 import { gridPlotPoints } from "@/lib/utils/hex";
@@ -44,9 +46,10 @@ export function DayLiveMap({
   const [viewportState, setViewportState] = useState<{ key: string; bbox: Bbox } | null>(null);
   const viewport = viewportState?.key === baseKey ? viewportState.bbox : null;
   const area = useQueryArea(viewport, base, true);
+  const queryRegion = useMemo(() => regionQueryKey(area, true), [area]);
 
   const query = useQuery({
-    queryKey: ["calendar", "day-grid", date, area],
+    queryKey: ["calendar", "day-grid", date, queryRegion],
     queryFn: ({ signal }) =>
       fetchDetections({ sensors: [...SENSORS], from: date, to: date, bbox: area }, null, signal),
     placeholderData: keepPreviousData,
@@ -113,9 +116,14 @@ export function DayLiveMap({
           <ErrorState
             title="Não foi possível carregar o mapa"
             message={query.error instanceof Error ? query.error.message : undefined}
-            onRetry={() => void query.refetch()}
+            onRetry={query.error instanceof ApiError && !query.error.recoverable ? undefined : () => void query.refetch()}
           />
         </div>
+      )}
+      {query.data?.truncated && (
+        <p role="note" className="absolute bottom-12 inset-x-3 z-10 rounded-xl border border-space-600 bg-space-900/90 p-3 text-small text-ink-300">
+          Resultado parcial. Reduza a área para consultar todas as células deste dia.
+        </p>
       )}
       {empty && !query.isFetching && (
         <p className="pointer-events-none absolute inset-x-3 top-3 z-10 rounded-xl border border-space-600 bg-space-900/90 p-3 text-center text-small text-ink-300">

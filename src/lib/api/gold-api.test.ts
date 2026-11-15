@@ -1,30 +1,9 @@
+// Os módulos capturam a URL e a cobertura em memória: reimporta após vi.resetModules para isolar cada cenário.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const SOURCES = [
-  {
-    product: "map_grid",
-    sensor: "MODIS,VIIRS",
-    sourceKey: "gold/map_grid/resolution=3/year=2026@v313",
-    bbox: "global",
-    periodStart: "2026-01-01",
-    periodEnd: "2026-12-31",
-    status: "COMPLETED",
-    rowsLoaded: 10,
-    minDate: "2026-01-01",
-    maxDate: "2026-11-13",
-  },
-  {
-    product: "map_grid",
-    sensor: "MODIS,VIIRS",
-    sourceKey: "gold/map_grid/resolution=1/year=2026@v313",
-    bbox: "global",
-    periodStart: "2026-01-01",
-    periodEnd: "2026-12-31",
-    status: "COMPLETED",
-    rowsLoaded: 10,
-    minDate: "2026-01-01",
-    maxDate: "2026-11-13",
-  },
+const COVERAGE = [
+  { sensor: "MODIS", minDate: "2000-11-01", maxDate: "2026-11-13", detections: 115_180_459 },
+  { sensor: "VIIRS", minDate: "2012-01-20", maxDate: "2026-11-13", detections: 981_204_377 },
 ];
 
 const CELLS = [
@@ -60,10 +39,10 @@ const calls = () => fetchMock.mock.calls.map((c) => new URL(String(c[0])));
 const callTo = (path: string) => calls().find((u) => u.pathname.endsWith(path));
 
 function route(url: URL): unknown {
-  const path = url.pathname.replace("/api/v1", "");
+  const path = url.pathname.replace("/api/v2", "");
   switch (path) {
-    case "/meta/sources":
-      return SOURCES;
+    case "/meta/coverage":
+      return COVERAGE;
     case "/detections":
       return { mode: "grid", count: 81, truncated: false, resolution: 3, cells: CELLS };
     case "/activity/calendar":
@@ -105,7 +84,7 @@ function route(url: URL): unknown {
 
 beforeEach(() => {
   vi.resetModules();
-  vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8080/api/v1");
+  vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8080/api/v2");
   vi.stubGlobal("fetch", fetchMock);
   fetchMock.mockReset();
   fetchMock.mockImplementation(async (input: URL) => {
@@ -126,7 +105,7 @@ const BRASIL: [number, number, number, number] = [-74, -34, -34, 6];
 const query = { sensors: ["modis", "viirs"] as ("modis" | "viirs")[], from: "2026-11-01", to: "2026-11-13", bbox: BRASIL };
 
 describe("detecções pela API gold", () => {
-  it("consulta por células H3 (nunca bbox) e pede a resolução mais fina importada", async () => {
+  it("consulta por células H3 (nunca bbox) e preserva os totais por sensor", async () => {
     const { fetchDetections } = await import("./detections");
     const out = await fetchDetections(query, null);
     const url = callTo("/detections")!;
@@ -137,7 +116,6 @@ describe("detecções pela API gold", () => {
     expect(url.searchParams.get("start")).toBe("2026-11-01");
     expect(url.searchParams.get("end")).toBe("2026-11-13");
     expect(url.searchParams.get("sensor")).toBe("BOTH");
-    expect(url.searchParams.get("zoom")).toBe("3");
     expect(out.grid?.cells).toHaveLength(1);
     expect(out.grid?.cells[0]).toMatchObject({ count: 81, modis: 14, viirs: 67 });
     expect(out.source.simulated).toBe(false);
@@ -173,8 +151,6 @@ describe("estatísticas pela API gold", () => {
     const out = await fetchStats(query, null);
     expect(out.bySensor).toEqual({ modis: 14, viirs: 0 });
     expect(out.series).toEqual([{ date: "2026-11-12", modis: 14 }]);
-    expect(callTo("/rankings/cells")!.searchParams.get("resolution")).toBe("3");
-    expect(callTo("/compare/historical")!.searchParams.get("years")).toBe("5");
     expect(out.history).toBeNull();
   });
 

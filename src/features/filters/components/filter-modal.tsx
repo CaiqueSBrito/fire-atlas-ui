@@ -12,7 +12,7 @@ import {
   presetPeriod,
   type Period,
 } from "@/lib/filter-presets";
-import { DEFAULT_PERIOD_DAYS } from "@/lib/filters";
+import { DEFAULT_PERIOD_DAYS, MAX_PERIOD_DAYS } from "@/lib/filters";
 import { SENSOR_META, SENSORS } from "@/lib/sensors";
 import { formatBboxParam, parseBbox, validateBbox } from "@/lib/utils/bbox";
 import { shiftDate, todayUtc } from "@/lib/utils/dates";
@@ -20,7 +20,6 @@ import { useDrawMode } from "@/providers/draw-mode";
 import type { SensorId } from "@/types/detections";
 import { AreaFields } from "./area-fields";
 
-const MAX_DAYS = 366;
 const CONTINENTS = ["north-america", "south-america", "europe", "africa", "asia", "oceania"];
 
 type Draft = {
@@ -51,7 +50,7 @@ function problemOf(draft: Draft, today: string): string | null {
   const from = draft.period.from ?? shiftDate(today, -(DEFAULT_PERIOD_DAYS - 1));
   const to = draft.period.to ?? today;
   if (from > to) return "A data inicial é posterior à final.";
-  if (daysBetween(from, to) > MAX_DAYS) return `O período máximo é de ${MAX_DAYS} dias.`;
+  if (daysBetween(from, to) > MAX_PERIOD_DAYS) return `O período máximo é de ${MAX_PERIOD_DAYS} dias.`;
   return null;
 }
 

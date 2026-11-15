@@ -1,8 +1,10 @@
 "use client";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { fetchDetections, fetchStats } from "@/lib/api/detections";
 import { fetchForecast } from "@/lib/api/forecast";
+import { regionQueryKey } from "@/lib/api/query-region";
 import type { Bbox, DetectionQuery } from "@/types/detections";
 import { useResolvedFilters } from "./use-filters";
 
@@ -21,8 +23,9 @@ function useQueryParams(area?: Bbox | null) {
 
 export function useDetections(area?: Bbox | null) {
   const { query, mock, enabled, filters } = useQueryParams(area);
+  const region = useMemo(() => regionQueryKey(query.bbox, true), [query.bbox]);
   const result = useQuery({
-    queryKey: ["detections", query, mock],
+    queryKey: ["detections", query.from, query.to, [...query.sensors].sort(), region, mock],
     queryFn: ({ signal }) => fetchDetections(query, mock, signal),
     enabled,
     placeholderData: keepPreviousData,
@@ -32,8 +35,9 @@ export function useDetections(area?: Bbox | null) {
 
 export function useStats() {
   const { query, mock, enabled, filters } = useQueryParams();
+  const region = useMemo(() => regionQueryKey(query.bbox), [query.bbox]);
   const result = useQuery({
-    queryKey: ["stats", query, mock],
+    queryKey: ["stats", query.from, query.to, [...query.sensors].sort(), region, mock],
     queryFn: ({ signal }) => fetchStats(query, mock, signal),
     enabled,
     placeholderData: keepPreviousData,
@@ -44,8 +48,9 @@ export function useStats() {
 export function useForecast() {
   const { filters } = useResolvedFilters();
   const enabled = filters.problem === null;
+  const region = useMemo(() => regionQueryKey(filters.bbox), [filters.bbox]);
   const result = useQuery({
-    queryKey: ["forecast", filters.bbox],
+    queryKey: ["forecast", region],
     queryFn: ({ signal }) => fetchForecast(filters.bbox, signal),
     enabled,
     placeholderData: keepPreviousData,

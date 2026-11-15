@@ -1,65 +1,50 @@
+// coverage.ts guarda cache em modulo: cada caso precisa reimportar depois de vi.resetModules(),
+// por isso o import dinamico (import estatico guardaria o cache entre os testes).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { ApiSource } from "@/types/api";
+import type { ApiCoverage } from "@/types/api";
 
-const source = (over: Partial<ApiSource>): ApiSource => ({
-  product: "map_grid",
-  sensor: "MODIS,VIIRS",
-  sourceKey: "gold/map_grid/resolution=3/year=2026@v313",
-  bbox: "global",
-  periodStart: "2026-01-01",
-  periodEnd: "2026-12-31",
-  status: "COMPLETED",
-  rowsLoaded: 10,
-  verified: true,
-  minDate: "2026-01-01",
+const entry = (over: Partial<ApiCoverage>): ApiCoverage => ({
+  sensor: "MODIS",
+  minDate: "2000-11-01",
   maxDate: "2026-11-13",
+  detections: 115_180_459,
   ...over,
 });
 
-describe("coverageFromSources", () => {
-  it("lê resoluções e datas reais, não o fim declarado da importação", async () => {
-    const { coverageFromSources, isCovered } = await import("./coverage");
-    const cov = coverageFromSources([
-      source({ sourceKey: "gold/map_grid/resolution=0/year=2026@v313" }),
-      source({ sourceKey: "gold/map_grid/resolution=3/year=2026@v313" }),
-      source({
-        sourceKey: "gold/map_grid/resolution=1/year=2025@v313",
-        minDate: "2025-01-01",
-        maxDate: "2025-12-31",
-      }),
+describe("coverageFromApi", () => {
+  it("usa o período mais largo entre os sensores", async () => {
+    const { coverageFromApi, isCovered } = await import("./coverage");
+    const cov = coverageFromApi([
+      entry({ sensor: "MODIS", minDate: "2000-11-01", maxDate: "2026-11-12" }),
+      entry({ sensor: "VIIRS", minDate: "2012-01-20", maxDate: "2026-11-13" }),
     ]);
-    expect(cov.resolutions).toEqual([0, 1, 3]);
-    expect(cov.minDate).toBe("2025-01-01");
+    expect(cov.minDate).toBe("2000-11-01");
     expect(cov.maxDate).toBe("2026-11-13");
-    expect(isCovered(cov, "2026-11-13")).toBe(true);
+    expect(isCovered(cov, "2005-06-15")).toBe(true);
     expect(isCovered(cov, "2026-11-14")).toBe(false);
-    expect(isCovered(cov, "2024-12-31")).toBe(false);
+    expect(isCovered(cov, "2000-10-31")).toBe(false);
   });
 
-  it("considera só a grade do mapa: previsão, lugares e atividade harmonizada não contam", async () => {
-    const { coverageFromSources, isCovered } = await import("./coverage");
-    const cov = coverageFromSources([
-      source({ sourceKey: "gold/map_grid/resolution=3/year=2026@v313" }),
-      source({ sourceKey: "gold/harmonized/cells/resolution=6/year=2000@v1", minDate: "2000-11-01", maxDate: "2000-12-31" }),
-      source({ sourceKey: "gold/forecast/year=2026@v1", minDate: "2026-11-14", maxDate: "2026-11-21" }),
-      source({ sourceKey: "gold/h3_places/@v1", minDate: null, maxDate: null }),
-    ]);
-    expect(cov.resolutions).toEqual([3]);
-    expect(cov.minDate).toBe("2026-01-01");
-    expect(cov.maxDate).toBe("2026-11-13");
-    expect(isCovered(cov, "2000-12-01")).toBe(false);
-    expect(isCovered(cov, "2026-11-18")).toBe(false);
+  it("todas as resoluções da gold ficam disponíveis quando há cobertura", async () => {
+    const { coverageFromApi } = await import("./coverage");
+    expect(coverageFromApi([entry({})]).resolutions).toEqual([0, 1, 2, 3, 4, 5, 6]);
   });
 
-  it("ignora importações que não terminaram", async () => {
-    const { coverageFromSources } = await import("./coverage");
-    const cov = coverageFromSources([source({ status: "FAILED" })]);
+  it("sem cobertura não há resolução nem data", async () => {
+    const { coverageFromApi, isCovered } = await import("./coverage");
+    const cov = coverageFromApi([]);
     expect(cov).toEqual({ resolutions: [], minDate: null, maxDate: null });
+    expect(isCovered(cov, "2026-01-01")).toBe(false);
   });
 
-  it("sem importações nada é considerado coberto", async () => {
-    const { coverageFromSources, isCovered } = await import("./coverage");
-    expect(isCovered(coverageFromSources([]), "2026-01-01")).toBe(false);
+  it("sensor sem período não quebra a cobertura", async () => {
+    const { coverageFromApi } = await import("./coverage");
+    const cov = coverageFromApi([
+      entry({ sensor: "VIIRS", minDate: null, maxDate: null, detections: 0 }),
+      entry({ sensor: "MODIS", minDate: "2024-01-01", maxDate: "2026-11-13" }),
+    ]);
+    expect(cov.minDate).toBe("2024-01-01");
+    expect(cov.maxDate).toBe("2026-11-13");
   });
 });
 
@@ -68,7 +53,7 @@ describe("fetchCoverage", () => {
 
   beforeEach(() => {
     vi.resetModules();
-    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8080/api/v1");
+    vi.stubEnv("NEXT_PUBLIC_API_URL", "http://localhost:8080/api/v2");
     vi.stubGlobal("fetch", fetchMock);
     fetchMock.mockReset();
   });
@@ -77,19 +62,20 @@ describe("fetchCoverage", () => {
     vi.unstubAllGlobals();
   });
 
-  it("reaproveita a resposta por um minuto", async () => {
-    fetchMock.mockImplementation(async () => new Response(JSON.stringify([source({})])));
+  it("consulta /meta/coverage uma vez e reaproveita a resposta", async () => {
+    fetchMock.mockImplementation(async () => new Response(JSON.stringify([entry({})])));
     const { fetchCoverage } = await import("./coverage");
     await fetchCoverage();
     await fetchCoverage();
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(String(fetchMock.mock.calls[0][0])).toContain("/meta/coverage");
   });
 
   it("não guarda falha no cache", async () => {
     fetchMock.mockResolvedValueOnce(new Response("x", { status: 503 }));
-    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify([source({})])));
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify([entry({})])));
     const { fetchCoverage } = await import("./coverage");
     await expect(fetchCoverage()).rejects.toBeDefined();
-    await expect(fetchCoverage()).resolves.toMatchObject({ resolutions: [3] });
+    await expect(fetchCoverage()).resolves.toMatchObject({ minDate: "2000-11-01" });
   });
 });

@@ -238,6 +238,11 @@ export function MapExplorer() {
           onContinentHover={setHoverContinent}
         />
         {overlay && <Overlay>{overlay}</Overlay>}
+        {data?.truncated && (
+          <p role="note" className="absolute inset-x-4 top-4 z-10 rounded-xl border border-space-600 bg-space-900/95 p-3 text-small text-ink-300">
+            Resultado parcial. Reduza a área ou o período para consultar todas as células.
+          </p>
+        )}
         <details className="group absolute bottom-10 right-4 z-10 w-72 max-w-[calc(100%-2rem)] rounded-3xl border border-space-600 bg-space-900/95 shadow-lg">
           <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 text-base font-semibold leading-6 tracking-[-0.02em] [&::-webkit-details-marker]:hidden">
             Legenda e avisos

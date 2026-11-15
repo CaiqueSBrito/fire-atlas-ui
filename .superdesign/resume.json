@@ -1,0 +1,71 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "/explore/calendar": {
+      "targetKind": "existing-ui",
+      "projectId": "edf468e0-4e53-48b7-80ed-92cc498a641a",
+      "baselineDraftId": "172cc08c-5593-4d82-b3d1-2dd1a5ee8d5a",
+      "activeDraftId": "fa2a7e7a-d906-4d10-b26b-c26c59ce1e3a",
+      "designSystemPath": ".superdesign/design-system.md",
+      "drafts": {
+        "172cc08c-5593-4d82-b3d1-2dd1a5ee8d5a": {
+          "role": "baseline",
+          "description": "Reprodução do calendário atual (dia 13/11 aberto)"
+        },
+        "cbd12380-976c-4aa0-8c01-714e96373491": {
+          "role": "branch",
+          "parentDraftId": "172cc08c-5593-4d82-b3d1-2dd1a5ee8d5a",
+          "description": "A — Observatório: intro estilo home, heatmap mensal à esquerda, painel do dia com 3 cards + mapa à direita"
+        },
+        "65086db9-9088-483d-9f07-e1b77e8ecad6": {
+          "role": "branch",
+          "parentDraftId": "172cc08c-5593-4d82-b3d1-2dd1a5ee8d5a",
+          "description": "B — Mapa primeiro: mapa grande com card flutuante do dia, chips de região, linha do tempo em barras MODIS/VIIRS, 3 cards de resumo"
+        },
+        "54e0eed7-4434-482f-8583-b3cab289d03f": {
+          "role": "branch",
+          "parentDraftId": "65086db9-9088-483d-9f07-e1b77e8ecad6",
+          "description": "B1 — mapa alto com card do dia flutuante e linha do tempo acoplada embaixo; 3 cards de resumo (importado, sem créditos)"
+        },
+        "fa2a7e7a-d906-4d10-b26b-c26c59ce1e3a": {
+          "role": "branch",
+          "parentDraftId": "65086db9-9088-483d-9f07-e1b77e8ecad6",
+          "description": "B2 — mapa + linha do tempo à esquerda, painel lateral do dia e resumo do mês à direita (importado, sem créditos); escolhido e implementado em features/calendar"
+        }
+      },
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "src/app/globals.css:1:90",
+        "src/components/layout/site-header.tsx",
+        "src/components/layout/logo.tsx",
+        "src/components/layout/main-nav.tsx",
+        "src/config/navigation.ts",
+        "src/components/ui/button.tsx",
+        "src/features/home/components/hero.tsx",
+        "src/features/home/components/section.tsx",
+        "src/features/home/components/how-it-works.tsx",
+        "src/features/home/components/region-links.tsx",
+        "src/features/home/components/data-sources.tsx"
+      ],
+      "referenceIds": [
+        "b73063af-f608-435f-b149-2832dc9743d3",
+        "1b1c2700-9c9a-4a94-a5ce-ffa610302bb9"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "d99efc69a49eea5f61aea3d96552c6670448a134f9be6fe2cf32023c76e6a22c",
+        "src/app/globals.css": "9bf796ee4395a7057719be788ca6d32619bf3b5d9955f7d2fa592a50ed93fb9f",
+        "src/components/layout/site-header.tsx": "a258048312242a9c476ce5691a68516795b93b5facc03bfef1be4c2d9df54671",
+        "src/components/layout/logo.tsx": "2ab69a3976a63ec88cb738c85f2307191f297dde50a983106ebdef12959a1005",
+        "src/components/layout/main-nav.tsx": "35674d39edad20ae23c9c84452852b2dc043a003772c551da7b62c86bf06b64a",
+        "src/config/navigation.ts": "e1b09e07059e546e04f81bb599751ebdb410aaf493d0e00c0cf6cbdd628d5570",
+        "src/components/ui/button.tsx": "9ac8e2ed29d7838c6cf1dc4a7ee6a0b3be2c96e2d85c12fcd03c5b64e20310c4",
+        "src/features/home/components/hero.tsx": "7bc96c078d44c6d8ddc89655d3c64cb319cf68b07897ae67506c14c4828eb449",
+        "src/features/home/components/section.tsx": "0e58d12c06653c31cd43c22f634b4b340b40bb05d74d1513d97659a4763fc676",
+        "src/features/home/components/how-it-works.tsx": "307ad930b49ed7cc4c2a8bc25c7eb28943fb17a8e1ba89f51c2c2eac71976d9a",
+        "src/features/home/components/region-links.tsx": "1d7297fcd62e941c1e908328b778fcdf3c07cbd8707f391e21b3941f9a04ffb0",
+        "src/features/home/components/data-sources.tsx": "c46826f42a6e0131724a860faca5afab9cfa2b7a88062908113531ceeddaac7d"
+      },
+      "updatedAt": "2026-11-15T15:44:27.459239+00:00"
+    }
+  }
+}

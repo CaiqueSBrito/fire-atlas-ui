@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fire Atlas UI
 
-## Getting Started
+Frontend Next.js para explorar focos MODIS/VIIRS, atividade harmonizada e previsões.
 
-First, run the development server:
+## Executar
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra `http://localhost:3000`. Configure no `.env`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```dotenv
+NEXT_PUBLIC_API_URL=http://localhost:8080/api/v2
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Reinicie o servidor Next ao mudar a URL. Sem essa variável, mapa e análises usam dados simulados identificados;
+a previsão permanece indisponível. O backend fica no repositório `fire-atlas-api`.
 
-## Learn More
+## Integração com o Athena
 
-To learn more about Next.js, take a look at the following resources:
+O frontend continua acessando a API REST, nunca o Athena nem credenciais AWS diretamente. O backend consulta a gold
+no S3 sem materializar os dados no Postgres. Os DTOs de mapa, calendário, análises e previsão foram preservados.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `/meta/sources` foi removido. A cobertura vem de `/meta/coverage`, com período por sensor e cache compartilhado de
+  10 minutos; as resoluções H3 da gold são 0–6.
+- O cliente HTTP espera até **45 segundos**, incluindo a transferência do corpo. Não usa `no-store`: respeita o
+  `Cache-Control` da API.
+- O detalhe RFC 7807 é mostrado também no **503**. Falhas de rede, timeout, 429 e 5xx (exceto 501) permitem até duas
+  novas tentativas com backoff. Rejeições 400/404 e recurso não implementado 501 não são repetidos automaticamente.
+- React Query mantém os dados frescos por 5 minutos e não repete consultas ao focar a janela. As chaves de cache
+  usam as células H3 realmente consultadas, ordenadas; pequenos movimentos que cobrem as mesmas células reutilizam
+  os resultados. Modo simulado mantém sua chave por bbox.
+- O mapa mantém o debounce de 350 ms, a margem de 25% e a área de consulta enquanto o viewport continuar nela.
+  Mudanças de filtro/área cancelam os pedidos anteriores no cliente. Cancelar o HTTP não garante interromper uma
+  consulta já iniciada no Athena.
+- O período padrão é de 7 dias. Intervalos acima de 366 dias são bloqueados também quando vêm diretamente pela URL.
+  Datas históricas desde 2000 continuam acessíveis, sem depender de uma primeira carga local.
+- Resultados truncados são sinalizados nos mapas principal e diário; a previsão distingue o top-N da região inteira.
+- **Estados de carregamento não foram alterados** nesta adaptação.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Detalhes de arquitetura e contratos: `CLAUDE.md`.
 
-## Deploy on Vercel
+## Verificação
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm test
+npm run lint
+npx tsc --noEmit
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Para verificar integração real, execute a API e abra `/explore/map`, `/explore/calendar`, `/explore/statistics` e
+`/explore/forecasts`. A API pode emitir várias consultas Athena por página; o tempo HTTP total não é o de uma única
+consulta SQL.

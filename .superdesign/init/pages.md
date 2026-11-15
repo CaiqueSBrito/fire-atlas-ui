@@ -1,0 +1,501 @@
+# Pages — árvores de dependência (imports locais, recursivo)
+
+Todas as rotas /explore/* também dependem do shell `src/app/explore/layout.tsx` (SiteHeader, MainNav, Logo, ExploreToolbar).
+
+## / (Home)
+Entry: src/app/page.tsx
+Dependencies:
+- src/components/layout/site-footer.tsx
+- src/components/layout/site-header.tsx
+  - src/components/layout/logo.tsx
+  - src/components/layout/main-nav.tsx
+    - src/config/navigation.ts
+    - src/lib/utils/cn.ts
+- src/features/home/components/about-challenge.tsx
+  - src/features/home/components/section.tsx
+- src/features/home/components/data-sources.tsx
+  - src/features/home/components/section.tsx (já listado)
+- src/features/home/components/faq.tsx
+  - src/features/home/components/section.tsx (já listado)
+- src/features/home/components/hero.tsx
+  - src/components/ui/button.tsx
+    - src/lib/utils/cn.ts (já listado)
+  - src/features/home/components/hero-globe.tsx
+    - src/config/regions.ts
+    - src/lib/utils/continent.ts
+      - src/lib/utils/countries.ts
+    - src/lib/utils/countries.ts (já listado)
+    - src/lib/utils/intro-fly.ts
+    - src/features/home/components/globe-loader.tsx
+      - src/features/home/components/globe.tsx
+        - src/hooks/use-prefers-reduced-motion.ts
+        - src/lib/utils/geo.ts
+  - src/features/home/components/region-links.tsx
+    - src/config/regions.ts (já listado)
+    - src/lib/utils/intro-fly.ts (já listado)
+- src/features/home/components/how-it-works.tsx
+  - src/features/home/components/section.tsx (já listado)
+
+## /explore/calendar (Calendário)
+Entry: src/app/explore/calendar/page.tsx
+Dependencies:
+- src/features/calendar/components/calendar-skeleton.tsx
+- src/features/calendar/components/calendar-view.tsx
+  - src/config/regions.ts
+  - src/hooks/use-map-layers.ts
+    - src/lib/map-layers.ts
+      - src/lib/utils/dates.ts
+  - src/lib/utils/bbox.ts
+    - src/types/detections.ts
+      - src/lib/utils/hex.ts
+        - src/lib/map-layers.ts (já listado)
+        - src/types/calendar.ts
+          - src/types/detections.ts (já listado)
+        - src/types/detections.ts (já listado)
+  - src/lib/utils/dates.ts (já listado)
+  - src/features/calendar/search-params.ts
+  - src/features/calendar/components/calendar-panel.tsx
+    - src/components/feedback/error-state.tsx
+    - src/lib/utils/dates.ts (já listado)
+    - src/types/calendar.ts (já listado)
+    - src/features/calendar/hooks/use-calendar-queries.ts
+      - src/lib/api/calendar.ts
+        - src/config/regions.ts (já listado)
+        - src/lib/utils/dates.ts (já listado)
+        - src/lib/utils/h3-region.ts
+          - src/types/detections.ts (já listado)
+        - src/types/api.ts
+        - src/types/calendar.ts (já listado)
+        - src/lib/api/adapters.ts
+          - src/lib/utils/dates.ts (já listado)
+          - src/lib/utils/hex.ts (já listado)
+          - src/types/api.ts (já listado)
+          - src/types/calendar.ts (já listado)
+          - src/types/detections.ts (já listado)
+          - src/types/forecast.ts
+          - src/types/stats.ts
+            - src/types/detections.ts (já listado)
+        - src/lib/api/client.ts
+        - src/lib/api/coverage.ts
+          - src/types/api.ts (já listado)
+          - src/lib/api/client.ts (já listado)
+        - src/lib/api/detections.ts
+          - src/lib/utils/h3-region.ts (já listado)
+          - src/lib/utils/tiles.ts
+            - src/types/detections.ts (já listado)
+          - src/types/api.ts (já listado)
+          - src/types/detections.ts (já listado)
+          - src/types/stats.ts (já listado)
+          - src/lib/api/adapters.ts (já listado)
+          - src/lib/api/client.ts (já listado)
+          - src/lib/api/coverage.ts (já listado)
+          - src/lib/api/mock-detections.ts
+            - src/lib/api/client.ts (já listado)
+            - src/lib/utils/bbox.ts (já listado)
+            - src/lib/utils/dates.ts (já listado)
+            - src/types/detections.ts (já listado)
+          - src/lib/api/mock-stats.ts
+            - src/lib/api/client.ts (já listado)
+            - src/lib/api/mock-detections.ts (já listado)
+            - src/lib/utils/dates.ts (já listado)
+            - src/types/detections.ts (já listado)
+            - src/types/stats.ts (já listado)
+        - src/lib/api/mock-calendar.ts
+          - src/config/regions.ts (já listado)
+          - src/lib/utils/dates.ts (já listado)
+          - src/types/calendar.ts (já listado)
+      - src/types/calendar.ts (já listado)
+    - src/features/calendar/components/day-tile.tsx
+      - src/lib/utils/dates.ts (já listado)
+      - src/types/calendar.ts (já listado)
+      - src/features/calendar/components/flame-icon.tsx
+    - src/features/calendar/components/flame-icon.tsx (já listado)
+    - src/features/calendar/components/month-picker.tsx
+      - src/components/ui/select.tsx
+        - src/hooks/use-dismiss.ts
+        - src/components/ui/field.ts
+      - src/hooks/use-dismiss.ts (já listado)
+      - src/lib/utils/dates.ts (já listado)
+      - src/features/calendar/components/month-year-grid.tsx
+        - src/components/ui/select.tsx (já listado)
+        - src/lib/utils/dates.ts (já listado)
+  - src/features/calendar/components/detail-view.tsx
+    - src/components/feedback/error-state.tsx (já listado)
+    - src/components/ui/select.tsx (já listado)
+    - src/config/regions.ts (já listado)
+    - src/lib/api/client.ts (já listado)
+    - src/lib/utils/dates.ts (já listado)
+    - src/types/calendar.ts (já listado)
+    - src/types/detections.ts (já listado)
+    - src/features/calendar/hooks/use-calendar-queries.ts (já listado)
+    - src/features/calendar/components/activity-card.tsx
+      - src/config/regions.ts (já listado)
+      - src/lib/utils/dates.ts (já listado)
+      - src/lib/utils/hex.ts (já listado)
+      - src/types/calendar.ts (já listado)
+      - src/features/calendar/components/flame-icon.tsx (já listado)
+      - src/features/calendar/components/region-plot.tsx
+        - src/config/regions.ts (já listado)
+        - src/types/calendar.ts (já listado)
+    - src/features/calendar/components/date-picker.tsx
+      - src/components/ui/select.tsx (já listado)
+      - src/hooks/use-dismiss.ts (já listado)
+      - src/lib/utils/dates.ts (já listado)
+      - src/features/calendar/components/month-year-grid.tsx (já listado)
+    - src/features/calendar/components/day-tile.tsx (já listado)
+    - src/features/calendar/components/day-live-map.tsx
+      - src/components/feedback/error-state.tsx (já listado)
+      - src/config/regions.ts (já listado)
+      - src/features/map/components/fire-map-loader.tsx
+        - src/components/feedback/loading-state.tsx
+      - src/hooks/use-query-area.ts
+        - src/lib/utils/viewport-area.ts
+          - src/types/detections.ts (já listado)
+        - src/types/detections.ts (já listado)
+      - src/lib/api/detections.ts (já listado)
+      - src/lib/map-layers.ts (já listado)
+      - src/lib/sensors.ts
+        - src/types/detections.ts (já listado)
+      - src/lib/utils/hot-areas.ts
+        - src/lib/utils/hex.ts (já listado)
+      - src/types/detections.ts (já listado)
+    - src/features/calendar/components/day-map.tsx
+      - src/config/regions.ts (já listado)
+      - src/features/map/components/fire-map-loader.tsx (já listado)
+      - src/lib/api/client.ts (já listado)
+      - src/lib/utils/bbox.ts (já listado)
+      - src/lib/utils/hex.ts (já listado)
+      - src/lib/utils/webgl.ts
+      - src/types/calendar.ts (já listado)
+      - src/types/detections.ts (já listado)
+      - src/features/calendar/components/day-live-map.tsx (já listado)
+      - src/features/calendar/components/region-plot.tsx (já listado)
+  - src/features/calendar/components/flame-icon.tsx (já listado)
+
+## /explore/map (Mapa)
+Entry: src/app/explore/map/page.tsx
+Dependencies:
+- src/features/map/components/map-explorer.tsx
+  - src/components/feedback/empty-state.tsx
+  - src/components/feedback/error-state.tsx
+  - src/components/feedback/loading-state.tsx
+  - src/hooks/use-detections.ts
+    - src/lib/api/detections.ts
+      - src/lib/utils/h3-region.ts
+        - src/types/detections.ts
+          - src/lib/utils/hex.ts
+            - src/lib/map-layers.ts
+              - src/lib/utils/dates.ts
+            - src/types/calendar.ts
+              - src/types/detections.ts (já listado)
+            - src/types/detections.ts (já listado)
+      - src/lib/utils/tiles.ts
+        - src/types/detections.ts (já listado)
+      - src/types/api.ts
+      - src/types/detections.ts (já listado)
+      - src/types/stats.ts
+        - src/types/detections.ts (já listado)
+      - src/lib/api/adapters.ts
+        - src/lib/utils/dates.ts (já listado)
+        - src/lib/utils/hex.ts (já listado)
+        - src/types/api.ts (já listado)
+        - src/types/calendar.ts (já listado)
+        - src/types/detections.ts (já listado)
+        - src/types/forecast.ts
+        - src/types/stats.ts (já listado)
+      - src/lib/api/client.ts
+      - src/lib/api/coverage.ts
+        - src/types/api.ts (já listado)
+        - src/lib/api/client.ts (já listado)
+      - src/lib/api/mock-detections.ts
+        - src/lib/api/client.ts (já listado)
+        - src/lib/utils/bbox.ts
+          - src/types/detections.ts (já listado)
+        - src/lib/utils/dates.ts (já listado)
+        - src/types/detections.ts (já listado)
+      - src/lib/api/mock-stats.ts
+        - src/lib/api/client.ts (já listado)
+        - src/lib/api/mock-detections.ts (já listado)
+        - src/lib/utils/dates.ts (já listado)
+        - src/types/detections.ts (já listado)
+        - src/types/stats.ts (já listado)
+    - src/lib/api/forecast.ts
+      - src/lib/utils/h3-region.ts (já listado)
+      - src/types/api.ts (já listado)
+      - src/types/detections.ts (já listado)
+      - src/types/forecast.ts (já listado)
+      - src/lib/api/adapters.ts (já listado)
+      - src/lib/api/client.ts (já listado)
+      - src/lib/api/coverage.ts (já listado)
+    - src/types/detections.ts (já listado)
+    - src/hooks/use-filters.ts
+      - src/lib/filters.ts
+        - src/config/regions.ts
+        - src/lib/sensors.ts
+          - src/types/detections.ts (já listado)
+        - src/lib/utils/bbox.ts (já listado)
+        - src/lib/utils/dates.ts (já listado)
+        - src/types/detections.ts (já listado)
+      - src/lib/api/mock-detections.ts (já listado)
+      - src/types/detections.ts (já listado)
+  - src/hooks/use-filters.ts (já listado)
+  - src/hooks/use-map-layers.ts
+    - src/lib/map-layers.ts (já listado)
+  - src/hooks/use-query-area.ts
+    - src/lib/utils/viewport-area.ts
+      - src/types/detections.ts (já listado)
+    - src/types/detections.ts (já listado)
+  - src/providers/draw-mode.tsx
+  - src/lib/api/client.ts (já listado)
+  - src/config/regions.ts (já listado)
+  - src/lib/map-layers.ts (já listado)
+  - src/lib/utils/continent.ts
+    - src/lib/utils/countries.ts
+  - src/lib/utils/hex.ts (já listado)
+  - src/lib/utils/hot-areas.ts
+    - src/lib/utils/hex.ts (já listado)
+  - src/lib/utils/intro-fly.ts
+  - src/lib/utils/bbox.ts (já listado)
+  - src/types/detections.ts (já listado)
+  - src/features/map/components/detection-detail.tsx
+    - src/components/ui/button.tsx
+      - src/lib/utils/cn.ts
+    - src/lib/sensors.ts (já listado)
+    - src/types/detections.ts (já listado)
+  - src/features/map/components/detection-list.tsx
+    - src/lib/sensors.ts (já listado)
+    - src/lib/utils/cn.ts (já listado)
+    - src/types/detections.ts (já listado)
+    - src/features/map/components/detection-detail.tsx (já listado)
+  - src/features/map/components/hex-detail.tsx
+    - src/components/ui/button.tsx (já listado)
+    - src/lib/sensors.ts (já listado)
+    - src/lib/utils/cn.ts (já listado)
+    - src/lib/utils/hex.ts (já listado)
+  - src/features/map/components/fire-map-loader.tsx
+    - src/components/feedback/loading-state.tsx (já listado)
+  - src/features/map/components/layer-panel.tsx
+    - src/components/ui/toggle.tsx
+    - src/lib/map-layers.ts (já listado)
+  - src/features/map/components/map-legend.tsx
+    - src/lib/map-layers.ts (já listado)
+    - src/lib/utils/hex.ts (já listado)
+    - src/lib/sensors.ts (já listado)
+    - src/types/detections.ts (já listado)
+
+## /explore/statistics (Análises)
+Entry: src/app/explore/statistics/page.tsx
+Dependencies:
+- src/features/stats/components/stats-dashboard.tsx
+  - src/components/feedback/empty-state.tsx
+  - src/components/feedback/error-state.tsx
+  - src/components/feedback/loading-state.tsx
+  - src/components/layout/page-section.tsx
+  - src/config/regions.ts
+  - src/hooks/use-detections.ts
+    - src/lib/api/detections.ts
+      - src/lib/utils/h3-region.ts
+        - src/types/detections.ts
+          - src/lib/utils/hex.ts
+            - src/lib/map-layers.ts
+              - src/lib/utils/dates.ts
+            - src/types/calendar.ts
+              - src/types/detections.ts (já listado)
+            - src/types/detections.ts (já listado)
+      - src/lib/utils/tiles.ts
+        - src/types/detections.ts (já listado)
+      - src/types/api.ts
+      - src/types/detections.ts (já listado)
+      - src/types/stats.ts
+        - src/types/detections.ts (já listado)
+      - src/lib/api/adapters.ts
+        - src/lib/utils/dates.ts (já listado)
+        - src/lib/utils/hex.ts (já listado)
+        - src/types/api.ts (já listado)
+        - src/types/calendar.ts (já listado)
+        - src/types/detections.ts (já listado)
+        - src/types/forecast.ts
+        - src/types/stats.ts (já listado)
+      - src/lib/api/client.ts
+      - src/lib/api/coverage.ts
+        - src/types/api.ts (já listado)
+        - src/lib/api/client.ts (já listado)
+      - src/lib/api/mock-detections.ts
+        - src/lib/api/client.ts (já listado)
+        - src/lib/utils/bbox.ts
+          - src/types/detections.ts (já listado)
+        - src/lib/utils/dates.ts (já listado)
+        - src/types/detections.ts (já listado)
+      - src/lib/api/mock-stats.ts
+        - src/lib/api/client.ts (já listado)
+        - src/lib/api/mock-detections.ts (já listado)
+        - src/lib/utils/dates.ts (já listado)
+        - src/types/detections.ts (já listado)
+        - src/types/stats.ts (já listado)
+    - src/lib/api/forecast.ts
+      - src/lib/utils/h3-region.ts (já listado)
+      - src/types/api.ts (já listado)
+      - src/types/detections.ts (já listado)
+      - src/types/forecast.ts (já listado)
+      - src/lib/api/adapters.ts (já listado)
+      - src/lib/api/client.ts (já listado)
+      - src/lib/api/coverage.ts (já listado)
+    - src/types/detections.ts (já listado)
+    - src/hooks/use-filters.ts
+      - src/lib/filters.ts
+        - src/config/regions.ts (já listado)
+        - src/lib/sensors.ts
+          - src/types/detections.ts (já listado)
+        - src/lib/utils/bbox.ts (já listado)
+        - src/lib/utils/dates.ts (já listado)
+        - src/types/detections.ts (já listado)
+      - src/lib/api/mock-detections.ts (já listado)
+      - src/types/detections.ts (já listado)
+  - src/lib/api/client.ts (já listado)
+  - src/lib/sensors.ts (já listado)
+  - src/features/stats/components/history-comparison.tsx
+    - src/types/stats.ts (já listado)
+    - src/features/stats/components/unavailable.tsx
+  - src/features/stats/components/indicator-cards.tsx
+    - src/lib/sensors.ts (já listado)
+    - src/types/detections.ts (já listado)
+    - src/types/stats.ts (já listado)
+  - src/features/stats/components/insight-panels.tsx
+    - src/types/stats.ts (já listado)
+    - src/features/stats/components/unavailable.tsx (já listado)
+  - src/features/stats/components/time-series-chart.tsx
+    - src/lib/sensors.ts (já listado)
+    - src/lib/utils/dates.ts (já listado)
+    - src/types/detections.ts (já listado)
+    - src/types/stats.ts (já listado)
+
+## /explore/forecasts (Previsões)
+Entry: src/app/explore/forecasts/page.tsx
+Dependencies:
+- src/features/forecast/components/forecast-view.tsx
+  - src/components/feedback/empty-state.tsx
+  - src/components/feedback/error-state.tsx
+  - src/components/feedback/loading-state.tsx
+  - src/components/layout/page-section.tsx
+  - src/config/regions.ts
+  - src/features/stats/components/unavailable.tsx
+  - src/hooks/use-detections.ts
+    - src/lib/api/detections.ts
+      - src/lib/utils/h3-region.ts
+        - src/types/detections.ts
+          - src/lib/utils/hex.ts
+            - src/lib/map-layers.ts
+              - src/lib/utils/dates.ts
+            - src/types/calendar.ts
+              - src/types/detections.ts (já listado)
+            - src/types/detections.ts (já listado)
+      - src/lib/utils/tiles.ts
+        - src/types/detections.ts (já listado)
+      - src/types/api.ts
+      - src/types/detections.ts (já listado)
+      - src/types/stats.ts
+        - src/types/detections.ts (já listado)
+      - src/lib/api/adapters.ts
+        - src/lib/utils/dates.ts (já listado)
+        - src/lib/utils/hex.ts (já listado)
+        - src/types/api.ts (já listado)
+        - src/types/calendar.ts (já listado)
+        - src/types/detections.ts (já listado)
+        - src/types/forecast.ts
+        - src/types/stats.ts (já listado)
+      - src/lib/api/client.ts
+      - src/lib/api/coverage.ts
+        - src/types/api.ts (já listado)
+        - src/lib/api/client.ts (já listado)
+      - src/lib/api/mock-detections.ts
+        - src/lib/api/client.ts (já listado)
+        - src/lib/utils/bbox.ts
+          - src/types/detections.ts (já listado)
+        - src/lib/utils/dates.ts (já listado)
+        - src/types/detections.ts (já listado)
+      - src/lib/api/mock-stats.ts
+        - src/lib/api/client.ts (já listado)
+        - src/lib/api/mock-detections.ts (já listado)
+        - src/lib/utils/dates.ts (já listado)
+        - src/types/detections.ts (já listado)
+        - src/types/stats.ts (já listado)
+    - src/lib/api/forecast.ts
+      - src/lib/utils/h3-region.ts (já listado)
+      - src/types/api.ts (já listado)
+      - src/types/detections.ts (já listado)
+      - src/types/forecast.ts (já listado)
+      - src/lib/api/adapters.ts (já listado)
+      - src/lib/api/client.ts (já listado)
+      - src/lib/api/coverage.ts (já listado)
+    - src/types/detections.ts (já listado)
+    - src/hooks/use-filters.ts
+      - src/lib/filters.ts
+        - src/config/regions.ts (já listado)
+        - src/lib/sensors.ts
+          - src/types/detections.ts (já listado)
+        - src/lib/utils/bbox.ts (já listado)
+        - src/lib/utils/dates.ts (já listado)
+        - src/types/detections.ts (já listado)
+      - src/lib/api/mock-detections.ts (já listado)
+      - src/types/detections.ts (já listado)
+  - src/lib/api/client.ts (já listado)
+  - src/types/forecast.ts (já listado)
+
+## /explore layout
+Entry: src/app/explore/layout.tsx
+Dependencies:
+- src/components/layout/site-header.tsx
+  - src/components/layout/logo.tsx
+  - src/components/layout/main-nav.tsx
+    - src/config/navigation.ts
+    - src/lib/utils/cn.ts
+- src/components/layout/explore-toolbar.tsx
+  - src/features/filters/components/filter-bar.tsx
+    - src/components/ui/button.tsx
+      - src/lib/utils/cn.ts (já listado)
+    - src/config/regions.ts
+    - src/hooks/use-filters.ts
+      - src/lib/filters.ts
+        - src/config/regions.ts (já listado)
+        - src/lib/sensors.ts
+          - src/types/detections.ts
+            - src/lib/utils/hex.ts
+              - src/lib/map-layers.ts
+                - src/lib/utils/dates.ts
+              - src/types/calendar.ts
+                - src/types/detections.ts (já listado)
+              - src/types/detections.ts (já listado)
+        - src/lib/utils/bbox.ts
+          - src/types/detections.ts (já listado)
+        - src/lib/utils/dates.ts (já listado)
+        - src/types/detections.ts (já listado)
+      - src/lib/api/mock-detections.ts
+        - src/lib/api/client.ts
+        - src/lib/utils/bbox.ts (já listado)
+        - src/lib/utils/dates.ts (já listado)
+        - src/types/detections.ts (já listado)
+      - src/types/detections.ts (já listado)
+    - src/lib/filter-presets.ts
+      - src/lib/utils/dates.ts (já listado)
+    - src/lib/filters.ts (já listado)
+    - src/lib/sensors.ts (já listado)
+    - src/features/filters/components/filter-modal.tsx
+      - src/components/ui/button.tsx (já listado)
+      - src/components/ui/dialog.tsx
+      - src/components/ui/field.ts
+      - src/config/regions.ts (já listado)
+      - src/hooks/use-filters.ts (já listado)
+      - src/lib/filter-presets.ts (já listado)
+      - src/lib/filters.ts (já listado)
+      - src/lib/sensors.ts (já listado)
+      - src/lib/utils/bbox.ts (já listado)
+      - src/lib/utils/dates.ts (já listado)
+      - src/providers/draw-mode.tsx
+      - src/types/detections.ts (já listado)
+      - src/features/filters/components/area-fields.tsx
+        - src/components/ui/button.tsx (já listado)
+        - src/components/ui/field.ts (já listado)
+        - src/lib/utils/bbox.ts (já listado)
+        - src/types/detections.ts (já listado)
+- src/providers/draw-mode.tsx (já listado)
+

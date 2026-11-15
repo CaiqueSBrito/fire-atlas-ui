@@ -10,6 +10,7 @@ import { isValidDate, shiftDate, todayUtc } from "@/lib/utils/dates";
 import type { Bbox, SensorId } from "@/types/detections";
 
 export const DEFAULT_PERIOD_DAYS = 7;
+export const MAX_PERIOD_DAYS = 366;
 
 export const filterParsers = {
   sensors: parseAsArrayOf(parseAsStringLiteral(SENSORS)).withDefault([
@@ -69,7 +70,12 @@ export function resolveFilters(
     from = shiftDate(today, -(DEFAULT_PERIOD_DAYS - 1));
   }
 
-  const rangeProblem = from > to ? "A data inicial é posterior à final." : null;
+  const days = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 864e5) + 1;
+  const rangeProblem = from > to
+    ? "A data inicial é posterior à final."
+    : days > MAX_PERIOD_DAYS
+      ? `O período máximo é de ${MAX_PERIOD_DAYS} dias. Reduza o intervalo para consultar o mapa.`
+      : null;
 
   return {
     sensors: raw.sensors,

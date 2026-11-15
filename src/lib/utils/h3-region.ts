@@ -40,7 +40,7 @@ function centerInside(id: string, [w, s, e, n]: Bbox): boolean {
 
 function cellsAt(bbox: Bbox, resolution: number): string[] {
   if (resolution === 0) {
-    return getRes0Cells().filter((id) => centerInside(id, bbox));
+    return getRes0Cells().filter((id) => centerInside(id, bbox)).sort();
   }
   const found = new Set<string>();
   for (const [w, s, e, n] of tiles(bbox)) {
@@ -52,7 +52,7 @@ function cellsAt(bbox: Bbox, resolution: number): string[] {
     ];
     for (const id of polygonToCells(ring, resolution)) found.add(id);
   }
-  return [...found];
+  return [...found].sort();
 }
 
 export function cellsForBbox(
