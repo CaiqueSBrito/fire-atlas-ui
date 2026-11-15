@@ -123,4 +123,20 @@ describe("DayLiveMap (mesmo mapa da página do mapa)", () => {
     expect(await screen.findByText(/Nenhuma detecção registrada neste recorte/)).toBeInTheDocument();
     expect(screen.getByText(/não significa que não houve fogo/)).toBeInTheDocument();
   });
+
+  it("sem grade (dados simulados) desenha os pontos das detecções", async () => {
+    mocked.mockResolvedValue(detectionsResponse({ items: [], total: 0, grid: null }));
+    renderWithProviders(<DayLiveMap region={region} date="2026-11-12" />);
+    await waitFor(() => expect(screen.getByTestId("fire-map")).toHaveAttribute("data-plot", "points"));
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-points", "true");
+  });
+
+  it("sem WebGL usa o esquema da região com os mesmos dados", async () => {
+    mocked.mockResolvedValue(grid());
+    renderWithProviders(<DayLiveMap region={region} date="2026-11-12" schematic />);
+    expect(
+      await screen.findByRole("img", { name: "Mapa esquemático com 2 pontos de fogo em Brasil em 2026-11-12" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId("fire-map")).not.toBeInTheDocument();
+  });
 });

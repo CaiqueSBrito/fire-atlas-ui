@@ -1,69 +1,58 @@
-import type { DetectionGrid } from "./detections";
-
-// DTOs do calendário de queimadas (NASA-013).
-// Datas sempre em UTC, formato ISO "YYYY-MM-DD"; meses "YYYY-MM".
-
 export type Sensor = "MODIS" | "VIIRS";
 
-/**
- * Estado de uma data (RN07):
- * - activity: há dados e ao menos uma detecção
- * - none: há dados, mas nenhuma detecção (zero registrado)
- * - unavailable: não há dados para a data (nunca inventar detecções)
- */
 export type DayStatus = "activity" | "none" | "unavailable";
 
-/** Horário da passagem do satélite. */
-export type PassTime = "all" | "day" | "night";
+export type TemperatureBasis = "viirs" | "aqua" | "terra";
 
-/** Contagem por sensor — só presente quando a API informa. */
-export type SensorCounts = Partial<Record<Sensor, number>>;
+export type TemperatureBin = {
+  key: string;
+  fromK: number | null;
+  toK: number | null;
+  value: number;
+};
 
 export type DataSource = {
   name: string;
   simulated: boolean;
 };
 
-export type MonthDay = {
+export type ActivityDay = {
   date: string;
   status: DayStatus;
-  counts?: SensorCounts;
+  value: number | null;
+  contributing: number;
+  basis: TemperatureBasis | null;
+  temperature: TemperatureBin[] | null;
 };
 
-export type MonthResponse = {
+export type ActivityMonth = {
   month: string;
   region: string;
-  days: MonthDay[];
+  days: ActivityDay[];
+  unitLabel: string;
+  warnings: string[];
   source: DataSource;
+};
+
+export type MonthAnomaly = {
+  sufficient: boolean;
+  current: number | null;
+  baselineMedian: number | null;
+  deviationPct: number | null;
+  yearsWithData: number;
+  minYears: number;
+  note: string | null;
+};
+
+export type DaySatellites = {
+  date: string;
+  contributing: string[];
+  available: string[];
 };
 
 export type Detection = {
   lat: number;
   lon: number;
   sensor: Sensor;
-  /** D = passagem diurna, N = noturna */
   dayNight: "D" | "N" | null;
-};
-
-export type ImageryKind = "thermal" | "geographic";
-
-/** Imagem com proveniência (fonte + data) obrigatória. */
-export type Imagery = {
-  kind: ImageryKind;
-  url: string;
-  source: string;
-  date: string;
-};
-
-export type DayResponse = {
-  date: string;
-  region: string;
-  passTime: PassTime;
-  status: DayStatus;
-  counts?: SensorCounts;
-  detections: Detection[];
-  grid?: DetectionGrid | null;
-  note?: string | null;
-  imagery: Imagery[];
-  source: DataSource;
 };

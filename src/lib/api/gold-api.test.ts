@@ -32,15 +32,27 @@ const CELLS = [
   { sensor: "MODIS", h3: "838141fffffffff", resolution: 3, count: 14, frpSum: 20, frpMax: 9 },
 ];
 
-const ZERO = { count: 0, frpSum: 0 };
-const CALENDAR = {
+const bin = (key: string, fromK: number | null, toK: number | null, harmonized: number) => ({
+  key,
+  ...(fromK === null ? {} : { fromK }),
+  ...(toK === null ? {} : { toK }),
+  harmonized,
+});
+const ACTIVITY_CALENDAR = {
   month: "2026-11",
-  daysWithFire: 1,
+  daysWithData: 2,
   days: [
-    { date: "2026-11-12", modis: { count: 14, frpSum: 1 }, viirs: { count: 67, frpSum: 1 } },
-    { date: "2026-11-13", modis: ZERO, viirs: ZERO },
-    { date: "2026-11-14", modis: ZERO, viirs: ZERO },
+    {
+      date: "2026-11-12", harmonized: 817.7, contributing: 2, hasData: true, basis: "viirs",
+      temperature: [
+        bin("lt320", null, 320, 40), bin("320", 320, 330, 150), bin("330", 330, 340, 300), bin("340", 340, 350, 200),
+        bin("350", 350, 360, 80), bin("ge360", 360, null, 40), bin("none", null, null, 7.7),
+      ],
+    },
+    { date: "2026-11-13", harmonized: 0, contributing: 2, hasData: true, basis: "viirs", temperature: null },
+    { date: "2026-11-14", harmonized: null, contributing: 0, hasData: false, basis: null, temperature: null },
   ],
+  meta: { unitLabelPt: "Atividade de fogo harmonizada (células ativas equivalentes ao MODIS Aqua)", warnings: [] },
 };
 
 const fetchMock = vi.fn();
@@ -54,8 +66,24 @@ function route(url: URL): unknown {
       return SOURCES;
     case "/detections":
       return { mode: "grid", count: 81, truncated: false, resolution: 3, cells: CELLS };
-    case "/calendar":
-      return CALENDAR;
+    case "/activity/calendar":
+      return ACTIVITY_CALENDAR;
+    case "/activity/anomaly":
+      return {
+        month: "2026-11", current: 817.7, currentDaysWithData: 2, currentMonthComplete: false, baseline: [],
+        yearsWithData: 0, minYears: 3, baselineMedian: null, ratioToMedian: null, deviationPct: null,
+        sufficient: false, note: "dados insuficientes",
+      };
+    case "/activity/availability":
+      return {
+        start: "2026-11-12", end: "2026-11-12", count: 4,
+        days: [
+          { date: "2026-11-12", platform: "Aqua", units: 1, typicalUnits: 1, available: true, contributes: false },
+          { date: "2026-11-12", platform: "NOAA-20", units: 1, typicalUnits: 1, available: true, contributes: true },
+          { date: "2026-11-12", platform: "NOAA-21", units: 1, typicalUnits: 1, available: true, contributes: true },
+          { date: "2026-11-12", platform: "Terra", units: 0, typicalUnits: 1, available: false, contributes: false },
+        ],
+      };
     case "/compare":
       return {
         start: "2026-11-01",
@@ -176,46 +204,56 @@ describe("estatísticas pela API gold", () => {
   });
 });
 
-describe("calendário pela API gold", () => {
-  it("mês: atividade, zero registrado dentro da cobertura e indisponível depois dela", async () => {
-    const { fetchMonth } = await import("./calendar");
-    const out = await fetchMonth("2026-11", "brasil");
-    expect(out.days).toEqual([
-      { date: "2026-11-12", status: "activity", counts: { MODIS: 14, VIIRS: 67 } },
-      { date: "2026-11-13", status: "none" },
-      { date: "2026-11-14", status: "unavailable" },
-    ]);
-    const url = callTo("/calendar")!;
-    expect(url.searchParams.has("bbox")).toBe(false);
+describe("calendário harmonizado pela API gold", () => {
+  it("continente vai por nome, sem células, e o dia sem dado não vira zero", async () => {
+    const { fetchActivityMonth } = await import("./activity");
+    const out = await fetchActivityMonth("2026-11", "south-america");
+    const url = callTo("/activity/calendar")!;
+    expect(url.searchParams.get("continent")).toBe("South America");
+    expect(url.searchParams.has("cells")).toBe(false);
     expect(url.searchParams.get("month")).toBe("2026-11");
+    expect(out.days.map((d) => [d.date, d.status, d.value])).toEqual([
+      ["2026-11-12", "activity", 817.7],
+      ["2026-11-13", "none", 0],
+      ["2026-11-14", "unavailable", null],
+    ]);
+    expect(out.unitLabel).toBe(ACTIVITY_CALENDAR.meta.unitLabelPt);
     expect(out.source.simulated).toBe(false);
   });
 
-  it("dia: contagem do calendário e grade H3 do dia", async () => {
-    const { fetchDay } = await import("./calendar");
-    const out = await fetchDay("2026-11-12", "para", "all");
-    expect(out.status).toBe("activity");
-    expect(out.counts).toEqual({ MODIS: 14, VIIRS: 67 });
-    expect(out.detections).toEqual([]);
-    expect(out.grid?.resolution).toBe(3);
-    const url = callTo("/detections")!;
-    expect(url.searchParams.get("start")).toBe("2026-11-12");
-    expect(url.searchParams.get("end")).toBe("2026-11-12");
+  it("as faixas de temperatura vêm da API e somam o valor do dia", async () => {
+    const { fetchActivityMonth } = await import("./activity");
+    const [day] = (await fetchActivityMonth("2026-11", "south-america")).days;
+    expect(day.basis).toBe("viirs");
+    expect(day.temperature!.map((b) => b.key)).toEqual(["lt320", "320", "330", "340", "350", "ge360", "none"]);
+    expect(day.temperature!.reduce((s, b) => s + b.value, 0)).toBeCloseTo(817.7);
+    expect(day.temperature!.map((b) => [b.fromK, b.toK])).toEqual([
+      [null, 320], [320, 330], [330, 340], [340, 350], [350, 360], [360, null], [null, null],
+    ]);
   });
 
-  it("dia depois da cobertura é indisponível, sem contagem", async () => {
-    const { fetchDay } = await import("./calendar");
-    const out = await fetchDay("2026-11-14", "para", "all");
-    expect(out.status).toBe("unavailable");
-    expect(out.counts).toBeUndefined();
+  it("Brasil vai por país e estados por células H3", async () => {
+    const { fetchActivityMonth } = await import("./activity");
+    await fetchActivityMonth("2026-11", "brasil");
+    expect(callTo("/activity/calendar")!.searchParams.get("country")).toBe("BR");
+    fetchMock.mockClear();
+    await fetchActivityMonth("2026-11", "para");
+    const url = callTo("/activity/calendar")!;
+    expect(url.searchParams.get("cells")!.split(",").length).toBeGreaterThan(0);
+    expect(url.searchParams.has("bbox")).toBe(false);
   });
 
-  it("passagem diurna/noturna não existe na fonte: avisa e não consulta a API", async () => {
-    const { fetchDay, PASS_TIME_UNSUPPORTED } = await import("./calendar");
-    const out = await fetchDay("2026-11-12", "para", "night");
-    expect(out.status).toBe("unavailable");
-    expect(out.note).toBe(PASS_TIME_UNSUPPORTED);
-    expect(out.detections).toEqual([]);
-    expect(fetchMock).not.toHaveBeenCalled();
+  it("anomalia sem anos suficientes fica indisponível", async () => {
+    const { fetchMonthAnomaly } = await import("./activity");
+    const out = await fetchMonthAnomaly("2026-11", "south-america");
+    expect(callTo("/activity/anomaly")!.searchParams.get("years")).toBe("5");
+    expect(out).toMatchObject({ sufficient: false, deviationPct: null, yearsWithData: 0, minYears: 3 });
+  });
+
+  it("satélites do dia: só os que contribuíram com a série", async () => {
+    const { fetchDaySatellites } = await import("./activity");
+    const out = await fetchDaySatellites("2026-11-12");
+    expect(out.contributing).toEqual(["NOAA-20", "NOAA-21"]);
+    expect(out.available).toEqual(["Aqua", "NOAA-20", "NOAA-21"]);
   });
 });

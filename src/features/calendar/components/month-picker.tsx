@@ -29,7 +29,7 @@ export function MonthPicker({ month, onChange }: MonthPickerProps) {
         className="flex items-center gap-2 rounded-xl px-3 py-2 transition hover:bg-space-800"
       >
         <span
-          className="font-display text-xl font-bold leading-none"
+          className="whitespace-nowrap font-display text-xl font-bold leading-none"
           aria-live="polite"
         >
           {formatMonthTitle(month)}

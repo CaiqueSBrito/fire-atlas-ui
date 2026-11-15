@@ -9,8 +9,11 @@ import { useQueryArea } from "@/hooks/use-query-area";
 import { fetchDetections } from "@/lib/api/detections";
 import type { BasemapId, PlotId } from "@/lib/map-layers";
 import { SENSORS } from "@/lib/sensors";
+import { gridPlotPoints } from "@/lib/utils/hex";
 import { computeHotAreas } from "@/lib/utils/hot-areas";
+import type { Detection } from "@/types/calendar";
 import type { Bbox } from "@/types/detections";
+import { RegionPlot } from "./region-plot";
 
 const noop = () => {};
 const NO_DETECTIONS: never[] = [];
@@ -28,11 +31,13 @@ export function DayLiveMap({
   date,
   viewBbox = null,
   layers,
+  schematic = false,
 }: {
   region: Region;
   date: string;
   viewBbox?: Bbox | null;
   layers?: DayMapLayers;
+  schematic?: boolean;
 }) {
   const base = viewBbox ?? region.bbox;
   const baseKey = base.join(",");
@@ -48,31 +53,53 @@ export function DayLiveMap({
   });
 
   const grid = query.data?.grid ?? null;
+  const detections = query.data?.items ?? NO_DETECTIONS;
   const hotAreas = useMemo(
     () => (grid ? computeHotAreas(grid.cells, layers?.areas ?? 0) : null),
     [grid, layers?.areas],
   );
+  const plotPoints = useMemo<Detection[]>(
+    () =>
+      grid
+        ? gridPlotPoints(grid.cells)
+        : detections.map((d) => ({
+            lat: d.lat,
+            lon: d.lon,
+            sensor: d.sensor === "viirs" ? "VIIRS" : "MODIS",
+            dayNight: d.dayNight ?? null,
+          })),
+    [grid, detections],
+  );
+  const empty = !!query.data && (grid ? grid.cells.length === 0 : detections.length === 0);
 
   return (
     <div className="relative h-full w-full">
-      <FireMap
-        detections={NO_DETECTIONS}
-        view={base}
-        aoi={null}
-        drawing={false}
-        selectedId={null}
-        onSelect={noop}
-        showMatches={false}
-        basemap={layers?.base ?? "streets"}
-        plot="hex"
-        hexCells={grid?.cells ?? null}
-        hexRes={grid?.resolution}
-        hotAreas={hotAreas}
-        showPoints={false}
-        showHeat={layers?.heat ?? false}
-        onViewport={(bbox) => setViewportState({ key: baseKey, bbox })}
-        label={`Mapa de focos de ${region.label} em ${date}. Arraste para deslocar; use os botões + e − para o zoom.`}
-      />
+      {schematic ? (
+        <RegionPlot
+          region={region}
+          detections={plotPoints}
+          title={`Mapa esquemático com ${plotPoints.length} pontos de fogo em ${region.label} em ${date}`}
+        />
+      ) : (
+        <FireMap
+          detections={grid ? NO_DETECTIONS : detections}
+          view={base}
+          aoi={null}
+          drawing={false}
+          selectedId={null}
+          onSelect={noop}
+          showMatches={false}
+          basemap={layers?.base ?? "streets"}
+          plot={grid ? "hex" : (layers?.plot ?? "points")}
+          hexCells={grid?.cells ?? null}
+          hexRes={grid?.resolution}
+          hotAreas={hotAreas}
+          showPoints={grid ? false : (layers?.dots ?? true)}
+          showHeat={layers?.heat ?? false}
+          onViewport={(bbox) => setViewportState({ key: baseKey, bbox })}
+          label={`Mapa de focos de ${region.label} em ${date}. Arraste para deslocar; use os botões + e − para o zoom.`}
+        />
+      )}
       {query.isFetching && (
         <p
           role="status"
@@ -90,7 +117,7 @@ export function DayLiveMap({
           />
         </div>
       )}
-      {query.data && grid && grid.cells.length === 0 && !query.isFetching && (
+      {empty && !query.isFetching && (
         <p className="pointer-events-none absolute inset-x-3 top-3 z-10 rounded-xl border border-space-600 bg-space-900/90 p-3 text-center text-small text-ink-300">
           Nenhuma detecção registrada neste recorte. Isso não significa que não houve fogo.
         </p>
