@@ -4,6 +4,7 @@ import { useState, type ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ApiError } from "@/lib/api/client";
+import { AnnualDataProvider } from "./annual-data-gate";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const [client] = useState(
@@ -24,7 +25,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   return (
     <NuqsAdapter>
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      <QueryClientProvider client={client}>
+        <AnnualDataProvider>{children}</AnnualDataProvider>
+      </QueryClientProvider>
     </NuqsAdapter>
   );
 }

@@ -33,6 +33,7 @@ export async function apiFetch<T>(
   path: string,
   params: Record<string, string | null | undefined> = {},
   signal?: AbortSignal,
+  options: Pick<RequestInit, "method" | "cache"> = {},
 ): Promise<T> {
   // Uma consulta pode ficar aguardando a cobertura compartilhada quando o usuário muda de região.
   signal?.throwIfAborted();
@@ -45,8 +46,8 @@ export async function apiFetch<T>(
   const timeout = AbortSignal.timeout(TIMEOUT_MS);
   const merged = signal ? AbortSignal.any([signal, timeout]) : timeout;
   try {
-    // Sem no-store: mantém a política Cache-Control da API e o cache HTTP do navegador.
-    const res = await fetch(url, { signal: merged });
+    // Consultas respeitam Cache-Control; o acompanhamento da carga usa no-store explicitamente.
+    const res = await fetch(url, { ...options, signal: merged });
     if (!res.ok) {
       const detail = await problemDetail(res);
       merged.throwIfAborted();
