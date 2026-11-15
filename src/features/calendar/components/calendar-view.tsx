@@ -15,7 +15,6 @@ import {
   isValidMonth,
   monthOf,
   shiftDate,
-  shiftMonth,
   todayUtc,
 } from "@/lib/utils/dates";
 import type { ActivityDay } from "@/types/calendar";
@@ -40,8 +39,6 @@ const OTHER_OPTIONS = [
 
 const chip =
   "inline-flex h-10 items-center rounded-full border px-4 type-button-small transition-colors duration-200";
-const roundNav =
-  "grid h-10 w-10 place-items-center rounded-full text-lg text-ink-100 transition hover:bg-space-800 hover:text-ember-400";
 
 function defaultDate(days: ActivityDay[], today: string): string | null {
   const todayDay = days.find((d) => d.date === today);
@@ -130,23 +127,7 @@ export function CalendarView() {
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2 whitespace-nowrap">
           <div className="flex items-center rounded-full border border-space-600 bg-space-900 p-1">
-            <button
-              type="button"
-              aria-label="Mês anterior"
-              onClick={() => setParams({ month: shiftMonth(month, -1), date: null })}
-              className={roundNav}
-            >
-              ‹
-            </button>
             <MonthPicker month={month} date={date} onSelectDate={selectDate} />
-            <button
-              type="button"
-              aria-label="Próximo mês"
-              onClick={() => setParams({ month: shiftMonth(month, 1), date: null })}
-              className={roundNav}
-            >
-              ›
-            </button>
           </div>
           <button
             type="button"

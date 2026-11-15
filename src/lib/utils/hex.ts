@@ -11,6 +11,7 @@ export type HexCell = {
   viirs: number;
   center: [number, number];
   edgeKm: number;
+  activity?: { firstDay: string | null; lastDay: string | null; daysWithData: number };
 };
 
 export type HexInfo = {

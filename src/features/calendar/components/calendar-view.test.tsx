@@ -96,15 +96,18 @@ describe("CalendarView", () => {
     expect(screen.getByRole("button", { name: "América do Sul" })).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("mudar de mês consulta o novo mês e limpa a data escolhida", async () => {
+  it("sem setas ao lado do mês: trocar de mês é pelo seletor de dia", async () => {
     const onUrlUpdate = vi.fn();
     renderWithProviders(<CalendarView />, { searchParams: "?date=2026-11-02", onUrlUpdate });
     await heading();
+    expect(screen.queryByRole("button", { name: "Mês anterior" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /Novembro de 2026 — escolher dia/ }));
     await userEvent.click(screen.getByRole("button", { name: "Mês anterior" }));
+    await userEvent.click(screen.getAllByRole("button", { name: /^15 de outubro de 2026/ })[0]);
     await waitFor(() => expect(month).toHaveBeenLastCalledWith("2026-10", "world", expect.anything()));
     const qs = onUrlUpdate.mock.calls.at(-1)![0].queryString;
     expect(qs).toContain("month=2026-10");
-    expect(qs).not.toContain("date=");
+    expect(qs).toContain("date=2026-10-15");
   });
 
   it("dia sem dado escolhido mostra o aviso e não consulta satélites", async () => {

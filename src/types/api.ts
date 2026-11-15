@@ -245,6 +245,8 @@ export type ApiActivityCell = {
   daysWithData: number;
   modisDetections: number;
   viirsDetections: number;
+  firstDay?: string | null;
+  lastDay?: string | null;
 };
 
 export type ApiActivityCellsResponse = {

@@ -96,3 +96,48 @@ describe("HexTopList", () => {
     expect(onSelect).toHaveBeenCalledWith(cells[0]);
   });
 });
+
+describe("HexDetail — atividade harmonizada e período", () => {
+  const base = {
+    id: "868103437ffffff",
+    res: 6,
+    center: [-41.673, -11.556] as [number, number],
+    edgeKm: 3.7,
+  };
+  const props = {
+    shown: 0,
+    total: 0,
+    truncated: false,
+    view3d: false,
+    onToggle3d: () => {},
+    onClose: () => {},
+    harmonizedUnit: "Atividade de fogo harmonizada (células ativas equivalentes ao MODIS Aqua)",
+    period: { from: "2026-11-08", to: "2026-11-14" },
+  };
+
+  it("mostra o período consultado, os dias com atividade e os dias com dado", () => {
+    render(
+      <HexDetail
+        {...props}
+        cell={{ ...base, count: 12.5, modis: 3, viirs: 9, activity: { firstDay: "2026-11-09", lastDay: "2026-11-12", daysWithData: 6 } }}
+      />,
+    );
+    expect(screen.getByText("08/11/2026 a 14/11/2026")).toBeInTheDocument();
+    expect(screen.getByText("de 09/11/2026 a 12/11/2026")).toBeInTheDocument();
+    expect(screen.getByText("6 dias")).toBeInTheDocument();
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  });
+
+  it("valor 0 com detecção continua 0 e explica quando houve a detecção", () => {
+    render(
+      <HexDetail
+        {...props}
+        cell={{ ...base, count: 0, modis: 1, viirs: 0, activity: { firstDay: "2026-11-11", lastDay: "2026-11-11", daysWithData: 1 } }}
+      />,
+    );
+    expect(screen.getByText("Atividade harmonizada").nextElementSibling).toHaveTextContent(/^0$/);
+    expect(screen.getByText("em 11/11/2026")).toBeInTheDocument();
+    expect(screen.getByRole("note")).toHaveTextContent("Houve 1 detecção de satélite em 11/11/2026");
+    expect(screen.getByRole("note")).toHaveTextContent("a harmonização não confirmou atividade");
+  });
+});

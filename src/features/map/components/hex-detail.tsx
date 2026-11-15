@@ -4,6 +4,13 @@ import { cn } from "@/lib/utils/cn";
 import type { HexCell } from "@/lib/utils/hex";
 
 const fmtValue = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+const fmtDay = (d: string) => d.split("-").reverse().join("/");
+
+export function activityPeriod(firstDay: string | null, lastDay: string | null): string | null {
+  if (!firstDay || !lastDay) return null;
+  return firstDay === lastDay ? `em ${fmtDay(firstDay)}` : `de ${fmtDay(firstDay)} a ${fmtDay(lastDay)}`;
+}
+
 const fmtKm = (km: number) => `${km.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km`;
 
 export function HexDetail({
@@ -15,9 +22,11 @@ export function HexDetail({
   onToggle3d,
   onClose,
   harmonizedUnit,
+  period,
 }: {
   cell: HexCell;
   harmonizedUnit?: string;
+  period?: { from: string; to: string };
   shown: number;
   total: number;
   truncated: boolean;
@@ -25,7 +34,17 @@ export function HexDetail({
   onToggle3d: () => void;
   onClose: () => void;
 }) {
+  const detections = cell.modis + cell.viirs;
+  const activePeriod = cell.activity ? activityPeriod(cell.activity.firstDay, cell.activity.lastDay) : null;
+  const zeroWithDetections = Boolean(harmonizedUnit) && cell.count === 0 && detections > 0;
   const rows: Array<[string, string]> = [
+    ...(period ? ([["Período consultado", `${fmtDay(period.from)} a ${fmtDay(period.to)}`]] as Array<[string, string]>) : []),
+    ...(activePeriod ? ([["Atividade registrada", activePeriod]] as Array<[string, string]>) : []),
+    ...(cell.activity
+      ? ([["Dias com dado", `${cell.activity.daysWithData} ${cell.activity.daysWithData === 1 ? "dia" : "dias"}`]] as Array<
+          [string, string]
+        >)
+      : []),
     harmonizedUnit
       ? ["Atividade harmonizada", fmtValue(cell.count)]
       : ["Focos na célula", cell.count.toLocaleString("pt-BR")],
@@ -52,14 +71,21 @@ export function HexDetail({
           Fechar
         </button>
       </div>
-      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-small">
+      <dl className="mt-3 grid gap-3 text-small">
         {rows.map(([k, v]) => (
-          <div key={k} className="contents">
-            <dt className="text-ink-300">{k}</dt>
-            <dd className="break-all font-mono text-ink-100">{v}</dd>
+          <div key={k} className="flex flex-col gap-0.5">
+            <dt className="text-caption text-ink-300">{k}</dt>
+            <dd className="break-words font-mono text-ink-100">{v}</dd>
           </div>
         ))}
       </dl>
+      {zeroWithDetections && (
+        <p role="note" className="mt-3 rounded-xl border border-dashed border-space-600 p-3 text-caption text-ink-300">
+          Houve {detections.toLocaleString("pt-BR")} {detections === 1 ? "detecção" : "detecções"} de satélite
+          {activePeriod ? ` ${activePeriod}` : ""}, mas a harmonização não confirmou atividade nesta célula (valor 0).
+          Isso acontece, por exemplo, quando só um sensor viu o foco e o outro, disponível no mesmo dia, não confirmou.
+        </p>
+      )}
       {harmonizedUnit && (
         <p className="mt-2 text-caption text-ink-300">
           {harmonizedUnit}: não é número de focos. MODIS e VIIRS mostram as detecções que entraram na

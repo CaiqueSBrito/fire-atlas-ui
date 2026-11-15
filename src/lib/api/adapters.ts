@@ -145,6 +145,11 @@ export function toActivityGrid(
         viirs: c.viirsDetections,
         center: [lng, lat],
         edgeKm: getHexagonEdgeLengthAvg(c.resolution, "km"),
+        activity: {
+          firstDay: c.firstDay ?? null,
+          lastDay: c.lastDay ?? null,
+          daysWithData: c.daysWithData,
+        },
       });
     }
   }

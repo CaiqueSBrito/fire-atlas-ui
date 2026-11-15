@@ -13,16 +13,20 @@ const STEPS = [
     title: "Acompanhe no calendário e nas análises",
     text: "Cartas por dia com a contagem de cada sensor, série temporal, células com mais detecções, dias de atividade incomum e comparação com anos anteriores quando houver histórico carregado.",
   },
+  {
+    title: "Antecipe com a previsão",
+    text: "A probabilidade de fogo nos próximos 7 dias em cada hexágono, calculada pelo modelo do time de dados. Veja o mapa de risco e as áreas mais prováveis; é uma estimativa, não uma detecção observada.",
+  },
 ];
 
 export function HowItWorks() {
   return (
     <Section id="how" title="O que a plataforma propõe">
-      <ol className="grid gap-4 md:grid-cols-3">
+      <ol className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {STEPS.map((step, i) => (
           <li
             key={step.title}
-            className="rounded-2xl border border-space-600 bg-space-800 p-6"
+            className="flex flex-col rounded-2xl border border-space-600 bg-space-800 p-6"
           >
             <span className="font-mono text-small text-ember-400">
               Passo {i + 1}
@@ -34,10 +38,6 @@ export function HowItWorks() {
           </li>
         ))}
       </ol>
-      <p className="mt-4 text-small text-ink-300">
-        Em preparação: a atividade harmonizada MODIS + VIIRS, que o time de dados está gerando e
-        aparecerá no calendário quando for publicada.
-      </p>
     </Section>
   );
 }

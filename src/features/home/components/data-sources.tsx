@@ -11,11 +11,11 @@ const SOURCES = [
   },
   {
     name: "Harmonizado",
-    text: "Série que combina os dois na escala do MODIS Aqua (células ativas equivalentes), sem perder a origem. Em preparação: aparece quando o time de dados publicar.",
+    text: "Série que combina os dois na escala do MODIS Aqua (células ativas equivalentes), sem perder a origem.",
   },
   {
     name: "Hexágonos H3",
-    text: "No mapa, os focos chegam somados por célula hexagonal, dia e sensor. Isso permite mostrar milhões de detecções com rapidez, mas uma célula não indica o ponto exato do fogo.",
+    text: "No mapa, os focos chegam somados por célula hexagonal e dia. Isso permite mostrar milhões de detecções com rapidez, mas uma célula não indica o ponto exato do fogo.",
   },
 ];
 

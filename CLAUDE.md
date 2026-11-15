@@ -43,7 +43,7 @@ Os textos da home seguem o enunciado oficial — não inventar dados/números.
 
 | Rota | Conteúdo |
 |---|---|
-| `/` | Home: cabeçalho + hero (globo + botão vermelho) + seções (desafio, proposta, dados, time, FAQ) + rodapé |
+| `/` | Home: cabeçalho + hero (globo + botão vermelho) + seções (desafio, proposta, dados, time) + rodapé |
 | `/explore` | Redireciona para `/explore/map` |
 | `/explore/map` | Mapa interativo MapLibre + base NASA GIBS, camadas MODIS ◆ / VIIRS ●, pontos ou hexágonos H3, área por desenho ou coordenadas, detalhes da detecção (NASA-012) |
 | `/explore/calendar` | Calendário de queimadas: atividade harmonizada por dia, barras por faixa de temperatura de brilho, mapa do dia e resumo do mês — feature NASA-013 |
@@ -294,6 +294,10 @@ não dentro do container. Para usar mock: `NEXT_PUBLIC_API_URL= docker compose u
 
 ## Time (home)
 
-`features/home/components/team.tsx`: seção "Nosso time" (entre Dados e FAQ) com um card por pessoa (foto em
+`features/home/components/team.tsx`: seção "Nosso time" (depois de Dados, última seção) com um card por pessoa (foto em
 `public/team/`, nome e função; a Ana tem o selo "Team Owner"). Para trocar foto, mantenha o nome do arquivo e ajuste `focus`
 (`object-position`) para centralizar o rosto. O logo do cabeçalho (`components/layout/logo.tsx`) usa gradiente de fogo.
+
+- Detalhe do hexágono (mapa harmonizado): mostra "Período consultado" (filtros), "Atividade registrada" (`firstDay`/`lastDay`
+  da `/activity/cells`: primeiro e último dia com harmonizado > 0 ou alguma detecção) e "Dias com dado". **Valor 0 nunca vira
+  outro número**: se houve detecção e o harmonizado é 0, aparece uma nota explicando que a harmonização não confirmou.

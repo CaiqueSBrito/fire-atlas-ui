@@ -171,6 +171,7 @@ export function MapExplorer() {
         }
         onClose={() => pickHex(null)}
         harmonizedUnit={grid?.harmonized?.unitLabel}
+        period={grid?.harmonized ? { from: filters.from, to: filters.to } : undefined}
       />
     ) : selected && data ? (
       <DetectionDetail
