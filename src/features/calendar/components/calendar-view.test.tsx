@@ -3,6 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchActivityMonth, fetchDaySatellites, fetchMonthAnomaly } from "@/lib/api/activity";
 import { ApiError } from "@/lib/api/client";
+import { fetchCoverage } from "@/lib/api/coverage";
+import type * as ApiClient from "@/lib/api/client";
+import type * as CoverageApi from "@/lib/api/coverage";
 import { renderWithProviders } from "@/test/render";
 import type { ActivityDay, ActivityMonth } from "@/types/calendar";
 import { CalendarView } from "./calendar-view";
@@ -11,6 +14,14 @@ vi.mock("@/lib/api/activity", () => ({
   fetchActivityMonth: vi.fn(),
   fetchMonthAnomaly: vi.fn(),
   fetchDaySatellites: vi.fn(),
+}));
+vi.mock("@/lib/api/client", async (original) => ({
+  ...(await original<typeof ApiClient>()),
+  hasApi: true,
+}));
+vi.mock("@/lib/api/coverage", async (original) => ({
+  ...(await original<typeof CoverageApi>()),
+  fetchCoverage: vi.fn(),
 }));
 vi.mock("./day-map", () => ({
   DayMap: (p: { date: string; region: { id: string } }) => (
@@ -48,6 +59,7 @@ beforeEach(() => {
   month.mockReset();
   anomaly.mockReset();
   satellites.mockReset();
+  vi.mocked(fetchCoverage).mockResolvedValue({ resolutions: [0, 1, 2, 3, 4, 5, 6], minDate: "2000-11-01", maxDate: "2026-11-13" });
   month.mockImplementation(async (m, region) => monthOf(m, [100, 200, 50, null], region));
   anomaly.mockResolvedValue({
     sufficient: false, current: null, baselineMedian: null, deviationPct: null, yearsWithData: 0, minYears: 3, note: null,
@@ -64,6 +76,13 @@ describe("CalendarView", () => {
     renderWithProviders(<CalendarView />);
     expect(await heading()).toHaveTextContent("3 de novembro de 2026");
     expect(screen.getByTestId("day-map")).toHaveAttribute("data-date", "2026-11-03");
+  });
+  it("abre o último dia com atividade e grade espacial sem substituir uma data explícita", async () => {
+    vi.mocked(fetchCoverage).mockResolvedValue({ resolutions: [0, 1, 2, 3, 4, 5, 6], minDate: "2000-11-01", maxDate: "2026-11-02" });
+    renderWithProviders(<CalendarView />);
+    expect(await heading()).toHaveTextContent("2 de novembro de 2026");
+    await userEvent.click(screen.getByRole("button", { name: /^3 de novembro de 2026/ }));
+    expect(await heading()).toHaveTextContent("3 de novembro de 2026");
   });
 
   it("escolher uma barra grava a data na URL e troca mapa e painel", async () => {

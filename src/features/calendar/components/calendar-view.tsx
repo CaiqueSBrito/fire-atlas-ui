@@ -6,7 +6,8 @@ import { Select } from "@/components/ui/select";
 import { REGIONS, getRegion } from "@/config/regions";
 import { useMapLayers } from "@/hooks/use-map-layers";
 import { cn } from "@/lib/utils/cn";
-import { ApiError } from "@/lib/api/client";
+import { ApiError, hasApi } from "@/lib/api/client";
+import { isCovered } from "@/lib/api/coverage";
 import { parseBbox, validateBbox } from "@/lib/utils/bbox";
 import {
   formatMonthTitle,
@@ -21,6 +22,7 @@ import type { ActivityDay } from "@/types/calendar";
 import {
   useActivityMonth,
   useDaySatellites,
+  useDetectionCoverage,
   useMonthAnomaly,
 } from "../hooks/use-calendar-queries";
 import { calendarParsers } from "../search-params";
@@ -62,8 +64,15 @@ export function CalendarView() {
   const monthQuery = useActivityMonth(month, region.id);
   const anomalyQuery = useMonthAnomaly(month, region.id);
   const data = monthQuery.data;
+  const coverageQuery = useDetectionCoverage();
   const days = data?.month === month && data.region === region.id ? data.days : [];
-  const date = urlDate && monthOf(urlDate) === month ? urlDate : defaultDate(days, today);
+  const coveredDays = coverageQuery.data ? days.filter((d) => isCovered(coverageQuery.data, d.date)) : days;
+  const defaultDays = coveredDays.length ? coveredDays : days;
+  const date = urlDate && monthOf(urlDate) === month
+    ? urlDate
+    : hasApi && coverageQuery.isPending
+      ? null
+      : defaultDate(defaultDays, today);
   const selectedDay = days.find((d) => d.date === date) ?? null;
   const satellitesQuery = useDaySatellites(selectedDay && selectedDay.status !== "unavailable" ? date : null);
 

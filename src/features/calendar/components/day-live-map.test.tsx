@@ -3,12 +3,22 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getRegion } from "@/config/regions";
 import { ApiError } from "@/lib/api/client";
+import type * as ApiClient from "@/lib/api/client";
+import type * as CoverageApi from "@/lib/api/coverage";
 import { fetchDetections } from "@/lib/api/detections";
 import { detectionsResponse } from "@/test/detection-fixtures";
 import { renderWithProviders } from "@/test/render";
 import { DayLiveMap } from "./day-live-map";
 
 vi.mock("@/lib/api/detections", () => ({ fetchDetections: vi.fn(), fetchStats: vi.fn() }));
+vi.mock("@/lib/api/client", async (original) => ({
+  ...(await original<typeof ApiClient>()),
+  hasApi: true,
+}));
+vi.mock("@/lib/api/coverage", async (original) => ({
+  ...(await original<typeof CoverageApi>()),
+  fetchCoverage: vi.fn(async () => ({ resolutions: [0, 1, 2, 3, 4, 5, 6], minDate: "2000-11-01", maxDate: "2026-11-13" })),
+}));
 
 vi.mock("@/features/map/components/fire-map-loader", () => ({
   FireMap: (p: {
@@ -18,7 +28,6 @@ vi.mock("@/features/map/components/fire-map-loader", () => ({
     hexRes?: number;
     hotAreas?: { areas: unknown[] } | null;
     showHeat: boolean;
-    onViewport: (bbox: number[]) => void;
   }) => (
     <div
       data-testid="fire-map"
@@ -28,11 +37,7 @@ vi.mock("@/features/map/components/fire-map-loader", () => ({
       data-hex-res={p.hexRes ?? ""}
       data-areas={p.hotAreas ? String(p.hotAreas.areas.length) : ""}
       data-heat={String(p.showHeat)}
-    >
-      <button type="button" onClick={() => p.onViewport([-52, -4, -50, -2])}>
-        emitir-viewport
-      </button>
-    </div>
+    />
   ),
 }));
 
@@ -70,17 +75,6 @@ describe("DayLiveMap (mesmo mapa da página do mapa)", () => {
     expect(map).toHaveAttribute("data-hex-res", "4");
   });
 
-  it("ao mover ou aproximar o mapa refaz a consulta só da área visível", async () => {
-    mocked.mockResolvedValue(grid());
-    renderWithProviders(<DayLiveMap region={region} date="2026-11-12" />);
-    await screen.findByTestId("fire-map");
-    await userEvent.click(screen.getByRole("button", { name: "emitir-viewport" }));
-    await waitFor(() => expect(mocked.mock.calls.length).toBeGreaterThan(1), { timeout: 3000 });
-    const bbox = mocked.mock.calls.at(-1)![0].bbox;
-    expect(bbox[0]).toBeLessThan(-52);
-    expect(bbox[2]).toBeGreaterThan(-50);
-    expect(bbox[2] - bbox[0]).toBeLessThan(10);
-  });
 
   it("outra data refaz a consulta com a nova data", async () => {
     mocked.mockResolvedValue(grid());
@@ -144,6 +138,15 @@ describe("DayLiveMap (mesmo mapa da página do mapa)", () => {
     renderWithProviders(<DayLiveMap region={region} date="2026-11-12" />);
     await waitFor(() => expect(screen.getByTestId("fire-map")).toHaveAttribute("data-plot", "points"));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-points", "true");
+  });
+  it("dia fora da cobertura informa a diferença entre fontes e não consulta nem exibe focos antigos", async () => {
+    mocked.mockResolvedValue(grid());
+    const { rerender } = renderWithProviders(<DayLiveMap region={region} date="2026-11-13" />);
+    await waitFor(() => expect(screen.getByTestId("fire-map")).toHaveAttribute("data-hex-res", "4"));
+    rerender(<DayLiveMap region={region} date="2026-11-14" />);
+    expect(await screen.findByRole("note")).toHaveTextContent("Último dia com detecções no mapa: 2026-11-13");
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-hex", "");
+    expect(mocked.mock.calls.every(([q]) => q.from === "2026-11-13")).toBe(true);
   });
 
   it("sem WebGL usa o esquema da região com os mesmos dados", async () => {

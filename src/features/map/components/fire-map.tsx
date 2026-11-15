@@ -240,6 +240,7 @@ export type FireMapProps = {
   onSelect: (id: string | null) => void;
   showMatches: boolean;
   label: string;
+  interactive?: boolean;
   basemap?: BasemapId;
   showHeat?: boolean;
   imageryDate?: string;
@@ -270,6 +271,7 @@ export default function FireMap({
   onSelect,
   showMatches,
   label,
+  interactive = true,
   basemap = "satellite",
   showHeat = false,
   imageryDate,
@@ -306,6 +308,7 @@ export default function FireMap({
   const savedCamera = useRef<{ center: [number, number]; zoom: number } | null>(null);
   const imageryRef = useRef(imageryDate ?? imageryDateFor());
 
+  const interactiveRef = useRef(interactive);
   useEffect(() => {
     cb.current = { onSelect, onDrawn, onHexSelect, onHexChange, onContinentPick, onContinentHover, onViewport };
     continentRef.current = continentPicking;
@@ -318,6 +321,7 @@ export default function FireMap({
     if (!box.current) return;
     const map = new MlMap({
       container: box.current,
+      interactive: interactiveRef.current,
       style: {
         version: 8,
         sources: {
@@ -347,7 +351,7 @@ export default function FireMap({
       if ((e as { sourceId?: string }).sourceId || err?.status) return;
       console.warn(e.error);
     });
-    map.addControl(new NavigationControl({ showCompass: false }), "top-right");
+    if (interactiveRef.current) map.addControl(new NavigationControl({ showCompass: false }), "top-right");
     map.addControl(new ScaleControl({ unit: "metric" }), "bottom-left");
 
     map.on("zoomend", () => setZoom(map.getZoom()));

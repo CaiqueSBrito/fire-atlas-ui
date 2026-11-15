@@ -2,6 +2,17 @@
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { fetchActivityMonth, fetchDaySatellites, fetchMonthAnomaly } from "@/lib/api/activity";
+import { hasApi } from "@/lib/api/client";
+import { fetchCoverage } from "@/lib/api/coverage";
+
+export function useDetectionCoverage() {
+  return useQuery({
+    queryKey: ["detections", "coverage"],
+    queryFn: fetchCoverage,
+    enabled: hasApi,
+    staleTime: 10 * 60_000,
+  });
+}
 
 export function useActivityMonth(month: string, region: string) {
   return useQuery({
