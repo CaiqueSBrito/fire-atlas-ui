@@ -33,6 +33,7 @@ export function zoomFor(coverage: Coverage): string {
   return String(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, finestResolution(coverage))));
 }
 
+
 export async function regionParams(q: DetectionQuery) {
   const coverage = await fetchCoverage();
   const region = cellsForBbox(q.bbox, coverage.resolutions);

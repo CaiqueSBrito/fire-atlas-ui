@@ -90,6 +90,12 @@ describe("MapExplorer com dados agregados por célula H3", () => {
     expect(screen.getByText("14")).toBeInTheDocument();
   });
 
+  it("sinaliza resultado parcial sem depender de abrir a legenda", async () => {
+    mocked.mockResolvedValue({ ...gridResponse(), truncated: true });
+    renderWithProviders(<MapExplorer />);
+    expect(await screen.findByRole("note")).toBeVisible();
+  });
+
   it("sem células informa vazio sem afirmar ausência de fogo", async () => {
     mocked.mockResolvedValue(gridResponse([]));
     renderWithProviders(<MapExplorer />);

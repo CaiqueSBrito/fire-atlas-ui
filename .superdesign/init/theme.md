@@ -1,0 +1,444 @@
+# Theme
+
+## Part 1 — Compact token summary
+
+Tailwind CSS v4, sem `tailwind.config` (tokens em `@theme inline` dentro de `src/app/globals.css`). Tema espacial, dark-only.
+
+### Colors (`:root` → utilitários Tailwind)
+| Token | Valor | Uso |
+|---|---|---|
+| `space-950` | `#04060c` | fundo base da página |
+| `space-900` | `#0a0f1e` | superfícies (barras, painéis) |
+| `space-800` | `#121a31` | cards / painéis elevados / hover de nav |
+| `space-600` | `#2a3558` | bordas 1px |
+| `ink-100` | `#f2f5ff` | texto principal |
+| `ink-300` | `#aab4d4` | texto secundário |
+| `fire-500` | `#e5242b` | botão vermelho primário (CTA) |
+| `fire-400` | `#ff4a3d` | hover/glow do fogo; cor VIIRS ● |
+| `ember-400` | `#ffb02e` | destaque, eyebrow labels, nav ativa, hover de borda; cor MODIS ◆ |
+| `earth-400` | `#3aa6ff` | oceano/atmosfera; cor Harmonizado |
+| `focus-ring` | `#ffd166` | outline de foco 3px, offset 3px |
+| `modis` / `viirs` / `harmonized` | `#ffb02e` / `#ff4a3d` / `#3aa6ff` | identidade dos sensores (sempre com forma ◆ ● + texto) |
+
+### Typography
+- `font-display`: Space Grotesk 500/700 — títulos (`tracking-tight`, `leading-[1.05]`/`leading-tight`)
+- `font-sans`: Fustat — texto corrido (body line-height 1.6)
+- `font-mono`: JetBrains Mono — números, datas, coordenadas, eyebrow labels
+- Escala: `text-display` clamp(2.5rem→5.5rem) · `text-h1` clamp(2rem→3.5rem) · `text-h2` clamp(1.5rem→2.25rem) · `text-body` 1rem · `text-small` .875rem · `text-caption` .75rem
+- Eyebrow: `font-mono text-caption uppercase tracking-[0.2em] text-ember-400`
+
+### Radius / spacing / shadow
+- Cards: `rounded-2xl border border-space-600 bg-space-800 p-6`
+- Botões e chips: `rounded-full`, altura `h-12` (md) / `h-14` (lg), `font-semibold tracking-[-0.02em]`
+- Botão primário: `bg-fire-500 text-white shadow-[0_0_40px_rgba(229,36,43,0.55)] hover:brightness-110`
+- Seções: `max-w-7xl px-6 sm:px-10 py-14`, grids `gap-4 md:grid-cols-3`
+- Breakpoints Tailwind padrão (sm 640, md 768, lg 1024, xl 1280)
+- Motion: transições 200 ms; `prefers-reduced-motion` zera animações
+
+### Calendar-only classes (globals.css)
+`.card-tile` (carta 3:4 com flip 3D), `.card-back` (verso escuro estilo UNO com oval laranja), `.card-front` (frente dourada), `.card-gold` (carta detalhada dourada com brilho), `.panel-surface` (gradiente laranja no topo da sidebar), `.calendar-stage` (fundo com halos vermelho/âmbar), `.deck-card` (leque do estado vazio), `.side-wrap`/`.side-inner` (sidebar retrátil animada), `.tile-in`, `.pop-in`.
+
+## Part 2 — Raw sources
+
+### `src/app/globals.css`
+```css
+@import "tailwindcss";
+
+/*
+ * Design tokens — tema espacial (dark first).
+ * Contraste alvo: WCAG AA (4.5:1 texto, 3:1 UI). Nunca usar só cor para
+ * transmitir informação: sempre acompanhar de rótulo/legenda/ícone.
+ */
+:root {
+  --space-950: #04060c; /* fundo base */
+  --space-900: #0a0f1e; /* superfícies */
+  --space-800: #121a31; /* cards / painéis */
+  --space-600: #2a3558; /* bordas */
+  --ink-100: #f2f5ff; /* texto principal */
+  --ink-300: #aab4d4; /* texto secundário */
+  --fire-500: #e5242b; /* botão vermelho de acesso */
+  --fire-400: #ff4a3d; /* hover / glow */
+  --ember-400: #ffb02e; /* destaque / foco ativo */
+  --earth-400: #3aa6ff; /* oceano / atmosfera do globo */
+  --focus-ring: #ffd166;
+}
+
+@theme inline {
+  --color-space-950: var(--space-950);
+  --color-space-900: var(--space-900);
+  --color-space-800: var(--space-800);
+  --color-space-600: var(--space-600);
+  --color-ink-100: var(--ink-100);
+  --color-ink-300: var(--ink-300);
+  --color-fire-500: var(--fire-500);
+  --color-fire-400: var(--fire-400);
+  --color-ember-400: var(--ember-400);
+  --color-earth-400: var(--earth-400);
+  /* Identidade dos sensores (sempre com forma + texto; ver lib/sensors.ts) */
+  --color-modis: #ffb02e;
+  --color-viirs: #ff4a3d;
+  --color-harmonized: #3aa6ff;
+
+  --font-display: var(--font-space-grotesk), system-ui, sans-serif;
+  --font-sans: var(--font-fustat), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  /* Escala tipográfica fluida (mobile → desktop) */
+  --text-display: clamp(2.5rem, 1.5rem + 5vw, 5.5rem);
+  --text-h1: clamp(2rem, 1.4rem + 2.5vw, 3.5rem);
+  --text-h2: clamp(1.5rem, 1.2rem + 1.2vw, 2.25rem);
+  --text-body: 1rem;
+  --text-small: 0.875rem;
+  --text-caption: 0.75rem;
+}
+
+body {
+  background: var(--space-950);
+  color: var(--ink-100);
+  font-family: var(--font-sans);
+  font-size: var(--text-body);
+  line-height: 1.6;
+}
+
+/* Tailwind v4 deixa botões com cursor padrão: aqui o que é clicável mostra a mãozinha */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+[role="option"],
+[role="combobox"],
+summary,
+label[for],
+input[type="checkbox"],
+input[type="radio"] {
+  cursor: pointer;
+}
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+}
+
+/* Foco visível para navegação por teclado (RN04) */
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ===== Cartas do calendário (NASA-013) ===== */
+
+/* Carta da grade: verso escuro (inspirado em UNO Black) que vira para a frente */
+.card-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  aspect-ratio: 3 / 4;
+  perspective: 700px;
+  cursor: pointer;
+  border-radius: 0.55rem;
+  transition: transform 0.2s ease;
+}
+.card-tile:hover {
+  transform: translateY(-3px);
+}
+.card-tile-inner {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.card-tile[data-flipped="true"] .card-tile-inner {
+  transform: rotateY(180deg);
+}
+.card-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.3rem 0.15rem 0.25rem;
+  overflow: hidden;
+  border-radius: 0.55rem;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.card-back {
+  background:
+    radial-gradient(ellipse 55% 40% at 50% 52%, rgba(255, 110, 30, 0.28), transparent 72%),
+    linear-gradient(160deg, #17171c, #08080b);
+  border: 1px solid #3b2a1c;
+  box-shadow: inset 0 0 0 2px #0b0b0e, inset 0 0 0 3px rgba(255, 176, 46, 0.12);
+}
+/* oval característico do verso de cartas UNO */
+.card-back::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 78%;
+  height: 58%;
+  transform: translate(-50%, -50%) rotate(-24deg);
+  border: 1px solid rgba(255, 140, 50, 0.35);
+  border-radius: 50%;
+  pointer-events: none;
+}
+.card-back > * {
+  position: relative;
+}
+.card-tile:hover .card-back,
+.card-tile:focus-visible .card-back {
+  border-color: var(--ember-400);
+}
+.card-front {
+  transform: rotateY(180deg);
+  justify-content: center;
+  gap: 0.2rem;
+  text-align: center;
+  color: var(--space-950);
+  background: linear-gradient(160deg, #fff4cf, #f2b84a);
+  border: 2px solid var(--ember-400);
+  box-shadow: 0 0 14px rgba(255, 176, 46, 0.45);
+}
+
+/* Carta detalhada: composição inspirada em cartas colecionáveis */
+.card-gold {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, #fff4cf 0%, #f6cf7a 55%, #e9a93a 100%);
+  border: 5px solid #d9962a;
+  box-shadow:
+    inset 0 0 0 2px #fff4cf,
+    0 0 0 1px #7a4a08,
+    0 18px 50px rgba(255, 176, 46, 0.22);
+}
+/* brilho holográfico sutil */
+.card-gold::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 35%, rgba(255, 255, 255, 0.14) 48%, transparent 62%);
+}
+.card-flip-in {
+  animation: card-flip-in 0.6s ease-out;
+}
+@keyframes card-flip-in {
+  from {
+    transform: perspective(900px) rotateY(-90deg);
+  }
+  to {
+    transform: perspective(900px) rotateY(0);
+  }
+}
+
+/* ===== Polimento visual do calendário ===== */
+.panel-surface {
+  background:
+    radial-gradient(120% 40% at 50% 0%, rgba(255, 110, 30, 0.1), transparent 70%),
+    linear-gradient(180deg, var(--space-900), var(--space-950));
+}
+.calendar-stage {
+  background:
+    radial-gradient(60% 50% at 80% 0%, rgba(229, 36, 43, 0.12), transparent 70%),
+    radial-gradient(50% 40% at 10% 100%, rgba(255, 176, 46, 0.08), transparent 70%),
+    var(--space-950);
+}
+.tile-in {
+  animation: tile-in 0.4s ease-out both;
+}
+@keyframes tile-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.card-tile[data-today="true"]::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 0.75rem;
+  border: 2px solid var(--focus-ring);
+  pointer-events: none;
+}
+.card-tile[data-status="unavailable"] .card-back {
+  border-style: dashed;
+}
+.card-tile[data-status="activity"]:hover .card-back {
+  box-shadow: 0 0 18px rgba(255, 110, 30, 0.45);
+}
+
+/* Leque de cartas (estado vazio) */
+.deck-card {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 7.5rem;
+  aspect-ratio: 5 / 7;
+  margin-left: -3.75rem;
+  display: grid;
+  place-items: center;
+  border-radius: 0.9rem;
+  transform-origin: 50% 120%;
+  background:
+    radial-gradient(ellipse 55% 40% at 50% 52%, rgba(255, 110, 30, 0.32), transparent 72%),
+    linear-gradient(160deg, #1a1a20, #08080b);
+  border: 1px solid #4a3220;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6), inset 0 0 0 3px #0b0b0e,
+    inset 0 0 0 4px rgba(255, 176, 46, 0.18);
+  animation: deck-in 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.deck-card::before {
+  content: "";
+  position: absolute;
+  width: 74%;
+  height: 56%;
+  border: 1px solid rgba(255, 140, 50, 0.4);
+  border-radius: 50%;
+  transform: rotate(-24deg);
+}
+@keyframes deck-in {
+  from {
+    transform: rotate(0deg) translateY(30px);
+    opacity: 0;
+  }
+}
+
+/* ===== Sidebar retrátil animada ===== */
+.side-wrap {
+  display: grid;
+  grid-template-rows: 1fr;
+  overflow: hidden;
+  transition: grid-template-rows 0.45s cubic-bezier(0.3, 0.7, 0.2, 1),
+    width 0.45s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.side-wrap[data-open="false"] {
+  grid-template-rows: 0fr;
+}
+.side-inner {
+  min-height: 0;
+  overflow: hidden;
+  transition: opacity 0.3s ease, transform 0.45s cubic-bezier(0.3, 0.7, 0.2, 1);
+}
+.side-wrap[data-open="false"] .side-inner {
+  opacity: 0;
+  transform: translateX(-1.5rem);
+}
+@media (min-width: 1024px) {
+  .side-wrap {
+    width: 30rem;
+    grid-template-rows: 1fr;
+  }
+  .side-wrap[data-open="false"] {
+    width: 0;
+    grid-template-rows: 1fr;
+  }
+  .side-inner {
+    width: 30rem;
+    overflow: visible;
+  }
+}
+.reopen-bar {
+  animation: tile-in 0.45s 0.15s ease-out both;
+}
+.pop-in {
+  animation: pop-in 0.18s ease-out both;
+  transform-origin: top left;
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+
+html {
+  scrollbar-color: var(--space-600) transparent;
+  scrollbar-width: thin;
+}
+
+* {
+  scrollbar-color: var(--space-600) transparent;
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--space-600);
+  border: 2px solid var(--space-900);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ember-400);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+```
+
+### `src/app/layout.tsx` (fontes)
+```tsx
+import type { Metadata } from "next";
+import { Space_Grotesk, Fustat, JetBrains_Mono } from "next/font/google";
+import { SkipLink } from "@/components/layout/skip-link";
+import { AppProviders } from "@/providers/app-providers";
+import "./globals.css";
+
+const display = Space_Grotesk({
+  variable: "--font-space-grotesk",
+  subsets: ["latin"],
+  weight: ["500", "700"],
+});
+
+const sans = Fustat({
+  variable: "--font-fustat",
+  subsets: ["latin", "latin-ext"],
+});
+
+const mono = JetBrains_Mono({
+  variable: "--font-jetbrains",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "Fire Atlas — NASA Space Apps 2026",
+  description:
+    "Plataforma de exploração de focos de calor (NASA FIRMS: MODIS + VIIRS) com mapa, calendário e análises.",
+};
+
+export default function RootLayout({ children }: LayoutProps<"/">) {
+  return (
+    <html
+      lang="pt-BR"
+      className={`${display.variable} ${sans.variable} ${mono.variable} h-full antialiased`}
+    >
+      <body className="min-h-full flex flex-col">
+        <SkipLink />
+        <AppProviders>{children}</AppProviders>
+      </body>
+    </html>
+  );
+}
+```

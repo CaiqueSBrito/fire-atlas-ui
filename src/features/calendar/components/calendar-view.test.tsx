@@ -121,4 +121,11 @@ describe("CalendarView", () => {
     await userEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
     expect(await heading()).toHaveTextContent("3 de novembro de 2026");
   });
+
+  it("não oferece repetir uma operação que a API não implementa", async () => {
+    month.mockRejectedValue(new ApiError("Recurso indisponível", 501, false));
+    renderWithProviders(<CalendarView />);
+    await screen.findByRole("alert");
+    expect(screen.queryByRole("button", { name: "Tentar novamente" })).not.toBeInTheDocument();
+  });
 });

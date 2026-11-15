@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/select";
 import { REGIONS, getRegion } from "@/config/regions";
 import { useMapLayers } from "@/hooks/use-map-layers";
 import { cn } from "@/lib/utils/cn";
+import { ApiError } from "@/lib/api/client";
 import { parseBbox, validateBbox } from "@/lib/utils/bbox";
 import {
   formatMonthTitle,
@@ -153,7 +154,7 @@ export function CalendarView() {
         <div className="mt-6">
           <ErrorState
             message={monthQuery.error instanceof Error ? monthQuery.error.message : "Falha ao carregar o mês."}
-            onRetry={() => void monthQuery.refetch()}
+            onRetry={monthQuery.error instanceof ApiError && !monthQuery.error.recoverable ? undefined : () => void monthQuery.refetch()}
           />
         </div>
       ) : (
@@ -184,7 +185,11 @@ export function CalendarView() {
               />
             )}
             {monthQuery.isError && data && (
-              <ErrorState title="Não foi possível atualizar o mês" onRetry={() => void monthQuery.refetch()} />
+              <ErrorState
+                title="Não foi possível atualizar o mês"
+                message={monthQuery.error instanceof Error ? monthQuery.error.message : undefined}
+                onRetry={monthQuery.error instanceof ApiError && !monthQuery.error.recoverable ? undefined : () => void monthQuery.refetch()}
+              />
             )}
           </div>
 

@@ -116,21 +116,21 @@ simulam falha e vazio). Mapa e estatísticas usam as mesmas contagens.
 
 Com `NEXT_PUBLIC_API_URL=http://localhost:8080/api/v2` (prefixo `/api/v2` incluso; na `main` do back a `/api/v1` é a API antiga por pontos e **não serve** a este front; `.env.local`,
 exemplo em `.env.example`; reiniciar o `npm run dev` ao mudar) usa a API Spring Boot real
-(`fire-atlas-api`, branch `main`, PostGIS na porta **5433** via `docker compose up -d`; carga: **automática ao subir a API** com
-`DATALAKE_BUCKET` no `.env` da API — sincroniza a gold em segundo plano, só o que mudou; manual: `ingest-gold` ou `scripts/atualizar.sh`).
+(backend `fire-atlas-api`, PostGIS na porta **5433** via `docker compose up -d`). A camada gold é consultada direto no
+S3 pelo Athena; não existe mais importação da gold, `ingest-gold` nem sincronização ao subir a API.
 A fonte é a **camada gold** do data lake (Delta Lake `gold/map_grid`): uma linha por **célula H3, dia e
 sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é só hexágonos H3
 (`DetectionsResponse.grid`), sem pontos, sem lista de detecções e sem `matchId`. Tipos do contrato em
 `types/api.ts`; `lib/api/adapters.ts` traduz para os tipos da UI.
 - Região: a API não aceita `bbox` (400), só `cells` (índices H3 em hexadecimal). `lib/utils/h3-region.ts`
-  converte a área em células na resolução mais fina **importada** que caiba em 380 células (a URL passa
+  converte a área em células na resolução mais fina **disponível** (gold: 0–6) que caiba em 380 células (a URL passa
   de ~8 KB com ~450 e o Tomcat devolve 400; o teto de 2000 da API é inalcançável por GET). Áreas grandes
   usam resolução menor (Brasil → 2, mundo → 0); a região vira a união dos hexágonos (aproximação).
 - Zoom progressivo (só com API real e sem área desenhada): o mapa consulta a **área visível** (`onViewport`
   do `FireMap`, `hooks/use-query-area.ts` + `lib/utils/viewport-area.ts`): espera 350 ms parados, amplia 25%
   e só refaz a consulta ao sair da área ou aproximar bastante. A API devolve hexágonos mais finos quanto
   menor a área (mundo ~180 km de aresta, continente ~70 km, estado ~10 km, região de ~3° ~3,7 km com res 6).
-  Na resolução mais fina importada (`DetectionGrid.maxResolution`) o mapa mostra o aviso "Nível mais fino disponível". Com a câmera inclinada (3D) a área é calculada pelo centro e zoom (`flatViewport`), não por `getBounds()` (que inclui o horizonte). Trocar de região
+  Na resolução mais fina disponível (`DetectionGrid.maxResolution`) o mapa mostra o aviso "Nível mais fino disponível". Com a câmera inclinada (3D) a área é calculada pelo centro e zoom (`flatViewport`), não por `getBounds()` (que inclui o horizonte). Trocar de região
   volta na hora para a região. O mapa de calor usa o centro das células (peso √contagem) e baixa a
   opacidade dos hexágonos; a cor dos hexágonos é **logarítmica** (poucas células extremas não apagam o resto).
 - Áreas grandes são consultadas em **blocos** (`lib/utils/tiles.ts`: ~40° por bloco, no máximo 12, em
@@ -139,8 +139,9 @@ sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é
 - Áreas de calor (URL `areas=0|25|10|5`, só com dados agregados): `lib/utils/hot-areas.ts` pega as X% de
   células mais intensas, junta as vizinhas (`gridDisk`) e contorna cada mancha (`cellsToMultiPolygon`); o
   `FireMap` desenha contorno branco e esmaece as demais; `HotAreaList` lista as maiores (alternativa textual).
-- Resoluções e datas disponíveis vêm de `/meta/sources` (`lib/api/coverage.ts`, cache de 1 min; o
-  `sourceKey` traz `resolution=N`; use `minDate/maxDate`, não o `periodEnd` declarado).
+- Datas disponíveis vêm de `/meta/coverage` (`lib/api/coverage.ts`, cache compartilhado de 10 min); o retorno é uma
+  lista por sensor com `minDate`, `maxDate` e `detections`. `/meta/sources` foi removido. As resoluções da gold são
+  0–6, independentemente de importações. O histórico pode ser consultado desde 2000; ausência de dado não é zero.
 - Mapa: `/detections?cells&start&end&sensor&zoom=3`; a API escolhe a resolução de saída (células grossas
   de entrada devolvem hexágonos finos) e informa `resolution`. Máx. 366 dias (400 com `detail` da API).
 - Estatísticas: `/compare` + `/timeseries` + `/rankings/cells` (ranking e regiões críticas) +
@@ -158,11 +159,17 @@ sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é
   VIIRS I-4, `aqua`/`terra` = MODIS 21/22 (escalas diferentes). Não há MODIS × VIIRS separados no calendário.
 - Previsão: `/forecast?cells&limit=100` (gold/forecast, célula H3 res 6, emissão mais recente). A API devolve `summary`
   (células, ativas, maior e média da probabilidade na região inteira) e as células ordenadas, com cidade mais próxima e
-  país de `h3_places`. Só a região dos filtros vale; período e sensores não se aplicam. Sem emissão importada: "Indisponível".
-- Erros 4xx mostram o `detail` da API; 5xx/rede permitem "Tentar novamente".
-- O banco só tem o que foi importado (`/meta/sources`, `/meta/coverage`). A sincronização automática traz de 1º de janeiro do
-  ano atual até hoje (`LAKE_SYNC_START` na API muda a primeira carga); resoluções 0–6 (a 6 é o máximo que a API aceita), global.
-  Rodar `ANALYZE daily_h3` depois de cargas grandes. Sem anos anteriores não há comparação histórica.
+  país de `h3_places`. Só a região dos filtros vale; período e sensores não se aplicam. Sem emissão publicada: "Indisponível".
+- HTTP: timeout de **45 s**, cobrindo cabeçalhos e corpo; a API pode consumir 30 s por consulta Athena. O `detail`
+  RFC 7807 também é mostrado no 503. Rede, timeout, 429 e 5xx (exceto 501) permitem retry; 400/404/501 não.
+  React Query faz no máximo 2 novas tentativas com backoff (600 ms, 1,2 s), mantém staleTime de 5 min e não refaz
+  consultas ao focar a janela. `AbortSignal` cancela chamadas antigas quando os filtros/viewport mudam; isso não
+  garante cancelamento de uma execução já iniciada no Athena.
+- Cache: HTTP `Cache-Control` da API é preservado (sem `no-store`); células H3 são ordenadas e as chaves React Query
+  usam os conjuntos de células efetivamente consultados, evitando consultas novas por pequenas mudanças do bbox.
+- Período padrão continua curto (7 dias); o limite de 366 dias também é validado em URLs diretas. Calendário mantém
+  acesso ao ano 2000. `truncated` gera aviso visível no mapa principal e no mapa diário; previsões já mostram o top-N.
+- Estados de carregamento existentes foram preservados, sem novos spinners/skeletons nesta adaptação ao Athena.
 
 Regras de não-invenção: FRP, ranking, períodos críticos, harmonizado e correspondências
 só aparecem quando a API os fornece (senão "Indisponível"). Correspondência entre sensores

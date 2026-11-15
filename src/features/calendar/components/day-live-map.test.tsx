@@ -52,7 +52,9 @@ const cell = (id: string, count: number) => ({
 const grid = (cells = [cell("84a1b2dffffffff", 900), cell("84a1b2bffffffff", 5)]) =>
   detectionsResponse({ items: [], total: 905, grid: { resolution: 4, maxResolution: 6, cells } });
 
-beforeEach(() => mocked.mockReset());
+beforeEach(() => {
+  mocked.mockReset();
+});
 
 describe("DayLiveMap (mesmo mapa da página do mapa)", () => {
   it("consulta o dia escolhido, com os dois sensores, e desenha só hexágonos", async () => {
@@ -115,6 +117,19 @@ describe("DayLiveMap (mesmo mapa da página do mapa)", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Serviço fora do ar");
     await userEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
     await waitFor(() => expect(screen.getByTestId("fire-map")).toHaveAttribute("data-hex-res", "4"));
+  });
+
+  it("não oferece retry para parâmetros rejeitados", async () => {
+    mocked.mockRejectedValue(new ApiError("Parâmetros inválidos", 400, false));
+    renderWithProviders(<DayLiveMap region={region} date="2026-11-12" />);
+    await screen.findByRole("alert");
+    expect(screen.queryByRole("button", { name: "Tentar novamente" })).not.toBeInTheDocument();
+  });
+
+  it("identifica explicitamente um recorte incompleto", async () => {
+    mocked.mockResolvedValue({ ...grid(), truncated: true });
+    renderWithProviders(<DayLiveMap region={region} date="2026-11-12" />);
+    expect(await screen.findByRole("note")).toBeVisible();
   });
 
   it("sem registros avisa sem afirmar ausência de fogo", async () => {
