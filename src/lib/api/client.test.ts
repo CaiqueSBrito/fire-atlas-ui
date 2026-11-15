@@ -62,11 +62,12 @@ describe("apiFetch", () => {
   it("cancelar uma consulta antiga interrompe o fetch, sem virar erro recuperável", async () => {
     const { apiFetch } = await loadClient();
     const controller = new AbortController();
-    fetchMock.mockImplementation((_url, { signal }) => {
-      const { promise, reject } = Promise.withResolvers<Response>();
-      signal.addEventListener("abort", () => reject(signal.reason), { once: true });
-      return promise;
-    });
+    fetchMock.mockImplementation(
+      (_url, { signal }) =>
+        new Promise<Response>((_resolve, reject) => {
+          signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+        }),
+    );
     const result = apiFetch("/detections", {}, controller.signal);
     controller.abort();
     await expect(result).rejects.toBe(controller.signal.reason);

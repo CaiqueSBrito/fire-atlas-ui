@@ -142,9 +142,12 @@ sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é
 - Datas disponíveis vêm de `/meta/coverage` (`lib/api/coverage.ts`, cache compartilhado de 10 min); o retorno é uma
   lista por sensor com `minDate`, `maxDate` e `detections`. `/meta/sources` foi removido. As resoluções da gold são
   0–6, independentemente de importações. O histórico pode ser consultado desde 2000; ausência de dado não é zero.
-- Mapa (normal e do dia no calendário): `fetchDetections` usa `/detections` (contagem por sensor). A versão por atividade
-  harmonizada (`/activity/cells`, `toActivityGrid` em `adapters.ts`) depende de uma rota que ainda não existe na `main` do
-  back (o rascunho para o PostGIS está num stash da branch `feat/activity-cells` e precisa ser portado para o Athena).
+- **Mapa (normal e do dia no calendário) = atividade harmonizada por célula**: `fetchDetections` chama
+  `/activity/cells?cells&start&end&zoom` (rota do back na branch `feat/activity-cells`, já no Athena; `harmonized_cells`),
+  em blocos como antes. `HexCell.count` = valor harmonizado (fracionário), `modis`/`viirs` = detecções que entraram na
+  harmonização; `DetectionGrid.harmonized.unitLabel` liga os textos com unidade (detalhe, lista, legenda, total). O filtro
+  de sensores não se aplica. Dia = dia local de fogo. A cor usa `colorFloor`: com valores < 1 a escala log começa no menor
+  valor (no mínimo 1/1000 do máximo); contagens inteiras continuam com base 1.
 - `/detections?cells&start&end&sensor&zoom=3` (contagem por sensor, também usada pela home); a API escolhe a resolução de saída (células grossas
   de entrada devolvem hexágonos finos) e informa `resolution`. Máx. 366 dias (400 com `detail` da API).
 - Estatísticas: `/compare` + `/timeseries` + `/rankings/cells` (ranking e regiões críticas) +

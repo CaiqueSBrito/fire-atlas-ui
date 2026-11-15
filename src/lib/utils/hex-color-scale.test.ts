@@ -24,3 +24,20 @@ describe("hexColor com escala logarítmica", () => {
     }
   });
 });
+
+describe("hexColor com valores fracionários (atividade harmonizada)", () => {
+  it("contagens inteiras mantêm a base 1", async () => {
+    const { colorFloor } = await import("./hex");
+    expect(colorFloor([1, 5, 900], 900)).toBe(1);
+  });
+
+  it("valores abaixo de 1 não ficam todos com a mesma cor", async () => {
+    const { colorFloor } = await import("./hex");
+    const values = [0.05, 0.3, 4.1, 83.6];
+    const floor = colorFloor(values, 83.6);
+    expect(floor).toBeCloseTo(0.0836, 3);
+    const colors = values.map((v) => hexColor(v, 83.6, floor));
+    expect(new Set(colors).size).toBe(4);
+    expect(luminance(colors[1])).toBeLessThan(luminance(colors[0]));
+  });
+});

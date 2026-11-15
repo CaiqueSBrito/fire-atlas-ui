@@ -125,44 +125,46 @@ afterEach(() => {
 const BRASIL: [number, number, number, number] = [-74, -34, -34, 6];
 const query = { sensors: ["modis", "viirs"] as ("modis" | "viirs")[], from: "2026-11-01", to: "2026-11-13", bbox: BRASIL };
 
-describe("detecções pela API gold", () => {
-  it("consulta por células H3 (nunca bbox) e preserva os totais por sensor", async () => {
+describe("mapa pela API gold (atividade harmonizada por célula)", () => {
+  it("consulta /activity/cells por células H3 (nunca bbox) na resolução mais fina da gold", async () => {
     const { fetchDetections } = await import("./detections");
     const out = await fetchDetections(query, null);
-    const url = callTo("/detections")!;
+    const url = callTo("/activity/cells")!;
+    expect(callTo("/detections")).toBeUndefined();
     expect(url.searchParams.has("bbox")).toBe(false);
     const cells = url.searchParams.get("cells")!.split(",");
     expect(cells.length).toBeGreaterThan(1);
     expect(cells.length).toBeLessThanOrEqual(380);
     expect(url.searchParams.get("start")).toBe("2026-11-01");
     expect(url.searchParams.get("end")).toBe("2026-11-13");
-    expect(url.searchParams.get("sensor")).toBe("BOTH");
+    expect(url.searchParams.get("zoom")).toBe("6");
     expect(out.grid?.cells).toHaveLength(1);
-    expect(out.grid?.cells[0]).toMatchObject({ count: 81, modis: 14, viirs: 67 });
+    expect(out.grid?.cells[0]).toMatchObject({ count: 12.5, modis: 14, viirs: 67, res: 4 });
+    expect(out.grid?.harmonized?.unitLabel).toMatch(/equivalentes ao MODIS Aqua/);
     expect(out.source.simulated).toBe(false);
   });
 
-  it("um sensor só é repassado como MODIS ou VIIRS", async () => {
+  it("o valor harmonizado já junta os sensores: o filtro de sensor não é enviado", async () => {
     const { fetchDetections } = await import("./detections");
     await fetchDetections({ ...query, sensors: ["viirs"] }, null);
-    expect(callTo("/detections")!.searchParams.get("sensor")).toBe("VIIRS");
+    expect(callTo("/activity/cells")!.searchParams.has("sensor")).toBe(false);
   });
 
-  it("área grande é consultada em blocos paralelos e somada sem repetir células", async () => {
+  it("área grande é consultada em blocos paralelos e unida sem repetir células", async () => {
     const { fetchDetections } = await import("./detections");
     const out = await fetchDetections({ ...query, bbox: [-110, -50, 50, 50] }, null);
-    const detectionCalls = calls().filter((u) => u.pathname.endsWith("/detections"));
-    expect(detectionCalls.length).toBeGreaterThan(1);
-    expect(detectionCalls.length).toBeLessThanOrEqual(12);
-    for (const u of detectionCalls) expect(u.href.length).toBeLessThan(8000);
+    const cellCalls = calls().filter((u) => u.pathname.endsWith("/activity/cells"));
+    expect(cellCalls.length).toBeGreaterThan(1);
+    expect(cellCalls.length).toBeLessThanOrEqual(12);
+    for (const u of cellCalls) expect(u.href.length).toBeLessThan(8000);
     expect(out.grid?.cells).toHaveLength(1);
-    expect(out.total).toBe(81);
+    expect(out.total).toBe(12.5);
   });
 
   it("a URL cabe no limite de 8 KB do servidor", async () => {
     const { fetchDetections } = await import("./detections");
     await fetchDetections({ ...query, bbox: [-180, -60, 180, 80] }, null);
-    expect(String(fetchMock.mock.calls.find((c) => String(c[0]).includes("/detections"))![0]).length).toBeLessThan(8000);
+    expect(String(fetchMock.mock.calls.find((c) => String(c[0]).includes("/activity/cells"))![0]).length).toBeLessThan(8000);
   });
 });
 

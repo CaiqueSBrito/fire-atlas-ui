@@ -93,8 +93,14 @@ const hexToRgb = (hex: string): [number, number, number] => [
   parseInt(hex.slice(5, 7), 16),
 ];
 
-export function hexColor(count: number, max: number): string {
-  const t = max <= 1 ? 0 : Math.log(Math.max(1, count)) / Math.log(max);
+export function colorFloor(counts: number[], max: number): number {
+  let smallest = Infinity;
+  for (const c of counts) if (c > 0 && c < smallest) smallest = c;
+  return smallest < 1 ? Math.max(max / 1000, smallest) : 1;
+}
+
+export function hexColor(count: number, max: number, floor = 1): string {
+  const t = max <= floor ? 0 : Math.log(Math.max(floor, count) / floor) / Math.log(max / floor);
   const scaled = Math.min(1, Math.max(0, t)) * (HEX_RAMP.length - 1);
   const i = Math.min(HEX_RAMP.length - 2, Math.floor(scaled));
   const k = scaled - i;

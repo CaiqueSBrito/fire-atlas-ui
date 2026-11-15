@@ -38,6 +38,7 @@ import type { CountryCollection } from "@/lib/utils/countries";
 import { existingLayers } from "@/lib/utils/map-query";
 import {
   aggregateHex,
+  colorFloor,
   hexColor,
   hexInfo,
   hexResolution,
@@ -806,12 +807,13 @@ export default function FireMap({
     const map = mapRef.current;
     if (!map || !ready) return;
     const max = cells.reduce((m, c) => Math.max(m, c.count), 0);
+    const floor = colorFloor(cells.map((c) => c.count), max);
     setData(map, "hex", {
       type: "FeatureCollection",
       features: cells.map((c) => ({
         type: "Feature",
         geometry: { type: "Polygon", coordinates: [hexRing(c.id)] },
-        properties: { cell: c.id, n: c.count, color: hexColor(c.count, max) },
+        properties: { cell: c.id, n: c.count, color: hexColor(c.count, max, floor) },
       })),
     });
     cb.current.onHexChange?.(plot === "hex" ? hexInfo(cells, cellRes) : null);

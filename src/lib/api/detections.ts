@@ -1,20 +1,15 @@
 import { cellsForBbox } from "@/lib/utils/h3-region";
 import { splitBbox } from "@/lib/utils/tiles";
 import type {
+  ApiActivityCellsResponse,
   ApiCompareResponse,
-  ApiDetectionsResponse,
   ApiHistoricalResponse,
   ApiRankingResponse,
   ApiTimeseriesResponse,
 } from "@/types/api";
 import type { DetectionQuery, DetectionsResponse } from "@/types/detections";
 import type { StatsResponse } from "@/types/stats";
-import {
-  mergeDetections,
-  sensorParam,
-  toDetectionsResponse,
-  toStatsResponse,
-} from "./adapters";
+import { sensorParam, toActivityGrid, toStatsResponse } from "./adapters";
 import { apiFetch, hasApi } from "./client";
 import { fetchCoverage, isCovered, type Coverage } from "./coverage";
 import { mockDetections, type MockMode } from "./mock-detections";
@@ -57,16 +52,16 @@ export async function fetchDetections(
   const tiles = await Promise.all(
     splitBbox(q.bbox).map(async (tile) => {
       const { coverage, params } = await regionParams({ ...q, bbox: tile });
-      const raw = await apiFetch<ApiDetectionsResponse>(
-        "/detections",
-        { ...params, zoom: zoomFor(coverage) },
+      const raw = await apiFetch<ApiActivityCellsResponse>(
+        "/activity/cells",
+        { cells: params.cells, start: params.start, end: params.end, zoom: zoomFor(coverage) },
         signal,
       );
       return { raw, coverage };
     }),
   );
-  return toDetectionsResponse(
-    mergeDetections(tiles.map((t) => t.raw)),
+  return toActivityGrid(
+    tiles.map((t) => t.raw),
     finestResolution(tiles[0].coverage),
   );
 }
