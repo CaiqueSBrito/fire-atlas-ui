@@ -47,17 +47,17 @@ export function MonthBars({
   return (
     <section
       aria-labelledby="month-bars-title"
-      className="rounded-2xl border border-space-600 bg-space-800 p-5"
+      className="rounded-panel border border-space-600 bg-space-800 p-6"
     >
-      <h2 id="month-bars-title" className="font-display text-lg font-bold">
+      <h2 id="month-bars-title" className="font-display type-heading-section">
         {title}
       </h2>
-      <p className="text-small text-ink-300">
+      <p className="mt-1 type-body-small text-ink-300">
         Clique em um dia para ver o mapa e os detalhes. Cada cor é uma faixa de temperatura de brilho.
       </p>
       <ul
         aria-label="Legenda das barras"
-        className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-caption text-ink-300"
+        className="mt-4 flex flex-wrap gap-x-4 gap-y-2 font-mono type-caption text-ink-300"
       >
           {legendBins &&
             stackOrder(legendBins)

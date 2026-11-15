@@ -1,7 +1,6 @@
 import Link from "next/link";
 
 const LINKS = [
-  { href: "/explore/map", label: "Mapa" },
   { href: "/explore/calendar", label: "Calendário" },
   { href: "/explore/statistics", label: "Análises" },
 ];

@@ -40,7 +40,7 @@ const OTHER_OPTIONS = [
 ];
 
 const chip =
-  "inline-flex h-12 items-center rounded-full border px-4 text-base font-semibold leading-6 tracking-[-0.02em] transition-colors duration-200";
+  "inline-flex h-10 items-center rounded-full border px-4 type-button-small transition-colors duration-200";
 const roundNav =
   "grid h-10 w-10 place-items-center rounded-full text-lg text-ink-100 transition hover:bg-space-800 hover:text-ember-400";
 
@@ -80,22 +80,22 @@ export function CalendarView() {
   const selectRegion = (id: string) => setParams({ region: id, bbox: null });
 
   return (
-    <main id="conteudo" tabIndex={-1} className="mx-auto w-full max-w-7xl flex-1 px-6 pb-14 pt-8 sm:px-10">
+    <main id="conteudo" tabIndex={-1} className="mx-auto w-full max-w-7xl flex-1 px-page pb-16 pt-10">
       <header>
-        <p className="font-mono text-caption uppercase tracking-[0.2em] text-ember-400">Calendário de atividade</p>
-        <h1 className="mt-1 font-display text-h1 font-bold leading-tight tracking-tight">Calendário de queimadas</h1>
-        <p className="mt-2 max-w-2xl text-ink-300">
+        <p className="type-overline text-ember-400">Calendário de atividade</p>
+        <h1 className="mt-2 font-display type-statement">Calendário de queimadas</h1>
+        <p className="mt-3 max-w-2xl type-body text-ink-300">
           Atividade de fogo harmonizada por dia: MODIS e VIIRS numa só escala, separada por faixa de temperatura de
           brilho.
           {data?.source.simulated && (
-            <span className="ml-2 rounded-full border border-ember-400/50 px-2 py-0.5 text-caption text-ember-400">
+            <span className="ml-2 rounded-full border border-ember-400/50 px-2 py-0.5 type-caption text-ember-400">
               Dados simulados
             </span>
           )}
         </p>
       </header>
 
-      <div className="mt-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="mt-8 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <nav aria-label="Região" className="contents">
             {CHIPS.map((r) => {
@@ -122,7 +122,7 @@ export function CalendarView() {
             <Select
               label="Outra região"
               hideLabel
-              buttonClassName="min-h-12 rounded-full py-2 px-4 font-semibold"
+              buttonClassName="min-h-10 rounded-full py-2 px-4 type-button-small"
               value={CHIP_IDS.includes(region.id) ? "" : region.id}
               options={OTHER_OPTIONS}
               onChange={(id) => id && selectRegion(id)}
@@ -152,7 +152,7 @@ export function CalendarView() {
           <button
             type="button"
             onClick={() => selectDate(today)}
-            className="inline-flex h-12 items-center rounded-full border border-space-600 bg-space-800 px-5 font-semibold text-ink-100 transition-colors hover:border-ink-300"
+            className="inline-flex h-10 items-center rounded-full border border-space-600 bg-space-800 px-4 type-button-small text-ink-100 transition-colors hover:border-ink-300"
           >
             Hoje
           </button>
@@ -167,21 +167,21 @@ export function CalendarView() {
           />
         </div>
       ) : (
-        <div className="mt-6 grid gap-6 lg:grid-cols-12" aria-busy={monthQuery.isFetching}>
+        <div className="mt-8 grid gap-6 lg:grid-cols-12" aria-busy={monthQuery.isFetching}>
           <div className="flex min-w-0 flex-col gap-6 lg:col-span-8">
-            <section aria-label="Mapa de focos do dia" className="overflow-hidden rounded-2xl border border-space-600">
+            <section aria-label="Mapa de focos do dia" className="overflow-hidden rounded-panel border border-space-600">
               <div className="aspect-[16/10] max-h-[34rem] w-full">
                 {date ? (
                   <DayMap region={region} date={date} viewBbox={viewBbox} layers={layers} />
                 ) : (
-                  <div className="grid h-full place-items-center bg-space-900 p-6 text-center text-small text-ink-300">
+                  <div className="grid h-full place-items-center bg-space-900 p-6 text-center type-body-small text-ink-300">
                     {monthQuery.isPending ? "Carregando…" : "Nenhum dia com dado neste mês."}
                   </div>
                 )}
               </div>
             </section>
             {monthQuery.isPending ? (
-              <div role="status" className="h-72 animate-pulse rounded-2xl bg-space-800">
+              <div role="status" className="h-72 animate-pulse rounded-panel bg-space-800">
                 <span className="sr-only">Carregando o mês…</span>
               </div>
             ) : (
@@ -213,8 +213,8 @@ export function CalendarView() {
             />
             <MonthSummary days={days} anomaly={anomalyQuery.data} anomalyFailed={anomalyQuery.isError} />
             {!!data?.warnings.length && (
-              <details className="group rounded-2xl border border-space-600 bg-space-800 p-5 text-small">
-                <summary className="flex min-h-11 items-center justify-between gap-4 font-semibold">
+              <details className="group rounded-panel border border-space-600 bg-space-800 p-6 type-body-small">
+                <summary className="flex min-h-10 items-center justify-between gap-4 type-heading-card">
                   Sobre estes dados
                   <span aria-hidden="true" className="text-ember-400 transition-transform group-open:rotate-45">
                     +
