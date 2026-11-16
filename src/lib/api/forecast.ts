@@ -8,9 +8,12 @@ import { fetchCoverage } from "./coverage";
 
 export const FORECAST_LIMIT = 100;
 
+export const MAP_FORECAST_LIMIT = 2000;
+
 export async function fetchForecast(
   bbox: Bbox,
   signal?: AbortSignal,
+  limit: number = FORECAST_LIMIT,
 ): Promise<ForecastResponse> {
   if (!hasApi) {
     return {
@@ -22,7 +25,7 @@ export async function fetchForecast(
   const { cells } = cellsForBbox(bbox, coverage.resolutions);
   const raw = await apiFetch<ApiForecastResponse>(
     "/forecast",
-    { cells: cells.join(","), limit: String(FORECAST_LIMIT) },
+    { cells: cells.join(","), limit: String(limit) },
     signal,
   );
   return toForecastResponse(raw);

@@ -43,7 +43,7 @@ Os textos da home seguem o enunciado oficial — não inventar dados/números.
 
 | Rota | Conteúdo |
 |---|---|
-| `/` | Home: cabeçalho + hero (globo + botão vermelho) + seções (desafio, proposta, dados, FAQ) + rodapé |
+| `/` | Home: cabeçalho + hero (globo + botão vermelho) + seções (desafio, proposta, dados, time, FAQ) + rodapé |
 | `/explore` | Redireciona para `/explore/map` |
 | `/explore/map` | Mapa interativo MapLibre + base NASA GIBS, camadas MODIS ◆ / VIIRS ●, pontos ou hexágonos H3, área por desenho ou coordenadas, detalhes da detecção (NASA-012) |
 | `/explore/calendar` | Calendário de queimadas: atividade harmonizada por dia, barras por faixa de temperatura de brilho, mapa do dia e resumo do mês — feature NASA-013 |
@@ -67,17 +67,18 @@ Next o error boundary recebe **`retry`** (não `reset`).
 
 ## Fluxo de exploração (globo → mapa 2D → foco inclinado)
 
-1. **Home:** o globo 3D é clicável. O clique vira latitude/longitude (`vectorToLatLon`), o
-   continente vem do ponto dentro dos países (`continentAt`, `public/data/countries.geojson` com a
-   propriedade `continent`) e abre `/explore/map?region=<continente>`; passar o mouse mostra
-   "Clique para explorar: <continente>". Alternativa por teclado e celular: os atalhos
-   `RegionLinks` ("Ou comece por uma região"). Ambos marcam `markIntroFly()` (sessionStorage).
+1. **Home:** só o botão principal "Explorar focos de calor" e o menu do topo levam ao mapa (pedido do time).
+   O globo 3D gira e, ao passar o mouse, mostra o nome do continente (`continentAt`), mas **não é clicável**.
+   Não há atalhos por região, botões de Calendário/Análises no hero nem link "Mapa" no rodapé.
 2. **Mapa (`/explore/map`) começa como globo 3D** (MapLibre `vertical-perspective`, `GLOBE_PROJECTION`)
    quando a região é `world` e não há `bbox`: passar o mouse mostra "Clique para explorar:
    <continente>"; clicar num continente (`continentAt`) grava `region=<id>` na URL e a câmera faz
    zoom animado até a região, achatando para o mapa 2D (projeção interpola para mercator entre os
    zooms 1,8 e 2,4). Os continentes são regiões em `config/regions.ts`, também no filtro e no
    calendário. Vindo da home, o mapa já começa no globo e faz o voo (`introFly`).
+   No 2D (mercator), depois do voo, o zoom mínimo vira `flatMinZoom(largura)` (o mundo ocupa a largura da tela uma vez,
+   sem cópias lado a lado); recalcula ao redimensionar e volta a 0 no globo. Não use `setMaxBounds`/`renderWorldCopies`
+   aqui: com a projeção que interpola globo→mercator o MapLibre 6 quebra ("Cannot read properties of null").
 3. **Inclinação automática:** selecionar um ponto ou um hexágono H3 (mapa ou lista) dá zoom
    (`TERRAIN_3D.zoom`, ou `hexFocusZoom(res)` no hexágono) e inclina a vista com relevo (AWS Terrain
    Tiles, DEM Terrarium, hillshade; 60°, exagero 1,6). Fechar o detalhe ou clicar no vazio volta à
@@ -103,6 +104,12 @@ agregados usa o centro das células; não é temperatura medida). Não há camad
 removida a pedido do time). Vegetação usa imagens GIBS com a data do fim do período limitada a 3 dias atrás
 (`imageryDateFor`); legendas usam as paletas oficiais (`lib/map-layers.ts`). O worker do MapLibre
 é copiado para `public/` por `scripts/copy-maplibre-worker.mjs`.
+
+**Mapa principal → calendário (mesmo lugar):** o `MapExplorer` grava em `sessionStorage` (`lib/utils/map-place.ts`,
+chave `fire-atlas:map-place`) a região e o lugar atual: o hexágono selecionado (`hexBbox`), senão a detecção selecionada,
+senão a área visível (ou a área desenhada). O botão "Calendário" do mapa leva esse lugar em `bbox`; vindo pelo menu, o
+`CalendarView` usa o lugar lembrado se a região for a mesma (`useSyncExternalStore`). O `bbox` da URL tem prioridade e trocar
+a região no calendário o descarta. O mapa do dia fica fixo nesse lugar ao trocar de dia.
 
 O mapa do **dia no calendário** (`DayLiveMap`) é o mesmo do mapa normal: com a API real faz a mesma consulta
 (blocos, área visível, resolução fina ao aproximar, `areas`, `heat`, `base` da URL), só que para um dia. Sem grade
@@ -142,7 +149,13 @@ sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é
 - Datas disponíveis vêm de `/meta/coverage` (`lib/api/coverage.ts`, cache compartilhado de 10 min); o retorno é uma
   lista por sensor com `minDate`, `maxDate` e `detections`. `/meta/sources` foi removido. As resoluções da gold são
   0–6, independentemente de importações. O histórico pode ser consultado desde 2000; ausência de dado não é zero.
-- Mapa: `/detections?cells&start&end&sensor&zoom=3`; a API escolhe a resolução de saída (células grossas
+- **Mapa (normal e do dia no calendário) = atividade harmonizada por célula**: `fetchDetections` chama
+  `/activity/cells?cells&start&end&zoom` (rota do back na branch `feat/activity-cells`, já no Athena; `harmonized_cells`),
+  em blocos como antes. `HexCell.count` = valor harmonizado (fracionário), `modis`/`viirs` = detecções que entraram na
+  harmonização; `DetectionGrid.harmonized.unitLabel` liga os textos com unidade (detalhe, lista, legenda, total). O filtro
+  de sensores não se aplica. Dia = dia local de fogo. A cor usa `colorFloor`: com valores < 1 a escala log começa no menor
+  valor (no mínimo 1/1000 do máximo); contagens inteiras continuam com base 1.
+- `/detections?cells&start&end&sensor&zoom=3` (contagem por sensor, também usada pela home); a API escolhe a resolução de saída (células grossas
   de entrada devolvem hexágonos finos) e informa `resolution`. Máx. 366 dias (400 com `detail` da API).
 - Estatísticas: `/compare` + `/timeseries` + `/rankings/cells` (ranking e regiões críticas) +
   `/compare/historical` (histórico/anomalia: só com 3+ anos anteriores, senão "Indisponível"). Ranking e
@@ -157,9 +170,21 @@ sensor**, já agregada. **Não há focos individuais**: com a API real o mapa é
   (`lt320`, `320`…`350`, `ge360`, `none`) que somam `harmonized`; vem `null` enquanto o lake não tiver as colunas
   `harmonized_t_*` (a UI mostra a barra de uma cor e "Faixas de temperatura indisponíveis"). `basis`: `viirs` =
   VIIRS I-4, `aqua`/`terra` = MODIS 21/22 (escalas diferentes). Não há MODIS × VIIRS separados no calendário.
-- Previsão: `/forecast?cells&limit=100` (gold/forecast, célula H3 res 6, emissão mais recente). A API devolve `summary`
-  (células, ativas, maior e média da probabilidade na região inteira) e as células ordenadas, com cidade mais próxima e
-  país de `h3_places`. Só a região dos filtros vale; período e sensores não se aplicam. Sem emissão publicada: "Indisponível".
+- Análises: o painel `HarmonizedMonthlyPanel` usa `/activity/monthly` (últimos 12 meses até o fim do período, região por
+  continente/país/células; área desenhada vai por `cells`). Barras por mês: mês em andamento tracejado, mês sem dado só
+  contorno (nunca zero), tabela equivalente e unidade obrigatória. Sem API não aparece.
+- Previsão no mapa (URL `forecast=true`, interruptor "Previsão de fogo (7 dias)" em Sobreposições, só com API):
+  `useMapForecast` chama `/forecast` na área visível com `limit=2000` (`MAP_FORECAST_LIMIT`). O `FireMap` desenha os
+  hexágonos res 6 em vermelho tracejado (cor pela probabilidade, `FORECAST_RAMP`) a partir do zoom 5 e pontos no centro com
+  zoom afastado. Legenda com emissão e o grupo "Previsão" no painel (aviso "PREVISÃO — não são detecções observadas" e as
+  10 maiores probabilidades, `ForecastLayerList`). Indisponível/erro aparecem no grupo; nunca simula.
+- Previsão: `/forecast?cells&limit=2000` (`MAP_FORECAST_LIMIT`; gold/forecast, célula H3 res 6, emissão mais recente). A API
+  devolve `summary` (células, ativas, maior e média da probabilidade na região inteira) e as células ordenadas, com cidade
+  mais próxima e país de `h3_places`. Só a região dos filtros vale; período e sensores não se aplicam. Sem emissão
+  publicada: "Indisponível". A página mostra o **mapa de risco** (`features/forecast/components/forecast-map.tsx`: `FireMap`
+  com `forecastCells`, pontos no zoom afastado e hexágonos vermelhos tracejados ao aproximar, escala `FORECAST_RAMP`), a lista das
+  10 maiores (clicar aproxima o mapa e abre o detalhe) e a tabela das 100 maiores recolhida em `<details>` como alternativa
+  em texto. Sem WebGL o quadro do mapa vira aviso e a lista/tabela continuam. Formatadores em `features/forecast/format.ts`.
 - HTTP: timeout de **45 s**, cobrindo cabeçalhos e corpo; a API pode consumir 30 s por consulta Athena. O `detail`
   RFC 7807 também é mostrado no 503. Rede, timeout, 429 e 5xx (exceto 501) permitem retry; 400/404/501 não.
   React Query faz no máximo 2 novas tentativas com backoff (600 ms, 1,2 s), mantém staleTime de 5 min e não refaz
@@ -175,7 +200,10 @@ Regras de não-invenção: FRP, ranking, períodos críticos, harmonizado e corr
 só aparecem quando a API os fornece (senão "Indisponível"). Correspondência entre sensores
 vem só da harmonização validada (`matchId`). A previsão nunca é simulada: sem serviço,
 mostra indisponibilidade. Ausência de ponto nunca é apresentada como ausência de fogo.
-Os 8 focos do globo da home são ilustrativos.
+Home: com a API real, o globo mostra as 12 células com mais detecções dos últimos 7 dias com dado (`lib/api/home.ts`,
+`fetchTopHotspots`) e a faixa `LiveStats` mostra a soma global dos últimos 30 dias por sensor; sem API ou com falha, a faixa
+some e o globo volta aos 8 pontos **ilustrativos** (a legenda diz qual é o caso). Nos testes, simule falha com função comum
+no `vi.mock` (um `vi.fn` que rejeita é registrado pelo Vitest como erro do teste).
 
 ## Estrutura de pastas
 
@@ -245,3 +273,15 @@ Origem do dado sempre com cor + forma + texto (ver `map-legend.tsx`).
 ## Comandos
 
 `npm run dev` · `npm run build` · `npm run lint` · `npm test` (Vitest + Testing Library)
+
+Docker: `docker compose up -d --build` → http://localhost:3000 (`Dockerfile` multi-stage com
+`output: "standalone"`). As variáveis `NEXT_PUBLIC_*` são **fixadas no build** (build args do
+`docker-compose.yml`; padrão `NEXT_PUBLIC_API_URL=http://localhost:8080/api/v2`): mudar a URL exige
+rebuild. A URL é usada pelo navegador, então `localhost:8080` é a API rodando na máquina do usuário,
+não dentro do container. Para usar mock: `NEXT_PUBLIC_API_URL= docker compose up -d --build`.
+
+## Time (home)
+
+`features/home/components/team.tsx`: seção "Nosso time" (entre Dados e FAQ) com um card por pessoa (foto em
+`public/team/`, nome e função; a Ana tem o selo "Team Owner"). Para trocar foto, mantenha o nome do arquivo e ajuste `focus`
+(`object-position`) para centralizar o rosto. O logo do cabeçalho (`components/layout/logo.tsx`) usa gradiente de fogo.
