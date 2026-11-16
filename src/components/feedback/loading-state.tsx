@@ -1,5 +1,5 @@
 export function LoadingState({
-  label = "Carregando dados…",
+  label = "Loading data…",
 }: {
   label?: string;
 }) {

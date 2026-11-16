@@ -3,7 +3,7 @@ export function SiteFooter() {
     <footer className="border-t border-space-600 bg-space-900">
       <div className="mx-auto flex max-w-7xl flex-col gap-2 px-6 py-8 text-small text-ink-300 sm:px-10">
         <p>
-          NASA Space Apps Challenge 2026 · Desafio{" "}
+          NASA Space Apps Challenge 2026 · Challenge{" "}
           <a
             href="https://www.spaceappschallenge.org/2026/challenges/modis-and-viirs-hot-spots/"
             target="_blank"
@@ -14,7 +14,7 @@ export function SiteFooter() {
           </a>
         </p>
         <p className="font-mono text-caption">
-          Dados: NASA Earthdata FIRMS · MODIS + VIIRS
+          Data: NASA Earthdata FIRMS · MODIS + VIIRS · H3 cells · basemap © OpenStreetMap
         </p>
       </div>
     </footer>

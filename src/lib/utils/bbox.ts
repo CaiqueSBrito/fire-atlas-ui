@@ -15,10 +15,10 @@ export function formatBboxParam(b: Bbox): string {
 
 export function validateBbox(b: Bbox): string | null {
   const [w, s, e, n] = b;
-  if (s < -90 || n > 90) return "A latitude deve estar entre −90° e 90°.";
-  if (w < -180 || e > 180) return "A longitude deve estar entre −180° e 180°.";
-  if (s >= n) return "O limite sul deve ser menor que o norte.";
-  if (w >= e) return "O limite oeste deve ser menor que o leste.";
+  if (s < -90 || n > 90) return "Latitude must be between −90° and 90°.";
+  if (w < -180 || e > 180) return "Longitude must be between −180° and 180°.";
+  if (s >= n) return "The southern boundary must be less than the northern boundary.";
+  if (w >= e) return "The western boundary must be less than the eastern boundary.";
   return null;
 }
 

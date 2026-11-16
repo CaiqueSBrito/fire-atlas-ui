@@ -50,7 +50,7 @@ export function resolveFilters(
   const bboxProblem = raw.bbox
     ? custom
       ? validateBbox(custom)
-      : "Área inválida na URL."
+      : "Invalid area in the URL."
     : null;
   const region = getRegion(raw.region);
 
@@ -72,9 +72,9 @@ export function resolveFilters(
 
   const days = Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 864e5) + 1;
   const rangeProblem = from > to
-    ? "A data inicial é posterior à final."
+    ? "The start date is after the end date."
     : days > MAX_PERIOD_DAYS
-      ? `O período máximo é de ${MAX_PERIOD_DAYS} dias. Reduza o intervalo para consultar o mapa.`
+      ? `The maximum date range is ${MAX_PERIOD_DAYS} days. Shorten the range to query the map.`
       : null;
 
   return {

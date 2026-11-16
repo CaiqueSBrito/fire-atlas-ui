@@ -21,7 +21,7 @@ export async function mockStats(
   await new Promise((r) => setTimeout(r, 500));
   if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
   if (mock === "error") {
-    throw new ApiError("Simulação: o servidor está indisponível.");
+    throw new ApiError("Simulation: the server is unavailable.");
   }
   if (mock === "empty") {
     return {
@@ -50,15 +50,15 @@ export async function mockStats(
     series: rows,
     history: q.sensors.length
       ? {
-          metric: "Detecções no período",
-          unit: "detecções",
+          metric: "Detections in the period",
+          unit: "detections",
           observed,
           reference,
-          referencePeriod: `Mesmo recorte nos ${REFERENCE_YEARS} anos anteriores (−365, −730 e −1095 dias)`,
-          method: "Média simples dos períodos de referência (simulado)",
+          referencePeriod: `Same selection in the ${REFERENCE_YEARS} previous years (−365, −730 and −1095 days)`,
+          method: "Simple mean of the reference periods (simulated)",
           anomaly: observed - reference,
           anomalyDefinition:
-            "Anomalia = observado − média de referência. Valor positivo indica mais detecções que o habitual.",
+            "Anomaly = observed − reference mean. A positive value indicates more detections than usual.",
         }
       : null,
     source: MOCK_SOURCE,

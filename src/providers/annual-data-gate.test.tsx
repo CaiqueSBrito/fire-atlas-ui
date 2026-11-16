@@ -2,19 +2,21 @@ import { StrictMode, useEffect } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getAnnualBootstrap, startAnnualBootstrap, type AnnualLoadingState } from "@/lib/api/bootstrap";
+import type * as BootstrapApi from "@/lib/api/bootstrap";
 import { AnnualDataGate, AnnualDataProvider } from "./annual-data-gate";
 
 vi.mock("@/lib/api/client", () => ({ hasApi: true }));
-vi.mock("@/lib/api/bootstrap", () => ({
-  startAnnualBootstrap: vi.fn(),
-  getAnnualBootstrap: vi.fn(),
-}));
+vi.mock("@/lib/api/bootstrap", async (importOriginal) => {
+  const actual = await importOriginal<typeof BootstrapApi>();
+  return { ...actual, startAnnualBootstrap: vi.fn(), getAnnualBootstrap: vi.fn() };
+});
 
 const loading: AnnualLoadingState = {
   state: "loading", completedUnits: 2, totalUnits: 4, rowsLoaded: 120,
   message: "Recuperando dados de 2026.", error: null,
+  phase: "importing", finalizationCompleted: 0, finalizationTotal: 3,
 };
-const ready: AnnualLoadingState = { ...loading, state: "ready", completedUnits: 4 };
+const ready: AnnualLoadingState = { ...loading, state: "ready", phase: "ready", completedUnits: 4, finalizationCompleted: 3 };
 const start = vi.mocked(startAnnualBootstrap);
 const poll = vi.mocked(getAnnualBootstrap);
 
@@ -29,18 +31,25 @@ async function flush() {
 }
 
 describe("entrada após a carga anual", () => {
-  it("não monta consumidores antes de ready, mesmo com todas as etapas contadas", async () => {
+  it("acompanha a finalização depois dos arquivos e só monta consumidores em ready", async () => {
     const mounted = vi.fn();
     function Consumer() {
       useEffect(() => { mounted(); }, []);
       return <p>Exploração disponível</p>;
     }
-    start.mockResolvedValue({ ...loading, completedUnits: 4 });
-    poll.mockResolvedValue(ready);
+    start.mockResolvedValue({ ...loading, completedUnits: 4, phase: "indexes" });
+    poll.mockResolvedValueOnce({ ...loading, completedUnits: 4, phase: "validating", finalizationCompleted: 2 })
+      .mockResolvedValueOnce(ready);
     render(<AnnualDataProvider><AnnualDataGate><Consumer /></AnnualDataGate></AnnualDataProvider>);
     await flush();
     expect(mounted).not.toHaveBeenCalled();
-    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "99");
+    const duringIndexes = Number(screen.getByRole("progressbar").getAttribute("aria-valuenow"));
+    expect(duringIndexes).toBeLessThan(99);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
+    const duringValidation = Number(screen.getByRole("progressbar").getAttribute("aria-valuenow"));
+    expect(duringValidation).toBeGreaterThan(duringIndexes);
+    expect(duringValidation).toBeLessThan(100);
+    expect(mounted).not.toHaveBeenCalled();
     await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
     expect(screen.getByText("Exploração disponível")).toBeVisible();
     expect(mounted).toHaveBeenCalledOnce();
@@ -54,8 +63,7 @@ describe("entrada após a carga anual", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(1500); });
     expect(screen.queryByText("Exploração disponível")).not.toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("Conexão interrompida");
-    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "50");
-    fireEvent.click(screen.getByRole("button", { name: "Retomar carregamento" }));
+    fireEvent.click(screen.getByRole("button", { name: "Resume loading" }));
     await flush();
     expect(screen.getByText("Exploração disponível")).toBeVisible();
   });

@@ -7,12 +7,8 @@ export type Coverage = {
   maxDate: string | null;
 };
 
-/**
- * A gold publica H3 de 0 a 6 em todas as tabelas e a API consulta o data lake direto (Athena): não há mais
- * importação parcial, então toda resolução está sempre disponível. Antes isso era deduzido das importações
- * concluídas em /meta/sources, rota que deixou de existir.
- */
-export const GOLD_RESOLUTIONS = [0, 1, 2, 3, 4, 5, 6];
+/** Resoluções H3 usadas pelo projeto; a grade encerra na resolução 5. */
+export const GOLD_RESOLUTIONS = [0, 1, 2, 3, 4, 5];
 
 /** O período coberto muda uma vez por dia; cada consulta ao lake custa segundos, então o cache vale mais. */
 const TTL_MS = 10 * 60_000;

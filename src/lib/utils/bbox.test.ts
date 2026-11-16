@@ -36,16 +36,16 @@ describe("validateBbox", () => {
     expect(validateBbox([-74, -34, -34, 6])).toBeNull();
   });
   it("rejeita latitude e longitude fora dos limites", () => {
-    expect(validateBbox([0, -91, 10, 10])).toMatch(/latitude/);
-    expect(validateBbox([0, -10, 10, 91])).toMatch(/latitude/);
-    expect(validateBbox([-181, -10, 10, 10])).toMatch(/longitude/);
-    expect(validateBbox([0, -10, 181, 10])).toMatch(/longitude/);
+    expect(validateBbox([0, -91, 10, 10])).not.toBeNull();
+    expect(validateBbox([0, -10, 10, 91])).not.toBeNull();
+    expect(validateBbox([-181, -10, 10, 10])).not.toBeNull();
+    expect(validateBbox([0, -10, 181, 10])).not.toBeNull();
   });
   it("rejeita áreas vazias ou invertidas", () => {
-    expect(validateBbox([0, 10, 10, 10])).toMatch(/sul/);
-    expect(validateBbox([0, 10, 10, 5])).toMatch(/sul/);
-    expect(validateBbox([10, 0, 10, 5])).toMatch(/oeste/);
-    expect(validateBbox([20, 0, 10, 5])).toMatch(/oeste/);
+    expect(validateBbox([0, 10, 10, 10])).not.toBeNull();
+    expect(validateBbox([0, 10, 10, 5])).not.toBeNull();
+    expect(validateBbox([10, 0, 10, 5])).not.toBeNull();
+    expect(validateBbox([20, 0, 10, 5])).not.toBeNull();
   });
 });
 

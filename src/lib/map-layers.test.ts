@@ -4,7 +4,7 @@ import {
   BASEMAP_OPTIONS,
   IMAGERY_LAG_DAYS,
   ILLUSTRATED_PALETTE,
-  NDVI_RAMP,
+  flatMinZoom,
   gibsTiles,
   imageryDateFor,
 } from "./map-layers";
@@ -81,9 +81,18 @@ describe("mapas base", () => {
     }
   });
 
-  it("a legenda de vegetação traz os extremos oficiais do NDVI", () => {
-    expect(NDVI_RAMP.low).toContain("0,1");
-    expect(NDVI_RAMP.high).toContain("1,0");
+
+});
+
+describe("flatMinZoom", () => {
+  it("o mundo (512 px no zoom 0) ocupa a largura da tela uma vez", () => {
+    expect(flatMinZoom(512)).toBe(0);
+    expect(flatMinZoom(1024)).toBe(1);
+    expect(flatMinZoom(1600)).toBeCloseTo(Math.log2(1600 / 512));
   });
 
+  it("tela estreita ou sem largura não passa de zoom 0", () => {
+    expect(flatMinZoom(300)).toBe(0);
+    expect(flatMinZoom(0)).toBe(0);
+  });
 });

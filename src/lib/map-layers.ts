@@ -9,21 +9,23 @@ export const BASEMAP_OPTIONS: ReadonlyArray<{
   label: string;
   description: string;
 }> = [
-  { id: "streets", label: "Ruas (OpenStreetMap)", description: "Mapa de ruas com nomes de cidades, estados e rodovias" },
-  { id: "satellite", label: "Satélite", description: "Imagem real da Terra (NASA Blue Marble)" },
-  { id: "vegetation", label: "Satélite + vegetação", description: "Índice de vegetação NDVI (MODIS, composto de 8 dias)" },
-  { id: "illustrated", label: "Ilustrado", description: "Países e estados em tons de cinza" },
+  { id: "streets", label: "Streets (OpenStreetMap)", description: "Street map with city, state, and highway names" },
+  { id: "satellite", label: "Satellite", description: "Earth imagery (NASA Blue Marble)" },
+  { id: "vegetation", label: "Satellite + vegetation", description: "NDVI vegetation index (MODIS, 8-day composite)" },
+  { id: "illustrated", label: "Illustrated", description: "Countries and states in grayscale" },
 ];
 
 export const PLOTS = ["points", "hex"] as const;
 export type PlotId = (typeof PLOTS)[number];
 
 export const PLOT_OPTIONS: ReadonlyArray<{ id: PlotId; label: string; description: string }> = [
-  { id: "points", label: "Pontos", description: "Uma marca por detecção; clique para ver os detalhes" },
-  { id: "hex", label: "Hexágonos (H3)", description: "Contagem de focos por célula hexagonal" },
+  { id: "points", label: "Points", description: "One marker per detection; click for details" },
+  { id: "hex", label: "Hexagons (H3)", description: "Hotspot count per hexagonal cell" },
 ];
 
 export const HEX_RAMP = ["#fff3b0", "#fdae61", "#f46d43", "#d73027", "#a50026"];
+
+export const FORECAST_RAMP = ["#ffc9c4", "#ff8a80", "#ff4a3d", "#d7261e", "#8b0d0d"];
 
 export const mapLayerParsers = {
   base: parseAsStringLiteral(BASEMAPS).withDefault("streets"),
@@ -31,6 +33,7 @@ export const mapLayerParsers = {
   plot: parseAsStringLiteral(PLOTS).withDefault("points"),
   dots: parseAsBoolean.withDefault(true),
   areas: parseAsInteger.withDefault(0),
+  forecast: parseAsBoolean.withDefault(false),
 };
 
 export const TERRAIN_TILES =
@@ -40,6 +43,12 @@ export const TERRAIN_3D = { zoom: 10.5, pitch: 60, bearing: -20, exaggeration: 1
 
 export const GLOBE_MAX_ZOOM = 1.8;
 export const FLAT_MAX_ZOOM = 14;
+
+const WORLD_TILE_PX = 512;
+
+export function flatMinZoom(containerWidth: number): number {
+  return Math.max(0, Math.log2(Math.max(1, containerWidth) / WORLD_TILE_PX));
+}
 
 export const GLOBE_CENTER: [number, number] = [-35, 12];
 
@@ -84,7 +93,7 @@ export const HEAT_RAMP = ["#3b4cc0", "#6dbcdb", "#fee08b", "#f46d43", "#a50026"]
 
 export const NDVI_RAMP = {
   colors: ["#d7c4b3", "#ac8d73", "#a0c031", "#4e9400", "#0a6900", "#001801"],
-  low: "NDVI 0,1",
-  mid: "0,5",
-  high: "NDVI 1,0",
+  low: "NDVI 0.1",
+  mid: "0.5",
+  high: "NDVI 1.0",
 };

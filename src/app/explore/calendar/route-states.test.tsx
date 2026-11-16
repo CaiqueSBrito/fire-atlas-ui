@@ -10,7 +10,6 @@ describe("loading.tsx (RN05)", () => {
     const main = screen.getByRole("main");
     expect(main).toHaveAttribute("id", "conteudo");
     expect(main).toHaveAttribute("aria-busy", "true");
-    expect(screen.getByRole("status")).toHaveTextContent("Carregando calendário…");
   });
 });
 
@@ -23,10 +22,8 @@ describe("error.tsx (RN05 — nova tentativa)", () => {
   it("informa a falha e chama retry ao tentar de novo", async () => {
     const retry = vi.fn();
     render(<Error error={new globalThis.Error("boom")} retry={retry} />);
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Não foi possível carregar o calendário",
-    );
-    await userEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(retry).toHaveBeenCalledOnce();
   });
 

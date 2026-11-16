@@ -4,9 +4,9 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: "/", label: "Início" },
-  { href: "/explore/map", label: "Mapa" },
-  { href: "/explore/calendar", label: "Calendário" },
-  { href: "/explore/statistics", label: "Análises" },
-  { href: "/explore/forecasts", label: "Previsões" },
+  { href: "/", label: "Home" },
+  { href: "/explore/map", label: "Map" },
+  { href: "/explore/calendar", label: "Calendar" },
+  { href: "/explore/statistics", label: "Analytics" },
+  { href: "/explore/forecasts", label: "Forecasts" },
 ];

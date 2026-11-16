@@ -16,7 +16,7 @@ export type StatsResponse = {
     criterion: string;
     rule: string;
     unit: string;
-    items: { label: string; value: number }[];
+    items: { label: string; value: number; h3?: string }[];
   } | null;
   criticalPeriods?: {
     criterion: string;
@@ -33,4 +33,36 @@ export type StatsResponse = {
     anomalyDefinition: string;
   } | null;
   source: DataOrigin;
+};
+
+export type HarmonizedMonth = {
+  month: string;
+  value: number | null;
+  daysWithData: number;
+  daysInMonth: number;
+  complete: boolean;
+};
+
+export type HarmonizedMonthly = {
+  months: HarmonizedMonth[];
+  unitLabel: string;
+  warnings: string[];
+};
+
+export type CellHistory = {
+  cell: string;
+  start: string;
+  end: string;
+  days: number;
+  current: { year: number; detections: number };
+  years: { year: number; detections: number }[];
+  currentPerDay: number;
+  meanPerDay: number | null;
+  changePct: number | null;
+  anomalousSensors: string[];
+  sufficient: boolean;
+  yearsWithData: number;
+  minYears: number;
+  yearsRequested: number;
+  notes: string[];
 };

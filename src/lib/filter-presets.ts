@@ -1,12 +1,12 @@
-import { shiftDate } from "@/lib/utils/dates";
+import { formatShort, shiftDate } from "@/lib/utils/dates";
 
 export type PeriodPresetId = "7d" | "30d" | "month" | "year" | "custom";
 
 export const PERIOD_PRESETS: ReadonlyArray<{ id: Exclude<PeriodPresetId, "custom">; label: string }> = [
-  { id: "7d", label: "Últimos 7 dias" },
-  { id: "30d", label: "Últimos 30 dias" },
-  { id: "month", label: "Este mês" },
-  { id: "year", label: "Este ano" },
+  { id: "7d", label: "Last 7 days" },
+  { id: "30d", label: "Last 30 days" },
+  { id: "month", label: "This month" },
+  { id: "year", label: "This year" },
 ];
 
 export type Period = { from: string | null; to: string | null };
@@ -34,6 +34,5 @@ export function detectPreset(period: Period, today: string): PeriodPresetId {
 }
 
 export function formatPeriod(from: string, to: string): string {
-  const br = (d: string) => d.split("-").reverse().join("/");
-  return from === to ? br(from) : `${br(from)} → ${br(to)}`;
+  return from === to ? formatShort(from) : `${formatShort(from)} → ${formatShort(to)}`;
 }

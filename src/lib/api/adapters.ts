@@ -1,5 +1,6 @@
 import { cellToLatLng, getHexagonEdgeLengthAvg } from "h3-js";
 import { shiftDate } from "@/lib/utils/dates";
+import { englishApiMessage } from "./english-message";
 import type { HexCell } from "@/lib/utils/hex";
 import type {
   ApiActivityAnomalyResponse,
@@ -30,10 +31,10 @@ import type {
   SensorId,
 } from "@/types/detections";
 import type { ForecastCell, ForecastResponse } from "@/types/forecast";
-import type { SeriesPoint, StatsResponse } from "@/types/stats";
+import type { CellHistory, SeriesPoint, StatsResponse } from "@/types/stats";
 
 export const API_SOURCE: DataOrigin = {
-  name: "NASA FIRMS (MODIS e VIIRS) · camada agregada por célula H3",
+  name: "NASA FIRMS (MODIS and VIIRS) · aggregated H3 cell layer",
   simulated: false,
 };
 
@@ -63,7 +64,7 @@ export function toForecastResponse(raw: ApiForecastResponse): ForecastResponse {
   if (!raw.issueDate || !raw.summary) {
     return {
       status: "unavailable",
-      reason: raw.message ?? "Nenhuma previsão foi importada para o serviço.",
+      reason: raw.message ? englishApiMessage(raw.message) : "No forecasts have been imported into the service.",
     };
   }
   return {
@@ -77,8 +78,8 @@ export function toForecastResponse(raw: ApiForecastResponse): ForecastResponse {
     },
     cells: raw.items.map(toForecastCell),
     truncated: raw.truncated,
-    source: raw.source,
-    method: raw.method,
+    source: englishApiMessage(raw.source),
+    method: englishApiMessage(raw.method),
   };
 }
 
@@ -162,14 +163,15 @@ function toRanking(ranking: ApiRankingResponse | null | undefined): StatsRespons
   if (!ranking || ranking.items.length === 0) return null;
   const threshold =
     ranking.criticalThreshold != null
-      ? `região crítica = mais de ${Math.round(ranking.criticalThreshold).toLocaleString("pt-BR")} detecções (percentil ${ranking.criticalPercentile})`
-      : "sem região crítica marcada: poucas células com registro no recorte";
+      ? `critical region = more than ${Math.round(ranking.criticalThreshold).toLocaleString("en-US")} detections (percentile ${ranking.criticalPercentile})`
+      : "no critical regions marked: too few cells with records in the selected area";
   return {
-    criterion: `células H3 de resolução ${ranking.resolution} com mais detecções`,
-    rule: `ordem decrescente de detecções; ${threshold}`,
-    unit: "detecções",
+    criterion: `H3 cells at resolution ${ranking.resolution} with the most detections`,
+    rule: `descending detection count; ${threshold}`,
+    unit: "detections",
     items: ranking.items.map((i) => ({
-      label: `${coordinates(i.h3)} (H3 ${i.h3})${i.critical ? " · região crítica" : ""}`,
+      h3: i.h3,
+      label: `${coordinates(i.h3)} (H3 ${i.h3})${i.critical ? " · critical region" : ""}`,
       value: i.detections,
     })),
   };
@@ -194,7 +196,7 @@ function toCriticalPeriods(
     if (continues) continue;
     const run = days.slice(start, i);
     items.push({
-      label: "Atividade incomum",
+      label: "Unusual activity",
       from: run[0],
       to: run[run.length - 1],
       value: run.reduce((acc, d) => acc + (byDay.get(d) ?? 0), 0),
@@ -202,7 +204,7 @@ function toCriticalPeriods(
     start = i;
   }
   return {
-    criterion: `dias com contagem diária atípica (z-score robusto acima de ${timeseries.threshold.toLocaleString("pt-BR")}, mediana e MAD do próprio período)`,
+    criterion: `days with unusual daily counts (robust z-score above ${timeseries.threshold.toLocaleString("en-US")}, using the period’s median and MAD)`,
     items,
   };
 }
@@ -219,20 +221,20 @@ function toHistory(
   ) {
     return null;
   }
-  const observed = rows.reduce((acc, r) => acc + r.current.detectionsPerDay, 0);
+  const observed = rows.reduce((acc, row) => acc + (row.current.detectionsPerDay ?? 0), 0);
   const reference = rows.reduce((acc, r) => acc + (r.meanDetectionsPerDay ?? 0), 0);
   const years = Math.min(...rows.map((r) => r.yearsWithData));
   const round = (n: number) => Number(n.toFixed(1));
   return {
-    metric: "Detecções por dia no período",
-    unit: "detecções/dia",
+    metric: "Detections per day in the period",
+    unit: "detections/day",
     observed: round(observed),
     reference: round(reference),
-    referencePeriod: `Mesmas datas de ${years} anos anteriores com registro`,
-    method: "Média das detecções por dia nas mesmas datas dos anos anteriores",
+    referencePeriod: `Same dates in ${years} previous years with records`,
+    method: "Mean daily detections on the same dates in previous years",
     anomaly: round(observed - reference),
     anomalyDefinition:
-      "Anomalia = observado − média de referência. Valor positivo indica mais detecções por dia que o habitual.",
+      "Anomaly = observed − reference mean. A positive value indicates more detections per day than usual.",
   };
 }
 
@@ -286,7 +288,7 @@ export function toStatsResponse(
 }
 
 export const ACTIVITY_SOURCE: DataOrigin = {
-  name: "NASA FIRMS · atividade harmonizada (escala MODIS Aqua)",
+  name: "NASA FIRMS · harmonized activity (MODIS Aqua scale)",
   simulated: false,
 };
 
@@ -324,7 +326,7 @@ export function toMonthAnomaly(raw: ApiActivityAnomalyResponse): MonthAnomaly {
     deviationPct: raw.deviationPct,
     yearsWithData: raw.yearsWithData,
     minYears: raw.minYears,
-    note: raw.note,
+    note: raw.note ? englishApiMessage(raw.note) : raw.note,
   };
 }
 
@@ -337,5 +339,50 @@ export function toDaySatellites(
     date,
     contributing: rows.filter((d) => d.contributes).map((d) => d.platform),
     available: rows.filter((d) => d.available).map((d) => d.platform),
+  };
+}
+
+export function toCellHistory(
+  cell: string,
+  sensors: SensorId[],
+  historical: ApiHistoricalResponse,
+): CellHistory | null {
+  const rows = historical.sensors.filter((s) => sensors.includes(lower(s.sensor)));
+  if (rows.length === 0) return null;
+  const first = rows[0].current;
+  const byYear = new Map<number, number>();
+  for (const row of rows) {
+    for (const year of row.baseline ?? []) {
+      byYear.set(year.year, (byYear.get(year.year) ?? 0) + year.detections);
+    }
+  }
+  const sufficient = rows.every((row) => row.sufficient && row.meanDetectionsPerDay != null);
+  const currentPerDay = rows.reduce((sum, row) => sum + (row.current.detectionsPerDay ?? 0), 0);
+  const meanPerDay = sufficient
+    ? rows.reduce((sum, row) => sum + (row.meanDetectionsPerDay ?? 0), 0)
+    : null;
+  return {
+    cell,
+    start: first.start,
+    end: first.end,
+    days: first.days,
+    current: {
+      year: Number(first.start.slice(0, 4)),
+      detections: rows.reduce((sum, row) => sum + row.current.detections, 0),
+    },
+    years: [...byYear.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([year, detections]) => ({ year, detections })),
+    currentPerDay,
+    meanPerDay,
+    changePct: meanPerDay !== null && meanPerDay > 0
+      ? ((currentPerDay - meanPerDay) / meanPerDay) * 100
+      : null,
+    anomalousSensors: sufficient ? rows.filter((row) => row.anomalous).map((row) => row.sensor) : [],
+    sufficient,
+    yearsWithData: Math.min(...rows.map((row) => row.yearsWithData)),
+    minYears: historical.minYears,
+    yearsRequested: historical.yearsRequested,
+    notes: [...new Set(rows.flatMap((row) => row.note ? [`${row.sensor}: ${englishApiMessage(row.note)}`] : []))],
   };
 }

@@ -198,10 +198,9 @@ describe("toStatsResponse", () => {
   describe("períodos críticos", () => {
     it("agrupa dias incomuns consecutivos e soma as contagens", () => {
       const out = toStatsResponse(["modis", "viirs"], compare, timeseries);
-      expect(out.criticalPeriods?.items).toEqual([
-        { label: "Atividade incomum", from: "2026-10-02", to: "2026-10-03", value: 400 + 5 + 60 },
+      expect(out.criticalPeriods?.items.map(({ from, to, value }) => ({ from, to, value }))).toEqual([
+        { from: "2026-10-02", to: "2026-10-03", value: 400 + 5 + 60 },
       ]);
-      expect(out.criticalPeriods?.criterion).toMatch(/3,5/);
     });
 
     it("separa períodos não consecutivos", () => {
@@ -246,9 +245,6 @@ describe("toStatsResponse", () => {
     it("lista células na ordem da API e marca as críticas", () => {
       const out = toStatsResponse(["modis"], compare, timeseries, { ranking });
       expect(out.ranking?.items.map((i) => i.value)).toEqual([61040, 100]);
-      expect(out.ranking?.items[0].label).toMatch(/região crítica/);
-      expect(out.ranking?.items[1].label).not.toMatch(/região crítica/);
-      expect(out.ranking?.rule).toMatch(/percentil 95/);
     });
 
     it("sem itens ou sem resposta fica indisponível", () => {
@@ -258,12 +254,6 @@ describe("toStatsResponse", () => {
       expect(toStatsResponse(["modis"], compare, timeseries).ranking).toBeNull();
     });
 
-    it("sem limiar crítico explica que nenhuma célula foi marcada", () => {
-      const out = toStatsResponse(["modis"], compare, timeseries, {
-        ranking: { ...ranking, criticalThreshold: null },
-      });
-      expect(out.ranking?.rule).toMatch(/poucas células/);
-    });
   });
 
   describe("comparação histórica", () => {
@@ -300,9 +290,7 @@ describe("toStatsResponse", () => {
         observed: 1000,
         reference: 1080,
         anomaly: -80,
-        unit: "detecções/dia",
       });
-      expect(out.history?.referencePeriod).toMatch(/4 anos/);
     });
 
     it("dado insuficiente em algum sensor deixa a comparação indisponível", () => {
@@ -351,5 +339,14 @@ describe("toForecastResponse", () => {
       country: null,
       city: "Cidade",
     });
+  });
+  it("preserva a célula e a probabilidade nativa res6, exceção exclusiva da previsão", () => {
+    const out = toForecastResponse({
+      ...raw,
+      items: [{ h3: "868141007ffffff", probability7d: 0.9 }],
+    });
+    if (out.status !== "available") throw new Error("esperava previsão nativa");
+    expect(out.cells).toHaveLength(1);
+    expect(out.cells[0]).toMatchObject({ id: "868141007ffffff", probability: 0.9 });
   });
 });

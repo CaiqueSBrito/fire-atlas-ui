@@ -13,15 +13,15 @@ const BIN_COLOR: Record<string, string> = {
 export const NO_BINS_COLOR = "#aab4d4";
 
 export const BASIS_LABEL: Record<TemperatureBasis, string> = {
-  viirs: "VIIRS, canal I-4",
-  aqua: "MODIS Aqua, canais 21/22",
-  terra: "MODIS Terra, canais 21/22",
+  viirs: "VIIRS, channel I-4",
+  aqua: "MODIS Aqua, channels 21/22",
+  terra: "MODIS Terra, channels 21/22",
 };
 
 export const binColor = (key: string) => BIN_COLOR[key] ?? NO_BINS_COLOR;
 
 export function binLabel({ fromK, toK }: Pick<TemperatureBin, "fromK" | "toK">): string {
-  if (fromK === null && toK === null) return "Sem medida";
+  if (fromK === null && toK === null) return "Not measured";
   if (fromK === null) return `< ${toK} K`;
   if (toK === null) return `≥ ${fromK} K`;
   return `${fromK}–${toK} K`;
@@ -38,9 +38,9 @@ export function stackOrder(bins: TemperatureBin[]): TemperatureBin[] {
 }
 
 const fmt = [
-  new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }),
-  new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 }),
-  new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 0 }),
+  new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }),
+  new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 }),
+  new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }),
 ];
 
 export function formatActivity(value: number): string {

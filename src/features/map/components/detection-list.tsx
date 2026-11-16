@@ -24,11 +24,11 @@ export function DetectionList({
   return (
     <section aria-labelledby="list-title">
       <h2 id="list-title" className="text-small font-semibold tracking-[-0.02em] text-ink-300">
-        Detecções de maior FRP
+        Highest-FRP detections
       </h2>
       <p className="mt-1 text-caption text-ink-300">
-        Alternativa ao mapa: selecione para ver os detalhes. Mostrando{" "}
-        {top.length} de {total.toLocaleString("pt-BR")}.
+        Map alternative: select to view details. Showing{" "}
+        {top.length} of {total.toLocaleString("en-US")}.
       </p>
       <ul className="mt-2 flex flex-col gap-1">
         {top.map((d) => {

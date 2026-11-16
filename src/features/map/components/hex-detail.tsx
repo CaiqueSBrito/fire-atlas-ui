@@ -3,7 +3,7 @@ import { SENSOR_META } from "@/lib/sensors";
 import { cn } from "@/lib/utils/cn";
 import type { HexCell } from "@/lib/utils/hex";
 
-const fmtKm = (km: number) => `${km.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km`;
+const fmtKm = (km: number) => `${km.toLocaleString("en-US", { maximumFractionDigits: 1 })} km`;
 
 export function HexDetail({
   cell,
@@ -13,8 +13,10 @@ export function HexDetail({
   view3d,
   onToggle3d,
   onClose,
+  period,
 }: {
   cell: HexCell;
+  period?: { from: string; to: string };
   shown: number;
   total: number;
   truncated: boolean;
@@ -23,12 +25,15 @@ export function HexDetail({
   onClose: () => void;
 }) {
   const rows: Array<[string, string]> = [
-    ["Focos na célula", cell.count.toLocaleString("pt-BR")],
-    ["◆ MODIS", cell.modis.toLocaleString("pt-BR")],
-    ["● VIIRS", cell.viirs.toLocaleString("pt-BR")],
-    ["Resolução H3", `${cell.res} (aresta ≈ ${fmtKm(cell.edgeKm)})`],
-    ["Centro", `${cell.center[1].toFixed(3)}°, ${cell.center[0].toFixed(3)}°`],
-    ["Célula", cell.id],
+    ...(period
+      ? ([["Selected period", [period.from, period.to].map((date) => new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC" })).join(" to ")]] as Array<[string, string]>)
+      : []),
+    ["Fire detections in cell", cell.count.toLocaleString("en-US")],
+    ["◆ MODIS", cell.modis.toLocaleString("en-US")],
+    ["● VIIRS", cell.viirs.toLocaleString("en-US")],
+    ["H3 resolution", `${cell.res} (edge ≈ ${fmtKm(cell.edgeKm)})`],
+    ["Center", `${cell.center[1].toFixed(3)}°, ${cell.center[0].toFixed(3)}°`],
+    ["Cell", cell.id],
   ];
   return (
     <section
@@ -37,31 +42,31 @@ export function HexDetail({
     >
       <div className="flex items-start justify-between gap-2">
         <h2 id="hex-title" className="font-display text-lg font-bold">
-          Hexágono H3
+          H3 hexagon
         </h2>
         <button
           type="button"
           onClick={onClose}
           className="min-h-11 rounded-lg px-3 text-small text-ink-300 hover:text-ink-100"
         >
-          Fechar
+          Close
         </button>
       </div>
-      <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-small">
+      <dl className="mt-3 grid gap-3 text-small">
         {rows.map(([k, v]) => (
-          <div key={k} className="contents">
-            <dt className="text-ink-300">{k}</dt>
-            <dd className="break-all font-mono text-ink-100">{v}</dd>
+          <div key={k} className="flex flex-col gap-0.5">
+            <dt className="text-caption text-ink-300">{k}</dt>
+            <dd className="break-words font-mono text-ink-100">{v}</dd>
           </div>
         ))}
       </dl>
       <Button variant="secondary" className="mt-4 w-full" onClick={onToggle3d}>
-        {view3d ? "Voltar ao 2D" : "Ver em 3D"}
+        {view3d ? "Back to 2D" : "View in 3D"}
       </Button>
       {truncated && (
         <p className="mt-3 text-caption text-ink-300">
-          Contagem sobre os {shown.toLocaleString("pt-BR")} pontos exibidos, de{" "}
-          {total.toLocaleString("pt-BR")} no recorte.
+          Count based on the {shown.toLocaleString("en-US")} displayed points, out of{" "}
+          {total.toLocaleString("en-US")} in the selected area.
         </p>
       )}
     </section>
@@ -81,10 +86,10 @@ export function HexTopList({
   return (
     <section aria-labelledby="hex-top-title">
       <h2 id="hex-top-title" className="text-small font-semibold tracking-[-0.02em] text-ink-300">
-        Hexágonos com mais focos
+        Hexagons with the most fire detections
       </h2>
       <p className="mt-1 text-caption text-ink-300">
-        Alternativa ao mapa: selecione para ver os detalhes.
+        Map alternative: select to view details.
       </p>
       <ul className="mt-2 flex flex-col gap-1">
         {cells.map((c) => (
@@ -100,11 +105,11 @@ export function HexTopList({
                   : "border-space-600 hover:bg-space-800",
               )}
             >
-              <span className="font-mono font-semibold">{c.count.toLocaleString("pt-BR")}</span>
-              <span className="text-ink-300">focos</span>
+              <span className="font-mono font-semibold">{c.count.toLocaleString("en-US")}</span>
+              <span className="text-ink-300">fire detections</span>
               <span className="truncate text-ink-300">
-                <span aria-hidden style={{ color: SENSOR_META.modis.hex }}>◆</span> {c.modis}{" "}
-                <span aria-hidden style={{ color: SENSOR_META.viirs.hex }}>●</span> {c.viirs}
+                <span aria-hidden style={{ color: SENSOR_META.modis.hex }}>◆</span> {c.modis.toLocaleString("en-US")}{" "}
+                <span aria-hidden style={{ color: SENSOR_META.viirs.hex }}>●</span> {c.viirs.toLocaleString("en-US")}
               </span>
               <span className="ml-auto font-mono text-caption text-ink-300">
                 {c.center[1].toFixed(1)}°, {c.center[0].toFixed(1)}°

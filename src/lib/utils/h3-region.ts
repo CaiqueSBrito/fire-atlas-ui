@@ -7,6 +7,7 @@ import {
 } from "h3-js";
 import type { Bbox } from "@/types/detections";
 
+export const MAX_H3_RESOLUTION = 5;
 export const MAX_QUERY_CELLS = 380;
 
 const TILE_DEGREES = 20;
@@ -60,7 +61,7 @@ export function cellsForBbox(
   resolutions: number[],
   maxCells = MAX_QUERY_CELLS,
 ): RegionCells {
-  const available = [...new Set(resolutions)].sort((a, b) => b - a);
+  const available = [...new Set(resolutions)].filter((r) => r <= MAX_H3_RESOLUTION).sort((a, b) => b - a);
   const area = bboxAreaKm2(bbox);
   const centerLat = (bbox[1] + bbox[3]) / 2;
   const centerLng = (bbox[0] + bbox[2]) / 2;

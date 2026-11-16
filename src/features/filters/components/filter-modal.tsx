@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { fieldClass } from "@/components/ui/field";
-import { REGIONS } from "@/config/regions";
+import { CONTINENT_IDS, REGIONS } from "@/config/regions";
 import { useResolvedFilters } from "@/hooks/use-filters";
 import {
   detectPreset,
@@ -19,8 +19,6 @@ import { shiftDate, todayUtc } from "@/lib/utils/dates";
 import { useDrawMode } from "@/providers/draw-mode";
 import type { SensorId } from "@/types/detections";
 import { AreaFields } from "./area-fields";
-
-const CONTINENTS = ["north-america", "south-america", "europe", "africa", "asia", "oceania"];
 
 type Draft = {
   sensors: SensorId[];
@@ -44,13 +42,13 @@ function daysBetween(from: string, to: string): number {
 function problemOf(draft: Draft, today: string): string | null {
   if (draft.bbox) {
     const box = parseBbox(draft.bbox);
-    const problem = box ? validateBbox(box) : "Área inválida.";
+    const problem = box ? validateBbox(box) : "Invalid area.";
     if (problem) return problem;
   }
   const from = draft.period.from ?? shiftDate(today, -(DEFAULT_PERIOD_DAYS - 1));
   const to = draft.period.to ?? today;
-  if (from > to) return "A data inicial é posterior à final.";
-  if (daysBetween(from, to) > MAX_PERIOD_DAYS) return `O período máximo é de ${MAX_PERIOD_DAYS} dias.`;
+  if (from > to) return "The start date is after the end date.";
+  if (daysBetween(from, to) > MAX_PERIOD_DAYS) return `The maximum period is ${MAX_PERIOD_DAYS} days.`;
   return null;
 }
 
@@ -92,12 +90,12 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
   const visible = REGIONS.filter((r) => !query || r.label.toLowerCase().includes(query));
   const groups = [
     {
-      title: "Mundo e continentes",
-      items: visible.filter((r) => r.id === "world" || CONTINENTS.includes(r.id)),
+      title: "World and continents",
+      items: visible.filter((r) => r.id === "world" || CONTINENT_IDS.includes(r.id)),
     },
     {
-      title: "Brasil e estados",
-      items: visible.filter((r) => r.id !== "world" && !CONTINENTS.includes(r.id)),
+      title: "Country",
+      items: visible.filter((r) => r.id === "brasil"),
     },
   ].filter((g) => g.items.length > 0);
 
@@ -143,15 +141,15 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
     <Dialog
       open
       onClose={onClose}
-      title="Filtros"
+      title="Filters"
       footer={
         <>
           <Button variant="ghost" onClick={reset}>
-            Limpar
+            Clear
           </Button>
           <div className="flex items-center gap-2">
             <Button variant="ghost" onClick={onClose}>
-              Cancelar
+              Cancel
             </Button>
             <Button
               variant="secondary"
@@ -159,7 +157,7 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
               disabled={Boolean(problem)}
               className="border-ember-400 bg-ember-400 text-space-950 hover:brightness-110"
             >
-              Aplicar
+              Apply
             </Button>
           </div>
         </>
@@ -168,7 +166,7 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
       <div className="flex flex-col gap-6 text-base">
         <section aria-labelledby="f-sensores">
           <h3 id="f-sensores" className={sectionTitle}>
-            Sensores
+            Sensors
           </h3>
           <div className="flex flex-wrap gap-2">
             {SENSORS.map((id) => (
@@ -194,19 +192,19 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
 
         <section aria-labelledby="f-local">
           <h3 id="f-local" className={sectionTitle}>
-            Local
+            Location
           </h3>
           <input
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar região"
-            aria-label="Buscar região"
+            placeholder="Search regions"
+            aria-label="Search regions"
             className={`${fieldClass} mb-3 w-full`}
           />
           <div
             role="radiogroup"
-            aria-label="Região"
+            aria-label="Region"
             className="flex max-h-56 flex-col gap-3 overflow-y-auto pr-1"
           >
             {groups.map((g) => (
@@ -232,14 +230,14 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
               </div>
             ))}
             {groups.length === 0 && (
-              <p className="text-small text-ink-300">Nenhuma região encontrada.</p>
+              <p className="text-small text-ink-300">No regions found.</p>
             )}
           </div>
         </section>
 
         <section aria-labelledby="f-area">
           <h3 id="f-area" className={sectionTitle}>
-            Área personalizada
+            Custom area
           </h3>
           {draft.bbox && (
             <p className="mb-3 rounded-xl border border-space-600 p-3 font-mono text-small">
@@ -249,21 +247,21 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
           <div className="flex flex-wrap gap-2">
             {canDraw ? (
               <Button variant="secondary" onClick={startDrawing} disabled={Boolean(problem)}>
-                Desenhar no mapa
+                Draw on map
               </Button>
             ) : (
-              <p className="text-small text-ink-300">Para desenhar a área, abra a página do Mapa.</p>
+              <p className="text-small text-ink-300">To draw an area, open the Map page.</p>
             )}
             <Button
               variant="ghost"
               aria-expanded={showCoords}
               onClick={() => setShowCoords((v) => !v)}
             >
-              Digitar coordenadas
+              Enter coordinates
             </Button>
             {draft.bbox && (
               <Button variant="ghost" onClick={() => setDraft((d) => ({ ...d, bbox: null }))}>
-                Remover área
+                Remove area
               </Button>
             )}
           </div>
@@ -280,7 +278,7 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
 
         <section aria-labelledby="f-periodo">
           <h3 id="f-periodo" className={sectionTitle}>
-            Período
+            Period
           </h3>
           <div className="flex flex-wrap gap-2">
             {PERIOD_PRESETS.map((p) => (
@@ -302,13 +300,13 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
               }
               className={`${chip} h-12 ${preset === "custom" ? selectedClass : idleClass}`}
             >
-              Personalizado
+              Custom
             </button>
           </div>
           {preset === "custom" && (
             <div className="mt-3 grid grid-cols-2 gap-3">
               <label className="flex flex-col gap-2 text-small font-semibold tracking-[-0.02em] text-ink-300">
-                De
+                From
                 <input
                   type="date"
                   value={effectiveFrom}
@@ -323,7 +321,7 @@ function FilterDialog({ onClose, canDraw }: { onClose: () => void; canDraw: bool
                 />
               </label>
               <label className="flex flex-col gap-2 text-small font-semibold tracking-[-0.02em] text-ink-300">
-                Até
+                To
                 <input
                   type="date"
                   value={effectiveTo}

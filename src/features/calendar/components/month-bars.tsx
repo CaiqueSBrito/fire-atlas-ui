@@ -9,12 +9,12 @@ import {
   stackOrder,
 } from "../temperature";
 
-const WEEKDAY = ["D", "S", "T", "Q", "Q", "S", "S"];
+const WEEKDAY = ["S", "M", "T", "W", "T", "F", "S"];
 
 function dayLabel(day: ActivityDay, isToday: boolean): string {
-  const when = `${formatLong(day.date)}${isToday ? " (hoje)" : ""}`;
-  if (day.status === "unavailable") return `${when}: sem dado`;
-  const parts = [`${when}: atividade harmonizada ${formatActivity(day.value ?? 0)}`];
+  const when = `${formatLong(day.date)}${isToday ? " (today)" : ""}`;
+  if (day.status === "unavailable") return `${when}: no data`;
+  const parts = [`${when}: harmonized activity ${formatActivity(day.value ?? 0)}`];
   if (day.temperature) {
     parts.push(
       stackOrder(day.temperature)
@@ -47,17 +47,17 @@ export function MonthBars({
   return (
     <section
       aria-labelledby="month-bars-title"
-      className="rounded-2xl border border-space-600 bg-space-800 p-5"
+      className="rounded-panel border border-space-600 bg-space-800 p-6"
     >
-      <h2 id="month-bars-title" className="font-display text-lg font-bold">
+      <h2 id="month-bars-title" className="font-display type-heading-section">
         {title}
       </h2>
-      <p className="text-small text-ink-300">
-        Clique em um dia para ver o mapa e os detalhes. Cada cor é uma faixa de temperatura de brilho.
+      <p className="mt-1 type-body-small text-ink-300">
+        Click a day to see the map and details. Each color is a brightness temperature band.
       </p>
       <ul
-        aria-label="Legenda das barras"
-        className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-mono text-caption text-ink-300"
+        aria-label="Bar legend"
+        className="mt-4 flex flex-wrap gap-x-4 gap-y-2 font-mono type-caption text-ink-300"
       >
           {legendBins &&
             stackOrder(legendBins)
@@ -79,7 +79,7 @@ export function MonthBars({
                 className="inline-block h-3 w-3 rounded-[3px]"
                 style={{ background: NO_BINS_COLOR }}
               />
-              Total (sem faixas de temperatura)
+              Total (no temperature bands)
             </li>
           )}
           <li className="inline-flex items-center gap-1.5">
@@ -87,7 +87,7 @@ export function MonthBars({
               aria-hidden="true"
               className="inline-block h-3 w-2.5 rounded-[2px] border border-dashed border-ink-300"
             />
-            sem dado (não significa ausência de fogo)
+            no data (does not mean there was no fire)
           </li>
         </ul>
 
@@ -169,7 +169,7 @@ export function MonthBars({
                     isSelected ? "text-ember-400" : isToday ? "font-bold text-focus-ring" : "text-ink-300",
                   )}
                 >
-                  {isToday ? "hoje" : WEEKDAY[new Date(`${day.date}T00:00:00Z`).getUTCDay()]}
+                  {isToday ? "today" : WEEKDAY[new Date(`${day.date}T00:00:00Z`).getUTCDay()]}
                 </span>
               </button>
             </li>

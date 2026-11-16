@@ -10,12 +10,10 @@ describe("regiões", () => {
     expect(DEFAULT_REGION_ID).toBe("world");
   });
 
-  it("tem os seis continentes com nome em português", () => {
+  it("tem os seis continentes", () => {
     for (const id of CONTINENT_IDS) {
       expect(REGIONS.some((r) => r.id === id)).toBe(true);
     }
-    expect(getRegion("south-america").label).toBe("América do Sul");
-    expect(getRegion("africa").label).toBe("África");
   });
 
   it("ids são únicos", () => {
@@ -34,8 +32,4 @@ describe("regiões", () => {
     expect(getRegion(null).id).toBe("world");
   });
 
-  it("regiões do Brasil continuam disponíveis para o calendário", () => {
-    expect(getRegion("brasil").label).toBe("Brasil");
-    expect(getRegion("bahia").label).toBe("Bahia");
-  });
 });

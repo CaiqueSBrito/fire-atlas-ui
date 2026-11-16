@@ -25,10 +25,6 @@ describe("coverageFromApi", () => {
     expect(isCovered(cov, "2000-10-31")).toBe(false);
   });
 
-  it("todas as resoluções da gold ficam disponíveis quando há cobertura", async () => {
-    const { coverageFromApi } = await import("./coverage");
-    expect(coverageFromApi([entry({})]).resolutions).toEqual([0, 1, 2, 3, 4, 5, 6]);
-  });
 
   it("sem cobertura não há resolução nem data", async () => {
     const { coverageFromApi, isCovered } = await import("./coverage");

@@ -1,0 +1,68 @@
+// The API currently returns Portuguese prose. Translate its documented messages
+// at the presentation boundary; leave unknown diagnostics and identifiers intact.
+const messages: ReadonlyArray<readonly [string | RegExp, string]> = [
+  ["Unidade: celulas ativas equivalentes ao MODIS Aqua; nao e numero de focos nem de incendios.", "Unit: MODIS Aqua-equivalent active cells; not a count of hotspots or fires."],
+  ["valor invalido para o parametro ", "invalid value for parameter "],
+  ["parametro obrigatorio ausente: ", "missing required parameter: "],
+  ["Base de dados temporariamente indisponivel. Tente novamente em instantes.", "Database temporarily unavailable. Try again shortly."],
+  ["Erro interno ao processar a consulta. Tente novamente.", "Internal error while processing the query. Try again."],
+  ["O dia e o dia local de fogo (06:00 a 06:00 no horario solar local), nao UTC.", "A day is the local fire day (06:00 to 06:00 local solar time), not UTC."],
+  ["contributing = 0 significa sem dado, nao zero fogo.", "contributing = 0 means no data, not zero fire activity."],
+  ["temperature: faixas da temperatura de brilho (K) do pixel mais quente da unidade, medida pelo VIIRS I-4 quando basis = viirs e pelo MODIS canal 21/22 quando basis = aqua ou terra; nao e comparavel entre bases e nao e a temperatura da chama; o I-4 satura perto de 367 K.", "temperature: brightness temperature ranges (K) of the unit’s hottest pixel, measured by VIIRS I-4 when basis = viirs and MODIS channel 21/22 when basis = aqua or terra; not comparable across bases and not flame temperature; I-4 saturates near 367 K."],
+  ["O dia corrente fica incompleto ate fechar.", "The current day remains incomplete until it ends."],
+  ["Meses recentes sao dados NRT (quase em tempo real) e podem mudar.", "Recent months use NRT (near-real-time) data and may change."],
+  ["De 2000-11 a 2002-06 so ha o satelite Terra: a estimativa e a mais fraca.", "From 2000-11 to 2002-06, only Terra is available: this is the least reliable estimate."],
+  [/Area pequena \(~([\d.]+) km2\): o erro mensal chega a cerca de 33%\./g, "Small area (~$1 km²): monthly error can reach about 33%."],
+  ["dados insuficientes: sem dado no mes consultado", "insufficient data: no data for the selected month"],
+  ["dados insuficientes: sem registros no periodo atual", "insufficient data: no records in the current period"],
+  [/dados insuficientes: (\d+) ano\(s\) anterior\(es\) com (?:dado|registro); sao necessarios (\d+)/g, "insufficient data: $1 previous year(s) with records; $2 required"],
+  ["a mediana do mesmo mes nos anos anteriores e zero: razao e desvio nao calculados", "the median for the same month in previous years is zero: ratio and deviation were not calculated"],
+  ["Nenhuma previsao importada (rode a importacao da forecast).", "No forecasts imported (run the forecast import)."],
+  [/Nao ha previsao para a emissao (\S+); a mais recente e (\S+) \(veja \/api\/v2\/forecast\/issues\)\./g, "No forecast for issue $1; the latest is $2 (see /api/v2/forecast/issues)."],
+  ["Nenhuma celula da regiao atende aos filtros nesta emissao.", "No cells in the region match the filters for this issue."],
+  ["gold/forecast (time de dados): previsao por celula H3 de resolucao 6", "gold/forecast (data team): forecast per H3 cell at resolution 6"],
+  ["probability7d (prob_fire_7d) e a probabilidade de fogo na celula nos proximos 7 dias, calculada pelo modelo do pipeline de dados a partir da prata na data de emissao; os demais campos sao as entradas resumidas (deteccoes em 24 h, 3 e 7 dias, FRP medio, brilho e vizinhanca). A API nao recalcula nem ajusta a previsao.", "probability7d (prob_fire_7d) is the probability of fire in the cell over the next 7 days, calculated by the data pipeline model from silver data on the issue date; the other fields summarize model inputs (detections over 24 h, 3 and 7 days, mean FRP, brightness, and neighboring cells). The API does not recalculate or adjust the forecast."],
+  ["Carga da previsao interrompida; tente novamente para retomar os arquivos confirmados", "Forecast loading interrupted; try again to resume from confirmed files"],
+  ["Carga interrompida; tente novamente para retomar os arquivos confirmados", "Loading interrupted; try again to resume from confirmed files"],
+  ["O processo anterior terminou antes de concluir a carga", "The previous process ended before loading was complete"],
+  ["Cache anual incompleto", "Annual cache incomplete"],
+  ["Cache da previsao incompleto", "Forecast cache incomplete"],
+  ["O plano duravel ainda possui particoes pendentes", "The persistent plan still has pending partitions"],
+  ["Nao foi possivel iniciar o cache anual no banco compartilhado", "Unable to start the annual cache in the shared database"],
+  ["Nao foi possivel iniciar o cache da previsao no banco compartilhado", "Unable to start the forecast cache in the shared database"],
+  ["Nao foi possivel concluir a carga; tente novamente para retomar", "Unable to finish loading; try again to resume"],
+  ["Nao foi possivel concluir a previsao; tente novamente para retomar", "Unable to finish loading forecasts; try again to resume"],
+  ["Cache mundial da previsao nao esta pronto; use POST /api/v2/bootstrap/forecast", "The worldwide forecast cache is not ready; use POST /api/v2/bootstrap/forecast"],
+  [/Aguardando carga mundial de (\d+)/g, "Waiting for worldwide $1 data load"],
+  [/Lendo manifestos Delta da cobertura mundial de (\d+)/g, "Reading Delta manifests for worldwide $1 coverage"],
+  ["Lendo manifestos Delta da previsao mundial", "Reading Delta manifests for worldwide forecasts"],
+  [/Cobertura mundial de (\d+) pronta em (.+) \((\d+) trabalhadores\): todos os arquivos e resolucoes confirmados/g, "Worldwide $1 coverage ready in $2 ($3 workers): all files and resolutions confirmed"],
+  [/Previsao mundial pronta em (.+): todos os arquivos e emissoes confirmados/g, "Worldwide forecasts ready in $1: all files and issues confirmed"],
+  [/Encerrando trabalhadores apos falha; (\d+) ainda ativos/g, "Stopping workers after failure; $1 still active"],
+  ["Conferindo versoes Delta da previsao apos exportacao Athena", "Checking forecast Delta versions after Athena export"],
+  ["Conferindo versoes Delta apos exportacao Athena", "Checking Delta versions after Athena export"],
+  [/Athena: exportando colunas, (\d+\/\d+) particoes verificadas/g, "Athena: exporting columns, $1 partitions checked"],
+  [/Athena: (\d+\/\d+) particoes exportadas ou confirmadas vazias/g, "Athena: $1 partitions exported or confirmed empty"],
+  [/Athena: exportando previsao, (\d+\/\d+) meses verificados/g, "Athena: exporting forecasts, $1 months checked"],
+  [/Athena: previsao (\d+\/\d+) meses exportados ou confirmados vazios/g, "Athena: forecasts $1 months exported or confirmed empty"],
+  ["importacao aguardando arquivos", "import waiting for files"],
+  ["trabalhadores ativos; ultimo estagio:", "active workers; latest stage:"],
+  ["trabalhadores ativos", "active workers"],
+  ["aguardando arquivos", "waiting for files"],
+  ["baixando ", "downloading "],
+  [/(\d+) linhas gravadas \(visiveis ao confirmar o arquivo\)/g, "$1 rows written (visible when the file is confirmed)"],
+  [/arquivo (.+?) confirmado/g, "file $1 confirmed"],
+  [/Recriando (\d+) indices do cache em paralelo/g, "Rebuilding $1 cache indexes in parallel"],
+  ["Recriando indices do cache", "Rebuilding cache indexes"],
+  ["Validando chaves do cache", "Validating cache keys"],
+  ["Atualizando estatisticas do cache", "Updating cache statistics"],
+  ["Atualizando estatisticas da previsao", "Updating forecast statistics"],
+];
+
+export function englishApiMessage(message: string): string {
+  let translated = message;
+  for (const [source, english] of messages) {
+    translated = translated.replaceAll(source, english);
+  }
+  return translated;
+}

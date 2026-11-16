@@ -1,9 +1,9 @@
 import type { Region } from "@/config/regions";
 import type { Detection } from "@/types/calendar";
 
-// Visualização geográfica esquemática: posiciona detecções (lat/lon) dentro da
-// caixa envolvente da região. NÃO é um mapa base — o mapa real é do NASA-012.
-// Sensores distinguidos por forma (VIIRS = círculo, MODIS = losango), não só cor.
+// Schematic geographic view: positions detections (lat/lon) within the
+// region bounding box. This is not a basemap; the live map is from NASA-012.
+// Sensor shapes (VIIRS circles, MODIS diamonds) distinguish more than color.
 
 const H = 100;
 
@@ -92,8 +92,8 @@ export function RegionPlot({
       <g fontSize="3.2" fill="var(--ink-300)" fontFamily="var(--font-data)">
         <text x="1.5" y="5">N {n.toFixed(1)}°</text>
         <text x="1.5" y={H - 5.5}>S {s.toFixed(1)}°</text>
-        <text x="1.5" y={H - 2}>O {w.toFixed(1)}°</text>
-        <text x={W - 1.5} y={H - 2} textAnchor="end">L {e.toFixed(1)}°</text>
+        <text x="1.5" y={H - 2}>W {w.toFixed(1)}°</text>
+        <text x={W - 1.5} y={H - 2} textAnchor="end">E {e.toFixed(1)}°</text>
       </g>
     </svg>
   );

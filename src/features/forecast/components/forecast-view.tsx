@@ -8,28 +8,24 @@ import { REGIONS } from "@/config/regions";
 import { Unavailable } from "@/features/stats/components/unavailable";
 import { useForecast } from "@/hooks/use-detections";
 import { ApiError } from "@/lib/api/client";
-import type { ForecastCell, ForecastResponse } from "@/types/forecast";
+import { bootstrapProgress } from "@/lib/api/bootstrap";
+import type { Bbox } from "@/types/detections";
+import type { ForecastResponse } from "@/types/forecast";
+import { fmtCoords, fmtDate, fmtInt, fmtNum, fmtPct, place } from "../format";
+import { ForecastMap } from "./forecast-map";
 
 type Available = Extract<ForecastResponse, { status: "available" }>;
 
-const fmtDate = (d: string) => d.split("-").reverse().join("/");
-const fmtInt = (n: number) => n.toLocaleString("pt-BR");
-const fmtNum = (n: number | null, digits = 1) =>
-  n === null ? "—" : n.toLocaleString("pt-BR", { maximumFractionDigits: digits });
-const fmtPct = (p: number | null) =>
-  p === null
-    ? null
-    : (p * 100).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-const COORD = { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+const TABLE_ROWS = 100;
 
 function PredictedBanner() {
   return (
     <p
       role="note"
-      className="rounded-xl border-2 border-dashed border-[#c4a1ff] bg-[#c4a1ff]/10 p-3 text-small"
+      className="rounded-xl border-2 border-dashed border-[#ff5a4f] bg-[#ff5a4f]/10 p-3 text-small"
     >
-      <strong>PREVISÃO — não são detecções observadas.</strong> Probabilidade de fogo
-      nos 7 dias seguintes à emissão, calculada pelo modelo do pipeline de dados.
+      <strong>FORECAST — not observed detections.</strong> Fire probability
+      over the 7 days after issuance, calculated by the data pipeline model.
     </p>
   );
 }
@@ -51,7 +47,7 @@ function Card({
       {value === null ? (
         <>
           <p className="mt-1 font-mono text-h2 font-bold text-ink-300">—</p>
-          <p className="text-caption text-ink-300">Indisponível: {unavailable}</p>
+          <p className="text-caption text-ink-300">Unavailable: {unavailable}</p>
         </>
       ) : (
         <p className="mt-1 font-mono text-h2 font-bold">
@@ -63,113 +59,106 @@ function Card({
   );
 }
 
-function place(cell: ForecastCell) {
-  if (!cell.city && !cell.country) return "Sem localidade registrada";
-  const city = cell.city
-    ? `${cell.city}${cell.cityDistanceKm !== null ? ` (${fmtNum(cell.cityDistanceKm, 0)} km)` : ""}`
-    : null;
-  return [city, cell.country].filter(Boolean).join(", ");
-}
 
 function RiskTable({ data }: { data: Available }) {
+  const rows = data.cells.slice(0, TABLE_ROWS);
   return (
-    <section
-      aria-labelledby="risk-title"
-      className="rounded-2xl border border-space-600 bg-space-800 p-5"
-    >
-      <h2 id="risk-title" className="font-display text-lg font-bold">
-        Células de maior probabilidade
-      </h2>
+    <details className="group rounded-2xl border border-space-600 bg-space-800 p-5">
+      <summary className="cursor-pointer font-display text-lg font-bold">
+        View cell table ({fmtInt(rows.length)} highest-probability cells)
+      </summary>
       <p className="mt-1 text-small text-ink-300">
-        {data.truncated
-          ? `As ${fmtInt(data.cells.length)} de maior probabilidade entre ${fmtInt(data.summary.cells)} células da região.`
-          : `Todas as ${fmtInt(data.cells.length)} células com previsão na região.`}{" "}
-        Cidade mais próxima e distância segundo a base de lugares.
+        Nearest city and distance according to the places database. The table shows the {fmtInt(rows.length)} highest-probability cells among the {fmtInt(data.cells.length)} displayed on the map.
       </p>
       <div className="mt-3 max-h-[32rem] overflow-auto rounded-lg border border-space-600">
         <table className="w-full text-small">
           <caption className="sr-only">
-            Células H3 ordenadas da maior para a menor probabilidade de fogo em 7 dias
+            H3 cells ranked from highest to lowest 7-day fire probability
           </caption>
           <thead className="sticky top-0 bg-space-900">
             <tr>
               <th scope="col" className="px-3 py-2 text-left">#</th>
-              <th scope="col" className="px-3 py-2 text-left">Localidade</th>
-              <th scope="col" className="px-3 py-2 text-left">Coordenadas</th>
-              <th scope="col" className="px-3 py-2 text-right">Probabilidade 7 dias</th>
-              <th scope="col" className="px-3 py-2 text-right">Focos 24 h</th>
-              <th scope="col" className="px-3 py-2 text-right">Focos 7 dias</th>
-              <th scope="col" className="px-3 py-2 text-right">FRP médio 7 dias (MW)</th>
-              <th scope="col" className="px-3 py-2 text-left">Fogo ativo</th>
+              <th scope="col" className="px-3 py-2 text-left">Location</th>
+              <th scope="col" className="px-3 py-2 text-left">Coordinates</th>
+              <th scope="col" className="px-3 py-2 text-right">7-day probability</th>
+              <th scope="col" className="px-3 py-2 text-right">24-hour detections</th>
+              <th scope="col" className="px-3 py-2 text-right">7-day detections</th>
+              <th scope="col" className="px-3 py-2 text-right">7-day mean FRP (MW)</th>
+              <th scope="col" className="px-3 py-2 text-left">Active fire</th>
             </tr>
           </thead>
           <tbody>
-            {data.cells.map((c, i) => (
+            {rows.map((c, i) => (
               <tr key={c.id} className="border-t border-space-600">
                 <td className="px-3 py-1.5 font-mono text-ink-300">{i + 1}</td>
                 <th scope="row" className="px-3 py-1.5 text-left font-normal">
                   {place(c)}
                   <span className="block font-mono text-caption text-ink-300">{c.id}</span>
                 </th>
-                <td className="px-3 py-1.5 font-mono">
-                  {Math.abs(c.lat).toLocaleString("pt-BR", COORD)}° {c.lat < 0 ? "S" : "N"},{" "}
-                  {Math.abs(c.lon).toLocaleString("pt-BR", COORD)}° {c.lon < 0 ? "O" : "L"}
-                </td>
+                <td className="px-3 py-1.5 font-mono">{fmtCoords(c)}</td>
                 <td className="px-3 py-1.5 text-right font-mono">{fmtPct(c.probability)}%</td>
                 <td className="px-3 py-1.5 text-right font-mono">{fmtNum(c.detections24h, 0)}</td>
                 <td className="px-3 py-1.5 text-right font-mono">{fmtNum(c.detections7d, 0)}</td>
                 <td className="px-3 py-1.5 text-right font-mono">{fmtNum(c.frpMean7d)}</td>
                 <td className="px-3 py-1.5">
-                  {c.active === null ? "—" : c.active ? "Sim" : "Não"}
+                  {c.active === null ? "—" : c.active ? "Yes" : "No"}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </section>
+    </details>
   );
 }
 
-function Report({ data }: { data: Available }) {
+function Report({ data, regionBbox }: { data: Available; regionBbox: Bbox }) {
   const { summary } = data;
   return (
     <div className="flex flex-col gap-6">
       <PredictedBanner />
-      <section aria-label="Indicadores" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <section aria-label="Indicators" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card
-          label="Células com previsão"
+          label="Cells with forecasts"
           value={fmtInt(summary.cells)}
-          unit="células H3"
-          unavailable="a API não informou"
+          unit="H3 cells"
+          unavailable="not provided by the API"
         />
         <Card
-          label="Células com fogo ativo"
+          label="Cells with active fire"
           value={fmtInt(summary.activeCells)}
-          unit="células H3"
-          unavailable="a API não informou"
+          unit="H3 cells"
+          unavailable="not provided by the API"
         />
         <Card
-          label="Maior probabilidade"
+          label="Highest probability"
           value={fmtPct(summary.maxProbability)}
           unit="%"
-          unavailable="nenhuma célula na região"
+          unavailable="no cells in the region"
         />
         <Card
-          label="Probabilidade média"
+          label="Mean probability"
           value={fmtPct(summary.meanProbability)}
           unit="%"
-          unavailable="nenhuma célula na região"
+          unavailable="no cells in the region"
         />
       </section>
 
       {summary.cells === 0 ? (
         <EmptyState
-          title="Nenhuma célula com previsão nesta região"
-          description="O modelo não gerou previsão para esta área na emissão mais recente. Isso não significa ausência de risco de fogo."
+          title="No cells with forecasts in this region"
+          description="The model did not generate a forecast for this area in the latest issue. This does not mean there is no fire risk."
         />
       ) : (
-        <RiskTable data={data} />
+        <>
+          <ForecastMap
+            cells={data.cells}
+            totalCells={data.summary.cells}
+            truncated={data.truncated}
+            regionBbox={regionBbox}
+          />
+          <RiskTable data={data} />
+        </>
       )}
 
       <section
@@ -177,17 +166,17 @@ function Report({ data }: { data: Available }) {
         className="rounded-2xl border border-space-600 bg-space-900 p-5 text-small text-ink-300"
       >
         <h2 id="forecast-meta-title" className="font-display text-base font-bold text-ink-100">
-          Metadados
+          Metadata
         </h2>
         <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1">
-          <dt>Emissão</dt>
+          <dt>Issue date</dt>
           <dd className="font-mono text-ink-100">{fmtDate(data.issueDate)}</dd>
-          <dt>Origem</dt>
+          <dt>Source</dt>
           <dd className="text-ink-100">{data.source}</dd>
-          <dt>Método</dt>
+          <dt>Method</dt>
           <dd className="text-ink-100">{data.method}</dd>
-          <dt>Unidade espacial</dt>
-          <dd className="text-ink-100">célula H3 de resolução 6 (aresta média de ~3,7 km)</dd>
+          <dt>Spatial unit</dt>
+          <dd className="text-ink-100">Native H3 resolution 6 cells from gold/forecast; model probabilities are not reaggregated</dd>
         </dl>
       </section>
     </div>
@@ -195,22 +184,58 @@ function Report({ data }: { data: Available }) {
 }
 
 export function ForecastView() {
-  const { data, error, isPending, isFetching, refetch, filters, enabled } = useForecast();
+  const { data, error, isPending, isFetching, refetch, filters, enabled, bootstrap } = useForecast();
   const regionLabel = filters.customArea
-    ? "Área personalizada"
+    ? "Custom area"
     : REGIONS.find((r) => r.id === filters.regionId)?.label ?? filters.regionId;
-  const issue = data?.status === "available" ? ` · emissão de ${fmtDate(data.issueDate)}` : "";
+  const issue = data?.status === "available" ? ` · issued on ${fmtDate(data.issueDate)}` : "";
+  const loadingPercent = bootstrap.data ? bootstrapProgress(bootstrap.data) : 0;
 
   let body: React.ReactNode;
   if (filters.problem) {
     body = (
       <ErrorState
-        title="Filtro inválido"
-        message={`${filters.problem} Ajuste os filtros para consultar.`}
+        title="Invalid filter"
+        message={`${filters.problem} Adjust the filters to retrieve data.`}
       />
     );
+  } else if (bootstrap.error || bootstrap.data?.state === "failed") {
+    body = (
+      <ErrorState
+        title="Could not load forecasts"
+        message={bootstrap.error?.message ?? bootstrap.data?.error ?? bootstrap.data?.message ?? "Loading interrupted."}
+        onRetry={() => bootstrap.restart()}
+      />
+    );
+  } else if (bootstrap.data?.state === "loading" || bootstrap.data?.state === "idle") {
+    body = (
+      <div className="space-y-3">
+        <LoadingState label={bootstrap.data.message} />
+        <div className="flex items-center gap-3">
+          <div
+            role="progressbar"
+            aria-label="Forecast data load"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={loadingPercent}
+            aria-valuetext={`${loadingPercent}% · ${bootstrap.data.completedUnits} of ${bootstrap.data.totalUnits} files confirmed`}
+            className="h-3 flex-1 overflow-hidden rounded-full bg-space-600"
+          >
+            <div
+              className="h-full rounded-full bg-fire-400 transition-[width] duration-300"
+              style={{ width: `${loadingPercent}%` }}
+            />
+          </div>
+          <span className="font-mono text-small">{loadingPercent}%</span>
+        </div>
+        <p className="text-small text-ink-300">
+          {fmtInt(bootstrap.data.completedUnits)} of {fmtInt(bootstrap.data.totalUnits)} files confirmed · {fmtInt(bootstrap.data.rowsLoaded)} rows.
+          {" "}You can browse the project; loading continues in the background.
+        </p>
+      </div>
+    );
   } else if (enabled && isPending) {
-    body = <LoadingState label="Consultando previsões…" />;
+    body = <LoadingState label="Loading forecasts…" />;
   } else if (error) {
     body = (
       <ErrorState
@@ -219,19 +244,19 @@ export function ForecastView() {
       />
     );
   } else if (data?.status === "unavailable") {
-    body = <Unavailable>{data.reason} Nenhuma estimativa é exibida sem previsão do serviço.</Unavailable>;
+    body = <Unavailable>{data.reason} No estimates are displayed without a forecast from the service.</Unavailable>;
   } else if (data) {
     body = (
       <div aria-busy={isFetching}>
-        <Report data={data} />
+        <Report data={data} regionBbox={filters.bbox} />
       </div>
     );
   }
 
   return (
     <PageSection
-      title="Previsões"
-      description={`Relatório de risco de fogo para ${regionLabel}${issue}. Usa a região dos filtros; período e sensores não se aplicam (a previsão cobre os 7 dias seguintes à emissão).`}
+      title="Forecasts"
+      description={`Fire risk report for ${regionLabel}${issue}. Uses the filtered region; date range and sensors do not apply (the forecast covers the 7 days after issuance).`}
     >
       {body}
     </PageSection>

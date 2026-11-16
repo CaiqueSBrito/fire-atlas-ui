@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { MonthPicker } from "@/features/calendar/components/month-picker";
 import { getRegion } from "@/config/regions";
 import { useResolvedFilters } from "@/hooks/use-filters";
 import { formatPeriod } from "@/lib/filter-presets";
 import { isDirty } from "@/lib/filters";
-import { SENSOR_META, SENSORS } from "@/lib/sensors";
+import { SENSORS } from "@/lib/sensors";
+import { monthOf } from "@/lib/utils/dates";
 import { FilterModal } from "./filter-modal";
+import { RegionPicker } from "./region-picker";
 
 const pill =
   "inline-flex h-12 items-center gap-2 rounded-full border border-space-600 px-4 text-base font-semibold leading-6 tracking-[-0.02em] text-ink-100";
@@ -53,22 +56,6 @@ export function FilterBar({ canDraw = false }: { canDraw?: boolean }) {
   const periodActive = Boolean(raw.from || raw.to || raw.date);
   const count = [sensorsActive, placeActive, periodActive].filter(Boolean).length;
 
-  const sensorsLabel =
-    filters.sensors.length === 0 ? (
-      "Nenhum sensor"
-    ) : (
-      <span className="inline-flex items-center gap-2">
-        {filters.sensors.map((id) => (
-          <span key={id} className="inline-flex items-center gap-1">
-            <span aria-hidden style={{ color: SENSOR_META[id].hex }}>
-              {SENSOR_META[id].symbol}
-            </span>
-            {SENSOR_META[id].label}
-          </span>
-        ))}
-      </span>
-    );
-
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button
@@ -82,26 +69,37 @@ export function FilterBar({ canDraw = false }: { canDraw?: boolean }) {
           <circle cx="16" cy="7" r="2" />
           <circle cx="8" cy="17" r="2" />
         </svg>
-        {count > 0 ? `Filtros (${count})` : "Filtros"}
+        {count > 0 ? `Filters (${count})` : "Filters"}
       </button>
 
-      <ul aria-label="Filtros em uso" className="flex flex-wrap items-center gap-2">
+      <ul aria-label="Active filters" className="flex flex-wrap items-center gap-2">
         <Summary
-          label={sensorsLabel}
-          active={sensorsActive}
-          removeLabel="Remover filtro de sensores"
-          onRemove={() => void setRaw({ sensors: null })}
-        />
-        <Summary
-          label={filters.customArea ? "Área personalizada" : getRegion(filters.regionId).label}
+          label={
+            <RegionPicker
+              value={filters.customArea ? null : filters.regionId}
+              label={filters.customArea ? "Custom area" : getRegion(filters.regionId).label}
+              onSelect={(id) => void setRaw({ region: id === "world" ? null : id, bbox: null })}
+            />
+          }
           active={placeActive}
-          removeLabel="Remover filtro de local"
+          removeLabel="Remove location filter"
           onRemove={() => void setRaw({ region: null, bbox: null })}
         />
         <Summary
-          label={formatPeriod(filters.from, filters.to)}
+          label={
+            <MonthPicker
+              month={monthOf(filters.to)}
+              date={filters.from === filters.to ? filters.to : null}
+              onSelectDate={(day) => void setRaw({ date: day, from: null, to: null })}
+              trigger={{
+                content: formatPeriod(filters.from, filters.to),
+                ariaLabel: `Period ${formatPeriod(filters.from, filters.to)} — choose map day`,
+                className: "-mx-2 inline-flex items-center gap-2 rounded-full px-2 py-1 transition-colors hover:bg-space-800",
+              }}
+            />
+          }
           active={periodActive}
-          removeLabel="Remover filtro de período"
+          removeLabel="Remove period filter"
           onRemove={() => void setRaw({ from: null, to: null, date: null })}
         />
       </ul>
@@ -120,7 +118,7 @@ export function FilterBar({ canDraw = false }: { canDraw?: boolean }) {
             })
           }
         >
-          Limpar filtros
+          Clear filters
         </Button>
       )}
 

@@ -19,7 +19,7 @@ export function CalendarSkeleton() {
         </div>
       </div>
       <p role="status" className="sr-only">
-        Carregando calendário…
+        Loading calendar…
       </p>
     </main>
   );

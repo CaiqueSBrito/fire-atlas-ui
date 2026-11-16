@@ -17,7 +17,7 @@ vi.mock("@/lib/api/client", async (original) => ({
 }));
 vi.mock("@/lib/api/coverage", async (original) => ({
   ...(await original<typeof CoverageApi>()),
-  fetchCoverage: vi.fn(async () => ({ resolutions: [0, 1, 2, 3, 4, 5, 6], minDate: "2000-11-01", maxDate: "2026-11-13" })),
+  fetchCoverage: vi.fn(async () => ({ resolutions: [0, 1, 2, 3, 4, 5], minDate: "2000-11-01", maxDate: "2026-11-13" })),
 }));
 
 vi.mock("@/features/map/components/fire-map-loader", () => ({
@@ -28,6 +28,8 @@ vi.mock("@/features/map/components/fire-map-loader", () => ({
     hexRes?: number;
     hotAreas?: { areas: unknown[] } | null;
     showHeat: boolean;
+    onViewport: (bbox: [number, number, number, number]) => void;
+    interactive?: boolean;
   }) => (
     <div
       data-testid="fire-map"
@@ -37,7 +39,12 @@ vi.mock("@/features/map/components/fire-map-loader", () => ({
       data-hex-res={p.hexRes ?? ""}
       data-areas={p.hotAreas ? String(p.hotAreas.areas.length) : ""}
       data-heat={String(p.showHeat)}
-    />
+      data-interactive={String(p.interactive !== false)}
+    >
+      <button type="button" onClick={() => p.onViewport([-52, -4, -50, -2])}>
+        emitir-viewport
+      </button>
+    </div>
   ),
 }));
 
@@ -55,7 +62,7 @@ const cell = (id: string, count: number) => ({
 });
 
 const grid = (cells = [cell("84a1b2dffffffff", 900), cell("84a1b2bffffffff", 5)]) =>
-  detectionsResponse({ items: [], total: 905, grid: { resolution: 4, maxResolution: 6, cells } });
+  detectionsResponse({ items: [], total: 905, grid: { resolution: 4, maxResolution: 5, cells } });
 
 beforeEach(() => {
   mocked.mockReset();
@@ -73,6 +80,45 @@ describe("DayLiveMap (mesmo mapa da página do mapa)", () => {
     expect(map).toHaveAttribute("data-plot", "hex");
     expect(map).toHaveAttribute("data-points", "false");
     expect(map).toHaveAttribute("data-hex-res", "4");
+  });
+
+  it("ao mover ou aproximar o mapa refaz a consulta só da área visível", async () => {
+    mocked.mockResolvedValue(grid());
+    renderWithProviders(<DayLiveMap region={region} date="2026-11-12" />);
+    await waitFor(() => expect(mocked).toHaveBeenCalled());
+    expect(screen.getByTestId("fire-map")).toHaveAttribute("data-interactive", "true");
+    await userEvent.click(screen.getByRole("button", { name: "emitir-viewport" }));
+    await waitFor(() => expect(mocked.mock.calls.length).toBeGreaterThan(1), { timeout: 3000 });
+    const query = mocked.mock.calls.at(-1)![0];
+    expect(query.bbox![0]).toBeGreaterThan(region.bbox[0]);
+    expect(query.bbox![2]).toBeLessThan(region.bbox[2]);
+    expect(query.from).toBe("2026-11-12");
+  });
+
+  it("trocar o dia mantém a área visível escolhida", async () => {
+    mocked.mockResolvedValue(grid());
+    const { rerender } = renderWithProviders(<DayLiveMap region={region} date="2026-11-12" />);
+    await waitFor(() => expect(mocked).toHaveBeenCalled());
+    await userEvent.click(screen.getByRole("button", { name: "emitir-viewport" }));
+    await waitFor(() => expect(mocked.mock.calls.length).toBeGreaterThan(1), { timeout: 3000 });
+    const viewport = mocked.mock.calls.at(-1)![0].bbox;
+    rerender(<DayLiveMap region={region} date="2026-11-13" />);
+    await waitFor(() => expect(mocked).toHaveBeenLastCalledWith(
+      expect.objectContaining({ from: "2026-11-13", bbox: viewport }), null, expect.anything(),
+    ));
+  });
+
+  it("trocar a região descarta a área visível anterior", async () => {
+    mocked.mockResolvedValue(grid());
+    const { rerender } = renderWithProviders(<DayLiveMap region={region} date="2026-11-12" />);
+    await waitFor(() => expect(mocked).toHaveBeenCalled());
+    await userEvent.click(screen.getByRole("button", { name: "emitir-viewport" }));
+    await waitFor(() => expect(mocked.mock.calls.length).toBeGreaterThan(1), { timeout: 3000 });
+    const nextRegion = getRegion("africa");
+    rerender(<DayLiveMap region={nextRegion} date="2026-11-12" />);
+    await waitFor(() => expect(mocked).toHaveBeenLastCalledWith(
+      expect.objectContaining({ bbox: nextRegion.bbox }), null, expect.anything(),
+    ));
   });
 
 
@@ -109,7 +155,7 @@ describe("DayLiveMap (mesmo mapa da página do mapa)", () => {
     mocked.mockResolvedValueOnce(grid());
     renderWithProviders(<DayLiveMap region={region} date="2026-11-12" />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Serviço fora do ar");
-    await userEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.getByTestId("fire-map")).toHaveAttribute("data-hex-res", "4"));
   });
 
@@ -117,7 +163,7 @@ describe("DayLiveMap (mesmo mapa da página do mapa)", () => {
     mocked.mockRejectedValue(new ApiError("Parâmetros inválidos", 400, false));
     renderWithProviders(<DayLiveMap region={region} date="2026-11-12" />);
     await screen.findByRole("alert");
-    expect(screen.queryByRole("button", { name: "Tentar novamente" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
 
   it("identifica explicitamente um recorte incompleto", async () => {
@@ -126,14 +172,14 @@ describe("DayLiveMap (mesmo mapa da página do mapa)", () => {
     expect(await screen.findByRole("note")).toBeVisible();
   });
 
-  it("sem registros avisa sem afirmar ausência de fogo", async () => {
+  it("no recordss avisa sem afirmar ausência de fogo", async () => {
     mocked.mockResolvedValue(grid([]));
     renderWithProviders(<DayLiveMap region={region} date="2026-11-12" />);
-    expect(await screen.findByText(/Nenhuma detecção registrada neste recorte/)).toBeInTheDocument();
-    expect(screen.getByText(/não significa que não houve fogo/)).toBeInTheDocument();
+    expect(await screen.findByText(/No detections recorded in this area/)).toBeInTheDocument();
+    expect(screen.getByText(/does not mean there was no fire/)).toBeInTheDocument();
   });
 
-  it("sem grade (dados simulados) desenha os pontos das detecções", async () => {
+  it("sem grade (dados simulados) desenha os pontos das detections", async () => {
     mocked.mockResolvedValue(detectionsResponse({ items: [], total: 0, grid: null }));
     renderWithProviders(<DayLiveMap region={region} date="2026-11-12" />);
     await waitFor(() => expect(screen.getByTestId("fire-map")).toHaveAttribute("data-plot", "points"));
@@ -144,7 +190,7 @@ describe("DayLiveMap (mesmo mapa da página do mapa)", () => {
     const { rerender } = renderWithProviders(<DayLiveMap region={region} date="2026-11-13" />);
     await waitFor(() => expect(screen.getByTestId("fire-map")).toHaveAttribute("data-hex-res", "4"));
     rerender(<DayLiveMap region={region} date="2026-11-14" />);
-    expect(await screen.findByRole("note")).toHaveTextContent("Último dia com detecções no mapa: 2026-11-13");
+    expect(await screen.findByRole("note")).toHaveTextContent("Latest day with map detections: 2026-11-13");
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-hex", "");
     expect(mocked.mock.calls.every(([q]) => q.from === "2026-11-13")).toBe(true);
   });
@@ -153,7 +199,7 @@ describe("DayLiveMap (mesmo mapa da página do mapa)", () => {
     mocked.mockResolvedValue(grid());
     renderWithProviders(<DayLiveMap region={region} date="2026-11-12" schematic />);
     expect(
-      await screen.findByRole("img", { name: "Mapa esquemático com 2 pontos de fogo em Brasil em 2026-11-12" }),
+      await screen.findByRole("img", { name: "Schematic map with 2 fire detections in Brazil on 2026-11-12" }),
     ).toBeInTheDocument();
     expect(screen.queryByTestId("fire-map")).not.toBeInTheDocument();
   });

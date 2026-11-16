@@ -22,14 +22,14 @@ describe("DetectionList", () => {
     const rows = within(screen.getByRole("list")).getAllByRole("button");
     expect(rows[0]).toHaveTextContent("300 MW");
     expect(rows[1]).toHaveTextContent("10 MW");
-    expect(rows[2]).toHaveTextContent("Não informado");
+    expect(rows[2]).toHaveTextContent("Not reported");
   });
 
   it("limita a 15 itens e informa o total", () => {
     const items = Array.from({ length: 40 }, (_, i) => detection({ id: `d${i}`, frp: i }));
     render(<DetectionList items={items} total={4000} selectedId={null} onSelect={vi.fn()} />);
     expect(screen.getAllByRole("button")).toHaveLength(15);
-    expect(screen.getByText(/Mostrando 15 de 4\.000/)).toBeInTheDocument();
+    expect(screen.getByText(/Showing 15 of 4,000/)).toBeInTheDocument();
   });
 
   it("identifica o sensor por símbolo e texto", () => {

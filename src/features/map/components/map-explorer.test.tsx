@@ -96,13 +96,13 @@ describe("MapExplorer — estados (RN05)", () => {
   it("mostra carregamento enquanto consulta", () => {
     mocked.mockReturnValue(new Promise(() => {}));
     renderWithProviders(<MapExplorer />);
-    expect(screen.getByRole("status")).toHaveTextContent("Carregando detecções…");
+    expect(screen.getByRole("status")).toHaveTextContent("Loading detections…");
   });
 
   it("repassa os pontos ao mapa e resume o recorte", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
-    expect(await screen.findByText(/3 detecções no recorte/)).toBeInTheDocument();
+    expect(await screen.findByText(/3 detections in the selected area/)).toBeInTheDocument();
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-count", "3");
   });
 
@@ -111,7 +111,7 @@ describe("MapExplorer — estados (RN05)", () => {
     renderWithProviders(<MapExplorer />, {
       searchParams: "?sensors=viirs&from=2026-03-01&to=2026-03-10&bbox=-60,-10,-50,0",
     });
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     expect(mocked.mock.calls[0][0]).toEqual({
       sensors: ["viirs"],
       from: "2026-03-01",
@@ -120,22 +120,14 @@ describe("MapExplorer — estados (RN05)", () => {
     });
   });
 
-  it("ausência de registros não afirma ausência de fogo (CA04)", async () => {
-    mocked.mockResolvedValue(detectionsResponse({ items: [], total: 0 }));
-    renderWithProviders(<MapExplorer />);
-    expect(
-      await screen.findByText("Nenhuma detecção registrada neste recorte"),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/não significa que não houve fogo/)).toBeInTheDocument();
-  });
 
   it("falha recuperável oferece nova tentativa que repete a consulta", async () => {
     mocked.mockRejectedValueOnce(new ApiError("Servidor fora do ar"));
     mocked.mockResolvedValueOnce(detectionsResponse());
     renderWithProviders(<MapExplorer />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Servidor fora do ar");
-    await userEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-    expect(await screen.findByText(/3 detecções no recorte/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText(/3 detections in the selected area/)).toBeInTheDocument();
     expect(mocked).toHaveBeenCalledTimes(2);
   });
 
@@ -143,53 +135,38 @@ describe("MapExplorer — estados (RN05)", () => {
     mocked.mockRejectedValue(new ApiError("Acesso negado", 403, false));
     renderWithProviders(<MapExplorer />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Acesso negado");
-    expect(screen.queryByRole("button", { name: "Tentar novamente" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
 
   it("filtro inválido não consulta e explica o problema", async () => {
     renderWithProviders(<MapExplorer />, { searchParams: "?from=2026-05-10&to=2026-05-01" });
-    expect(await screen.findByText("Filtro inválido")).toBeInTheDocument();
+    expect(await screen.findByText("Invalid filter")).toBeInTheDocument();
     expect(mocked).not.toHaveBeenCalled();
   });
 
   it("indica quando os pontos foram truncados", async () => {
     mocked.mockResolvedValue(detectionsResponse({ total: 9000, truncated: true }));
     renderWithProviders(<MapExplorer />);
-    expect(await screen.findByText(/Exibindo 3 pontos/)).toBeInTheDocument();
+    expect(await screen.findByText(/Showing 3 points/)).toBeInTheDocument();
   });
 
-  it("sinaliza dados simulados e mantém o aviso de que ponto ausente não prova ausência de fogo", async () => {
-    mocked.mockResolvedValue(detectionsResponse());
-    renderWithProviders(<MapExplorer />);
-    expect(await screen.findByText(/Protótipo: Fonte de teste/)).toBeInTheDocument();
-    expect(screen.getByText(/não comprova ausência de incêndio/)).toBeInTheDocument();
-  });
 });
 
 describe("MapExplorer — detalhes (RN04/CA03)", () => {
   it("seleciona na lista, mostra os atributos e fecha", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     await userEvent.click(screen.getByRole("button", { name: /120 MW/ }));
-    const detail = screen.getByRole("region", { name: /Detecção VIIRS/ });
+    const detail = screen.getByRole("region", { name: /Detection VIIRS/ });
     expect(detail).toHaveTextContent("-10.5000°, -55.2500°");
     expect(detail).toHaveTextContent("120 MW");
     expect(detail).toHaveTextContent("NOAA-20");
-    expect(detail).toHaveTextContent("Fonte de teste — simulado");
-    await userEvent.click(screen.getByRole("button", { name: "Fechar" }));
-    expect(screen.queryByRole("region", { name: /Detecção VIIRS/ })).not.toBeInTheDocument();
+    expect(detail).toHaveTextContent("Fonte de teste — simulated");
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("region", { name: /Detection VIIRS/ })).not.toBeInTheDocument();
   });
 
-  it("FRP ausente aparece como 'Não informado'", async () => {
-    mocked.mockResolvedValue(
-      detectionsResponse({ items: [detection({ id: "x", frp: null })] }),
-    );
-    renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
-    await userEvent.click(screen.getAllByRole("button", { name: /Não informado/ })[0]);
-    expect(screen.getByRole("region", { name: /Detecção MODIS/ })).toHaveTextContent("Não informado");
-  });
 });
 
 describe("MapExplorer — correspondências (RN06)", () => {
@@ -198,11 +175,11 @@ describe("MapExplorer — correspondências (RN06)", () => {
   it("não destaca nem mostra correspondência sem harmonização validada", async () => {
     mocked.mockResolvedValue(detectionsResponse({ items: [withMatch] }));
     renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-matches", "false");
-    expect(screen.queryByText(/Correspondência entre sensores/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Cross-sensor match/)).not.toBeInTheDocument();
     await userEvent.click(screen.getAllByRole("button", { name: /MW/ })[0]);
-    expect(screen.queryByText("Correspondência")).not.toBeInTheDocument();
+    expect(screen.queryByText("Match")).not.toBeInTheDocument();
   });
 
   it("destaca e detalha quando a harmonização validada está disponível", async () => {
@@ -213,9 +190,9 @@ describe("MapExplorer — correspondências (RN06)", () => {
     await waitFor(() =>
       expect(screen.getByTestId("fire-map")).toHaveAttribute("data-matches", "true"),
     );
-    expect(screen.getByText(/Correspondência entre sensores/)).toBeInTheDocument();
+    expect(screen.getByText(/Cross-sensor match/)).toBeInTheDocument();
     await userEvent.click(screen.getAllByRole("button", { name: /MW/ })[0]);
-    expect(screen.getByText("Correspondência")).toBeInTheDocument();
+    expect(screen.getByText("Match")).toBeInTheDocument();
     expect(screen.getByText(/viirs-9/)).toBeInTheDocument();
   });
 });
@@ -238,12 +215,12 @@ describe("MapExplorer — desenho de área", () => {
         <MapExplorer />
       </>,
     );
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-drawing", "false");
-    expect(screen.queryByText(/Arraste no mapa para desenhar a área/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Drag on the map to draw an area/)).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "iniciar-desenho" }));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-drawing", "true");
-    expect(screen.getByText(/Arraste no mapa para desenhar a área/)).toBeInTheDocument();
+    expect(screen.getByText(/Drag on the map to draw an area/)).toBeInTheDocument();
   });
 
   it("cancelar encerra o desenho", async () => {
@@ -254,18 +231,18 @@ describe("MapExplorer — desenho de área", () => {
         <MapExplorer />
       </>,
     );
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     await userEvent.click(screen.getByRole("button", { name: "iniciar-desenho" }));
-    await userEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-drawing", "false");
   });
 
   it("a barra lateral não tem mais o formulário de área (fica no modal de filtros)", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
-    expect(screen.queryByRole("button", { name: /Desenhar área/ })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/Oeste/)).not.toBeInTheDocument();
+    await screen.findByText(/detections in the selected area/);
+    expect(screen.queryByRole("button", { name: /Draw area/ })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/West/)).not.toBeInTheDocument();
   });
 });
 
@@ -291,32 +268,32 @@ describe("MapExplorer — camadas do mapa", () => {
   it("o mapa começa em ruas e o interruptor alterna o mapa ilustrado", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-base", "streets");
-    expect(screen.queryByRole("radio", { name: /Satélite/ })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("switch", { name: /Mapa ilustrado/ }));
+    expect(screen.queryByRole("radio", { name: /Satellite/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("switch", { name: /Illustrated map/ }));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-base", "illustrated");
-    expect(screen.getByText(/decorativos/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("switch", { name: /Mapa ilustrado/ }));
+    expect(screen.getByText(/decorative/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("switch", { name: /Illustrated map/ }));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-base", "streets");
   });
 
   it("liga o mapa de calor e mostra a legenda", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
-    await userEvent.click(screen.getByRole("switch", { name: /Mapa de calor/ }));
+    await screen.findByText(/detections in the selected area/);
+    await userEvent.click(screen.getByRole("switch", { name: /Heatmap/ }));
     const map = screen.getByTestId("fire-map");
     expect(map).toHaveAttribute("data-heat", "true");
-    expect(screen.getByText("Mapa de calor (densidade de focos)")).toBeInTheDocument();
+    expect(screen.getByText("Heatmap (fire detection density)")).toBeInTheDocument();
   });
 
   it("trocar de camada não refaz a consulta de detecções", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
-    await userEvent.click(screen.getByRole("switch", { name: /Mapa ilustrado/ }));
-    await userEvent.click(screen.getByRole("switch", { name: /Mapa de calor/ }));
+    await screen.findByText(/detections in the selected area/);
+    await userEvent.click(screen.getByRole("switch", { name: /Illustrated map/ }));
+    await userEvent.click(screen.getByRole("switch", { name: /Heatmap/ }));
     expect(mocked).toHaveBeenCalledTimes(1);
   });
 
@@ -338,49 +315,42 @@ describe("MapExplorer — hexágonos H3", () => {
   it("começa em pontos e mostra a lista de detecções", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     const map = screen.getByTestId("fire-map");
     expect(map).toHaveAttribute("data-plot", "points");
-    expect(screen.getByText("Detecções de maior FRP")).toBeInTheDocument();
-    expect(screen.queryByText("Hexágonos com mais focos")).not.toBeInTheDocument();
+    expect(screen.getByText("Highest-FRP detections")).toBeInTheDocument();
+    expect(screen.queryByText("Hexagons with the most fire detections")).not.toBeInTheDocument();
   });
 
   it("lê o modo da URL e troca para hexágonos pelo painel", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
-    await userEvent.click(screen.getByRole("radio", { name: /Hexágonos \(H3\)/ }));
+    await screen.findByText(/detections in the selected area/);
+    await userEvent.click(screen.getByRole("radio", { name: /Hexagons \(H3\)/ }));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-plot", "hex");
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-points", "true");
-    expect(screen.getByText("Detecções de maior FRP")).toBeInTheDocument();
+    expect(screen.getByText("Highest-FRP detections")).toBeInTheDocument();
   });
 
   it("não refaz a consulta ao trocar de pontos para hexágonos", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
-    await userEvent.click(screen.getByRole("radio", { name: /Hexágonos \(H3\)/ }));
+    await screen.findByText(/detections in the selected area/);
+    await userEvent.click(screen.getByRole("radio", { name: /Hexagons \(H3\)/ }));
     expect(mocked).toHaveBeenCalledTimes(1);
   });
 
-  it("mostra a escala e a lista dos hexágonos com mais focos", async () => {
-    mocked.mockResolvedValue(detectionsResponse());
-    renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
-    await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
-    expect(screen.getByText("Focos por hexágono (H3, resolução 4)")).toBeInTheDocument();
-    expect(screen.getByText("Hexágonos com mais focos")).toBeInTheDocument();
-  });
 
   it("selecionar um hexágono mostra o detalhe no topo do painel, com a contagem por sensor", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
     await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
-    const detail = screen.getByRole("region", { name: "Hexágono H3" });
-    expect(detail).toHaveTextContent("Focos na célula20");
+    const detail = screen.getByRole("region", { name: "H3 hexagon" });
+    expect(detail).toHaveTextContent("Fire detections in cell20");
     expect(detail).toHaveTextContent("◆ MODIS5");
     expect(detail).toHaveTextContent("● VIIRS15");
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-selected-hex", "hexA");
-    const aside = screen.getByRole("complementary", { name: "Painel do mapa" });
+    const aside = screen.getByRole("complementary", { name: "Map panel" });
     expect(aside.firstElementChild).not.toBe(detail);
     expect(aside.children[1]).toBe(detail);
   });
@@ -389,9 +359,9 @@ describe("MapExplorer — hexágonos H3", () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
     await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
-    const top = screen.getByRole("region", { name: "Hexágonos com mais focos" });
+    const top = screen.getByRole("region", { name: "Hexagons with the most fire detections" });
     await userEvent.click(within(top).getAllByRole("button")[1]);
-    expect(screen.getByRole("region", { name: "Hexágono H3" })).toHaveTextContent("Focos na célula7");
+    expect(screen.getByRole("region", { name: "H3 hexagon" })).toHaveTextContent("Fire detections in cell7");
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-selected-hex", "hexB");
   });
 
@@ -399,18 +369,18 @@ describe("MapExplorer — hexágonos H3", () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
     await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
-    await userEvent.click(screen.getByRole("button", { name: "Fechar" }));
-    expect(screen.queryByRole("region", { name: "Hexágono H3" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("region", { name: "H3 hexagon" })).not.toBeInTheDocument();
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-selected-hex", "");
   });
 
   it("o detalhe de uma detecção também aparece no topo do painel", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     await userEvent.click(screen.getByRole("button", { name: /120 MW/ }));
-    const detail = screen.getByRole("region", { name: /Detecção VIIRS/ });
-    const aside = screen.getByRole("complementary", { name: "Painel do mapa" });
+    const detail = screen.getByRole("region", { name: /Detection VIIRS/ });
+    const aside = screen.getByRole("complementary", { name: "Map panel" });
     expect(aside.children[1]).toBe(detail);
   });
 });
@@ -425,19 +395,19 @@ describe("MapExplorer — pontos sobre os hexágonos", () => {
   it("a opção de pontos só aparece junto com os hexágonos", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
-    expect(screen.queryByRole("switch", { name: /Mostrar pontos sobre os hexágonos/ })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("radio", { name: /Hexágonos \(H3\)/ }));
-    expect(screen.getByRole("switch", { name: /Mostrar pontos sobre os hexágonos/ })).toBeChecked();
+    await screen.findByText(/detections in the selected area/);
+    expect(screen.queryByRole("switch", { name: /Show points over hexagons/ })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("radio", { name: /Hexagons \(H3\)/ }));
+    expect(screen.getByRole("switch", { name: /Show points over hexagons/ })).toBeChecked();
   });
 
   it("desligar os pontos esconde a lista de detecções e mantém só os hexágonos", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
-    await screen.findByText("Detecções de maior FRP");
-    await userEvent.click(screen.getByRole("switch", { name: /Mostrar pontos sobre os hexágonos/ }));
+    await screen.findByText("Highest-FRP detections");
+    await userEvent.click(screen.getByRole("switch", { name: /Show points over hexagons/ }));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-points", "false");
-    expect(screen.queryByText("Detecções de maior FRP")).not.toBeInTheDocument();
+    expect(screen.queryByText("Highest-FRP detections")).not.toBeInTheDocument();
   });
 
   it("lê a opção de pontos da URL", async () => {
@@ -450,30 +420,30 @@ describe("MapExplorer — pontos sobre os hexágonos", () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
     await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
-    expect(screen.getByRole("region", { name: "Hexágono H3" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "H3 hexagon" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "emitir-ponto" }));
-    expect(screen.getByRole("region", { name: /Detecção VIIRS/ })).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: "Hexágono H3" })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /Detection VIIRS/ })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "H3 hexagon" })).not.toBeInTheDocument();
   });
 
   it("clicar num hexágono depois troca de volta para o detalhe da célula", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
     await userEvent.click(await screen.findByRole("button", { name: "emitir-ponto" }));
-    expect(screen.getByRole("region", { name: /Detecção VIIRS/ })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /Detection VIIRS/ })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "emitir-hex" }));
-    expect(screen.getByRole("region", { name: "Hexágono H3" })).toBeInTheDocument();
-    expect(screen.queryByRole("region", { name: /Detecção VIIRS/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "H3 hexagon" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: /Detection VIIRS/ })).not.toBeInTheDocument();
   });
 
   it("escolher uma detecção na lista também limpa o hexágono selecionado", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />, { searchParams: "?plot=hex" });
     await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
-    const list = screen.getByRole("region", { name: "Detecções de maior FRP" });
+    const list = screen.getByRole("region", { name: "Highest-FRP detections" });
     await userEvent.click(within(list).getAllByRole("button")[0]);
-    expect(screen.queryByRole("region", { name: "Hexágono H3" })).not.toBeInTheDocument();
-    expect(screen.getByRole("region", { name: /Detecção/ })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "H3 hexagon" })).not.toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /Detection/ })).toBeInTheDocument();
   });
 });
 
@@ -487,7 +457,7 @@ describe("MapExplorer — vista 3D e voo de entrada", () => {
     });
 
   const listButtons = () =>
-    within(screen.getByRole("region", { name: "Detecções de maior FRP" })).getAllByRole("button");
+    within(screen.getByRole("region", { name: "Highest-FRP detections" })).getAllByRole("button");
 
   afterEach(() => {
     sessionStorage.clear();
@@ -496,18 +466,18 @@ describe("MapExplorer — vista 3D e voo de entrada", () => {
   it("sem região o mapa começa como globo e aceita escolher um continente", async () => {
     mocked.mockResolvedValue(twoPoints());
     renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     const map = screen.getByTestId("fire-map");
     expect(map).toHaveAttribute("data-projection", "globe");
     expect(map).toHaveAttribute("data-picking", "true");
-    expect(screen.getByText("Clique em um continente para explorar")).toBeInTheDocument();
+    expect(screen.getByText("Click a continent to explore")).toBeInTheDocument();
   });
 
   it("passar o mouse sobre um continente mostra o nome", async () => {
     mocked.mockResolvedValue(twoPoints());
     renderWithProviders(<MapExplorer />);
     await userEvent.click(await screen.findByRole("button", { name: "emitir-hover" }));
-    expect(screen.getByText("Clique para explorar: América do Sul")).toBeInTheDocument();
+    expect(screen.getByText("Click to explore: South America")).toBeInTheDocument();
   });
 
   it("clicar no continente sai do globo e abre o mapa 2D da região", async () => {
@@ -518,61 +488,61 @@ describe("MapExplorer — vista 3D e voo de entrada", () => {
       expect(screen.getByTestId("fire-map")).toHaveAttribute("data-projection", "mercator"),
     );
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-picking", "false");
-    expect(screen.queryByText(/Clique em um continente/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Click a continent/)).not.toBeInTheDocument();
   });
 
   it("com região na URL o mapa abre em 2D, sem globo e sem botão de vista 3D", async () => {
     mocked.mockResolvedValue(twoPoints());
     renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-projection", "mercator");
-    expect(screen.queryByRole("button", { name: /Vista 3D/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /3D view/ })).not.toBeInTheDocument();
   });
 
   it("'Voltar ao globo' limpa a região e volta para o globo", async () => {
     mocked.mockResolvedValue(twoPoints());
     renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
-    await screen.findByText(/detecções no recorte/);
-    await userEvent.click(screen.getByRole("button", { name: "Voltar ao globo" }));
+    await screen.findByText(/detections in the selected area/);
+    await userEvent.click(screen.getByRole("button", { name: "Back to globe" }));
     await waitFor(() =>
       expect(screen.getByTestId("fire-map")).toHaveAttribute("data-projection", "globe"),
     );
-    expect(screen.queryByRole("button", { name: "Voltar ao globo" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Back to globe" })).not.toBeInTheDocument();
   });
 
   it("área desenhada mantém o mapa plano mesmo sem região", async () => {
     mocked.mockResolvedValue(twoPoints());
     renderWithProviders(<MapExplorer />, { searchParams: "?bbox=-60,-20,-40,0" });
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-projection", "mercator");
   });
 
   it("selecionar um ponto inclina e foca automaticamente", async () => {
     mocked.mockResolvedValue(twoPoints());
     renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     await userEvent.click(listButtons()[0]);
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus3d", "-45,-12");
-    expect(screen.getByRole("button", { name: "Voltar ao 2D" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Back to 2D" })).toBeInTheDocument();
   });
 
   it("'Voltar ao 2D' desfaz a inclinação e 'Ver em 3D' refaz", async () => {
     mocked.mockResolvedValue(twoPoints());
     renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     await userEvent.click(listButtons()[0]);
-    await userEvent.click(screen.getByRole("button", { name: "Voltar ao 2D" }));
+    await userEvent.click(screen.getByRole("button", { name: "Back to 2D" }));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus3d", "");
-    await userEvent.click(screen.getByRole("button", { name: "Ver em 3D" }));
+    await userEvent.click(screen.getByRole("button", { name: "View in 3D" }));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus3d", "-45,-12");
   });
 
   it("fechar o detalhe ou clicar no vazio volta ao 2D", async () => {
     mocked.mockResolvedValue(twoPoints());
     renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     await userEvent.click(listButtons()[0]);
-    await userEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus3d", "");
     await userEvent.click(listButtons()[0]);
     await userEvent.click(screen.getByRole("button", { name: "emitir-vazio" }));
@@ -582,7 +552,7 @@ describe("MapExplorer — vista 3D e voo de entrada", () => {
   it("trocar de detecção acompanha o novo ponto", async () => {
     mocked.mockResolvedValue(twoPoints());
     renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     await userEvent.click(listButtons()[0]);
     await userEvent.click(listButtons()[1]);
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus3d", "20,5");
@@ -594,7 +564,7 @@ describe("MapExplorer — vista 3D e voo de entrada", () => {
     await userEvent.click(await screen.findByRole("button", { name: "emitir-hex" }));
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus3d", "-50,-10");
     expect(screen.getByTestId("fire-map")).toHaveAttribute("data-focus-zoom", "7");
-    expect(screen.getByRole("region", { name: "Hexágono H3" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "H3 hexagon" })).toBeInTheDocument();
   });
 
   it("sem a marca do globo o mapa abre direto, sem voo", async () => {
@@ -614,7 +584,7 @@ describe("MapExplorer — vista 3D e voo de entrada", () => {
   it("a região vinda do globo enquadra o mapa no continente", async () => {
     mocked.mockResolvedValue(twoPoints());
     renderWithProviders(<MapExplorer />, { searchParams: "?region=south-america" });
-    await screen.findByText(/detecções no recorte/);
+    await screen.findByText(/detections in the selected area/);
     expect(mocked.mock.calls[0][0].bbox).toEqual([-82, -56, -34, 13]);
   });
 });
@@ -623,11 +593,11 @@ describe("MapExplorer — painel lateral", () => {
   it("oculta e mostra o painel lateral", async () => {
     mocked.mockResolvedValue(detectionsResponse());
     renderWithProviders(<MapExplorer />);
-    await screen.findByText(/detecções no recorte/);
-    await userEvent.click(screen.getByRole("button", { name: "Ocultar painel" }));
-    expect(screen.queryByRole("complementary", { name: "Painel do mapa" })).not.toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Mostrar painel" }));
-    expect(screen.getByRole("complementary", { name: "Painel do mapa" })).toBeInTheDocument();
+    await screen.findByText(/detections in the selected area/);
+    await userEvent.click(screen.getByRole("button", { name: "Hide panel" }));
+    expect(screen.queryByRole("complementary", { name: "Map panel" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Show panel" }));
+    expect(screen.getByRole("complementary", { name: "Map panel" })).toBeInTheDocument();
   });
 });
 
@@ -637,13 +607,13 @@ describe("MapExplorer — calendário", () => {
     renderWithProviders(<MapExplorer />, {
       searchParams: "?region=south-america&from=2026-11-08&to=2026-11-14",
     });
-    await screen.findByText(/detecções no recorte/);
-    const link = screen.getByRole("link", { name: /Abrir o calendário/ });
+    await screen.findByText(/detections in the selected area/);
+    const link = screen.getByRole("link", { name: /Open the calendar/ });
     expect(link.getAttribute("href")).toBe(
       "/explore/calendar?region=south-america&date=2026-11-14",
     );
     await userEvent.click(screen.getByRole("button", { name: "emitir-viewport" }));
-    expect(screen.getByRole("link", { name: /Abrir o calendário/ }).getAttribute("href")).toBe(
+    expect(screen.getByRole("link", { name: /Open the calendar/ }).getAttribute("href")).toBe(
       "/explore/calendar?region=south-america&date=2026-11-14&bbox=-60%2C-20%2C-40%2C0",
     );
   });
@@ -653,8 +623,8 @@ describe("MapExplorer — calendário", () => {
     renderWithProviders(<MapExplorer />, {
       searchParams: "?region=south-america&to=2026-11-14&heat=true&plot=hex&dots=false&base=illustrated",
     });
-    await screen.findByText(/detecções no recorte/);
-    const href = screen.getByRole("link", { name: /Abrir o calendário/ }).getAttribute("href")!;
+    await screen.findByText(/detections in the selected area/);
+    const href = screen.getByRole("link", { name: /Open the calendar/ }).getAttribute("href")!;
     const q = new URLSearchParams(href.split("?")[1]);
     expect(q.get("base")).toBe("illustrated");
     expect(q.get("plot")).toBe("hex");

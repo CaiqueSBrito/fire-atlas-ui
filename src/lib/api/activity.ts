@@ -4,7 +4,11 @@ import type {
   ApiActivityAnomalyResponse,
   ApiActivityAvailabilityResponse,
   ApiActivityCalendarResponse,
+  ApiActivityMonthlyResponse,
 } from "@/types/api";
+import type { Bbox } from "@/types/detections";
+import type { HarmonizedMonthly } from "@/types/stats";
+import { monthOf, shiftMonth } from "@/lib/utils/dates";
 import type { ActivityMonth, DaySatellites, MonthAnomaly } from "@/types/calendar";
 import {
   ACTIVITY_SOURCE,
@@ -15,9 +19,10 @@ import {
 import { apiFetch, hasApi } from "./client";
 import { fetchCoverage } from "./coverage";
 import { mockActivityMonth, mockDaySatellites, mockMonthAnomaly } from "./mock-activity";
+import { englishApiMessage } from "./english-message";
 
 export const UNIT_LABEL_FALLBACK =
-  "Atividade de fogo harmonizada (células ativas equivalentes ao MODIS Aqua)";
+  "Harmonized fire activity (MODIS Aqua-equivalent active cells)";
 
 const CONTINENTS: Record<string, string> = {
   "north-america": "North America",
@@ -52,8 +57,8 @@ export async function fetchActivityMonth(
     month,
     region,
     days: raw.days.map(toActivityDay),
-    unitLabel: raw.meta?.unitLabelPt ?? UNIT_LABEL_FALLBACK,
-    warnings: raw.meta?.warnings ?? [],
+    unitLabel: UNIT_LABEL_FALLBACK,
+    warnings: raw.meta?.warnings?.map(englishApiMessage) ?? [],
     source: ACTIVITY_SOURCE,
   };
 }
@@ -83,4 +88,41 @@ export async function fetchDaySatellites(
     signal,
   );
   return toDaySatellites(raw, date);
+}
+
+export const MONTHLY_SPAN = 12;
+
+export function toHarmonizedMonthly(raw: ApiActivityMonthlyResponse): HarmonizedMonthly {
+  return {
+    months: raw.months.map((m) => ({
+      month: m.month,
+      value: m.daysWithData > 0 && typeof m.harmonized === "number" ? m.harmonized : null,
+      daysWithData: m.daysWithData,
+      daysInMonth: m.daysInMonth,
+      complete: m.complete,
+    })),
+    unitLabel: UNIT_LABEL_FALLBACK,
+    warnings: raw.meta?.warnings?.map(englishApiMessage) ?? [],
+  };
+}
+
+export async function fetchHarmonizedMonthly(
+  area: { regionId: string; bbox: Bbox; customArea: boolean; to: string },
+  signal?: AbortSignal,
+): Promise<HarmonizedMonthly | null> {
+  if (!hasApi) return null;
+  const end = monthOf(area.to);
+  let region: Record<string, string>;
+  if (area.customArea) {
+    const coverage = await fetchCoverage();
+    region = { cells: cellsForBbox(area.bbox, coverage.resolutions).cells.join(",") };
+  } else {
+    region = await activityRegionParams(area.regionId);
+  }
+  const raw = await apiFetch<ApiActivityMonthlyResponse>(
+    "/activity/monthly",
+    { ...region, start: shiftMonth(end, -(MONTHLY_SPAN - 1)), end },
+    signal,
+  );
+  return toHarmonizedMonthly(raw);
 }

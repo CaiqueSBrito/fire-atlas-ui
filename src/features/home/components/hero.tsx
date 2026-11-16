@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import { HeroGlobe } from "./hero-globe";
-import { RegionLinks } from "./region-links";
+import { LiveStats } from "./live-stats";
 
 export function Hero() {
   return (
@@ -15,31 +15,31 @@ export function Hero() {
         className="absolute inset-0 -z-10 bg-gradient-to-t from-space-950 via-space-950/70 to-transparent lg:bg-gradient-to-r lg:via-space-950/50"
       />
 
-      <div className="flex flex-1 items-end px-6 pb-12 sm:px-10 lg:items-center lg:pb-0">
-        <div className="flex max-w-xl flex-col items-start gap-6">
+      <div className="mx-auto flex w-full max-w-7xl flex-1 items-end px-6 pb-12 pt-16 sm:px-10 lg:items-center lg:py-16">
+        <div className="flex max-w-3xl flex-col items-start gap-6">
           <p className="font-mono text-caption uppercase tracking-[0.2em] text-ember-400">
             NASA Space Apps 2026
           </p>
           <h1
             id="hero-title"
-            className="font-display text-display font-bold leading-[1.05] tracking-tight"
+            className="max-w-xl font-display text-display font-bold leading-[1.05] tracking-tight"
           >
-            Focos de calor do planeta, em um só atlas.
+            The planet&apos;s hotspots, in one atlas.
           </h1>
-          <p className="text-lg text-ink-300">
-            Explore as detecções dos satélites MODIS e VIIRS da NASA FIRMS em
-            mapa, calendário e análises.
+          <p className="max-w-xl text-lg text-ink-300">
+            Explore NASA FIRMS detections from MODIS and VIIRS satellites through
+            maps, calendars, and analytics.
           </p>
           <Link
             href="/explore/map"
             className={buttonVariants({ variant: "primary", size: "lg" })}
           >
-            Explorar focos de calor
+            Explore hotspots
             <span aria-hidden>→</span>
           </Link>
-          <RegionLinks />
+          <LiveStats />
           <p className="font-mono text-caption text-ink-300">
-            Dados: NASA FIRMS · MODIS + VIIRS
+            Data: NASA FIRMS · MODIS + VIIRS
           </p>
         </div>
       </div>

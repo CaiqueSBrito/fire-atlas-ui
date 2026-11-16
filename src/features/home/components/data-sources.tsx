@@ -3,23 +3,27 @@ import { Section } from "./section";
 const SOURCES = [
   {
     name: "MODIS",
-    text: "Sensores a bordo dos satélites Terra e Aqua, com mais de duas décadas de observações. Estão perto do fim da vida operacional e estão sendo substituídos.",
+    text: "Sensors aboard the Terra and Aqua satellites, with more than two decades of observations. They are nearing the end of their operational lives and are being replaced.",
   },
   {
     name: "VIIRS",
-    text: "Sensor que substitui o MODIS, com continuidade da série e maior nível de detalhe.",
+    text: "The sensor replacing MODIS, continuing the record with greater detail.",
   },
   {
-    name: "Harmonizado",
-    text: "Série consistente que combina os dois, sem perder a origem: dados originais e harmonizados continuam identificáveis.",
+    name: "Harmonized",
+    text: "A series combining both sensors at the MODIS Aqua scale (equivalent active cells), while preserving the source.",
+  },
+  {
+    name: "H3 hexagons",
+    text: "On the map, hotspots are aggregated by hexagonal cell and day. This makes it possible to display millions of detections quickly, but a cell does not mark the exact location of a fire.",
   },
 ];
 
 export function DataSources() {
   return (
-    <Section id="data" title="De onde vêm os dados">
+    <Section id="data" title="Where the data comes from">
       <p className="max-w-prose text-ink-300">
-        Os focos de calor vêm do{" "}
+        Hotspot data comes from{" "}
         <a
           href="https://firms.modaps.eosdis.nasa.gov/"
           target="_blank"
@@ -28,13 +32,13 @@ export function DataSources() {
         >
           NASA Earthdata FIRMS
         </a>
-        . Sensores de infravermelho termal detectam anomalias de calor
-        geradas por incêndios, queimadas agrícolas, erupções vulcânicas e
-        processos industriais. MODIS e VIIRS não podem ser comparados
-        diretamente, porque têm resoluções espaciais, sensibilidades e
-        horários de observação diferentes. Por isso a harmonização.
+        . Thermal infrared sensors detect heat anomalies caused by wildfires,
+        agricultural burning, volcanic eruptions, and industrial processes.
+        MODIS and VIIRS cannot be compared directly because they have different
+        spatial resolutions, sensitivities, and observation times. That is why
+        harmonization matters.
       </p>
-      <ul className="mt-6 grid gap-4 md:grid-cols-3">
+      <ul className="mt-6 grid gap-4 md:grid-cols-2">
         {SOURCES.map((s) => (
           <li
             key={s.name}

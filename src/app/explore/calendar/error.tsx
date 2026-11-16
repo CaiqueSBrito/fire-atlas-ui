@@ -19,8 +19,8 @@ export default function Error({
     <main id="conteudo" className="grid flex-1 place-items-center p-8">
       <div className="w-full max-w-md">
         <ErrorState
-          title="Não foi possível carregar o calendário"
-          message="Ocorreu um erro inesperado. Você pode tentar novamente."
+          title="Unable to load the calendar"
+          message="An unexpected error occurred. You can try again."
           onRetry={retry}
         />
       </div>

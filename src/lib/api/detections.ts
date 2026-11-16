@@ -1,4 +1,4 @@
-import { cellsForBbox } from "@/lib/utils/h3-region";
+import { cellsForBbox, MAX_H3_RESOLUTION } from "@/lib/utils/h3-region";
 import { splitBbox } from "@/lib/utils/tiles";
 import type {
   ApiCompareResponse,
@@ -7,11 +7,12 @@ import type {
   ApiRankingResponse,
   ApiTimeseriesResponse,
 } from "@/types/api";
-import type { DetectionQuery, DetectionsResponse } from "@/types/detections";
-import type { StatsResponse } from "@/types/stats";
+import type { DetectionQuery, DetectionsResponse, SensorId } from "@/types/detections";
+import type { CellHistory, StatsResponse } from "@/types/stats";
 import {
   mergeDetections,
   sensorParam,
+  toCellHistory,
   toDetectionsResponse,
   toStatsResponse,
 } from "./adapters";
@@ -23,10 +24,14 @@ import { mockStats } from "./mock-stats";
 export const RANKING_LIMIT = 10;
 export const HISTORY_YEARS = 5;
 const MIN_ZOOM = 3;
-const MAX_ZOOM = 6;
+const MAX_ZOOM = MAX_H3_RESOLUTION;
 
 export function finestResolution(coverage: Coverage): number {
-  return coverage.resolutions.length ? Math.max(...coverage.resolutions) : MIN_ZOOM;
+  let finest: number | null = null;
+  for (const res of coverage.resolutions) {
+    if (res <= MAX_H3_RESOLUTION && (finest === null || res > finest)) finest = res;
+  }
+  return finest ?? MIN_ZOOM;
 }
 
 export function zoomFor(coverage: Coverage): string {
@@ -116,4 +121,24 @@ export async function fetchStats(
     ranking,
     historical,
   });
+}
+
+export function monthWindow(to: string): { start: string; end: string } {
+  return { start: `${to.slice(0, 8)}01`, end: to };
+}
+
+export async function fetchCellHistory(
+  cell: string,
+  to: string,
+  sensors: SensorId[],
+  signal?: AbortSignal,
+): Promise<CellHistory | null> {
+  if (!hasApi) return null;
+  const { start, end } = monthWindow(to);
+  const raw = await apiFetch<ApiHistoricalResponse>(
+    "/compare/historical",
+    { cells: cell, start, end, sensor: sensorParam(sensors), years: String(HISTORY_YEARS) },
+    signal,
+  );
+  return toCellHistory(cell, sensors, raw);
 }

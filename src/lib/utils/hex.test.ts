@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateHex,
   hexColor,
+  hexFocusZoom,
   hexInfo,
   hexResolution,
   hexRing,
@@ -16,8 +17,8 @@ describe("hexResolution", () => {
     expect(hexResolution(2.5)).toBe(3);
     expect(hexResolution(3.5)).toBe(4);
     expect(hexResolution(5)).toBe(5);
-    expect(hexResolution(6.5)).toBe(6);
-    expect(hexResolution(9)).toBe(7);
+    expect(hexResolution(6.5)).toBe(5);
+    expect(hexResolution(9)).toBe(5);
   });
   it("nunca diminui a resolução ao aproximar", () => {
     let last = 0;
@@ -139,10 +140,9 @@ describe("hexInfo", () => {
 });
 
 describe("hexFocusZoom", () => {
-  it("aumenta o zoom conforme a resolução e tem valor padrão", async () => {
-    const { hexFocusZoom } = await import("./hex");
-    expect(hexFocusZoom(4)).toBe(7);
-    expect(hexFocusZoom(2)).toBeLessThan(hexFocusZoom(6));
-    expect(hexFocusZoom(15)).toBe(8);
+  it("aproxima mais as células das resoluções mais finas", () => {
+    for (let res = 2; res < 5; res++) {
+      expect(hexFocusZoom(res)).toBeLessThan(hexFocusZoom(res + 1));
+    }
   });
 });

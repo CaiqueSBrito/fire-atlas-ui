@@ -3,13 +3,13 @@ import type { ActivityDay, DaySatellites } from "@/types/calendar";
 import { BASIS_LABEL, binColor, binLabel, formatActivity, stackOrder } from "../temperature";
 
 const STATUS: Record<ActivityDay["status"], { glyph: string; label: string }> = {
-  activity: { glyph: "●", label: "Atividade registrada" },
-  none: { glyph: "○", label: "Nenhuma atividade registrada" },
-  unavailable: { glyph: "×", label: "Sem dado" },
+  activity: { glyph: "●", label: "Activity recorded" },
+  none: { glyph: "○", label: "No activity recorded" },
+  unavailable: { glyph: "×", label: "No data" },
 };
 
 const navButton =
-  "inline-flex h-11 flex-1 items-center justify-center rounded-full border border-space-600 text-small font-semibold transition-colors hover:border-ember-400 hover:text-ember-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-space-600 disabled:hover:text-ink-100";
+  "inline-flex h-10 flex-1 items-center justify-center rounded-full border border-space-600 type-button-small transition-colors hover:border-ember-400 hover:text-ember-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-space-600 disabled:hover:text-ink-100";
 
 export function DayPanel({
   day,
@@ -28,9 +28,9 @@ export function DayPanel({
 }) {
   if (!day) {
     return (
-      <article className="rounded-2xl border border-space-600 bg-space-800 p-6">
-        <p className="font-mono text-caption uppercase tracking-[0.2em] text-ember-400">Dia selecionado</p>
-        <p className="mt-2 text-ink-300">Escolha um dia nas barras para ver os detalhes.</p>
+      <article className="rounded-panel border border-space-600 bg-space-800 p-6">
+        <p className="type-overline text-ember-400">Selected day</p>
+        <p className="mt-2 type-body text-ink-300">Choose a day in the bars to view details.</p>
       </article>
     );
   }
@@ -40,16 +40,16 @@ export function DayPanel({
   const total = day.value ?? 0;
 
   return (
-    <article aria-labelledby="day-panel-title" className="rounded-2xl border border-space-600 bg-space-800 p-6">
-      <p className="font-mono text-caption uppercase tracking-[0.2em] text-ember-400">Dia selecionado</p>
+    <article aria-labelledby="day-panel-title" className="rounded-panel border border-space-600 bg-space-800 p-6">
+      <p className="type-overline text-ember-400">Selected day</p>
       <h2
         id="day-panel-title"
         aria-live="polite"
-        className="mt-1 font-display text-h2 font-bold leading-tight tracking-tight"
+        className="mt-2 font-display type-heading-page"
       >
         {formatLong(day.date)}
       </h2>
-      <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-space-600 bg-space-950/60 px-3 py-1 text-small">
+      <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-space-600 bg-space-950/60 px-3 py-1 type-label-small">
         <span aria-hidden="true" className="font-mono text-ember-400">
           {status.glyph}
         </span>
@@ -57,28 +57,28 @@ export function DayPanel({
       </p>
       <div className="mt-4 flex gap-2">
         <button type="button" onClick={onPrev} className={navButton}>
-          ‹ Anterior
+          ‹ Previous
         </button>
         <button type="button" onClick={onNext} disabled={!canGoNext} className={navButton}>
-          Próximo ›
+          Next ›
         </button>
       </div>
 
       {day.status === "unavailable" ? (
-        <p className="mt-6 rounded-xl border border-dashed border-space-600 bg-space-900 px-4 py-3 text-small text-ink-300">
-          Nenhum satélite contribuiu com dado para este dia. Isso não significa ausência de fogo.
+        <p className="mt-6 rounded-xl border border-dashed border-space-600 bg-space-900 px-4 py-3 type-body-small text-ink-300">
+          No satellite contributed data for this day. This does not mean there was no fire.
         </p>
       ) : (
         <>
-          <div className="mt-6 rounded-xl border border-space-600 bg-space-900 px-4 py-3">
-            <p className="text-small text-ink-300">Atividade harmonizada</p>
-            <p className="font-mono text-3xl font-bold">{formatActivity(total)}</p>
-            <p className="mt-1 text-caption text-ink-300">{unitLabel}. Não é número de focos.</p>
+          <div className="mt-6 rounded-xl border border-space-600 bg-space-900 p-4">
+            <p className="type-label-small text-ink-300">Harmonized activity</p>
+            <p className="mt-1 font-mono type-kpi">{formatActivity(total)}</p>
+            <p className="mt-2 type-caption text-ink-300">{unitLabel}. This is not a count of fire detections.</p>
           </div>
 
-          <dl className="mt-3 grid gap-2 text-small">
-            <div className="flex justify-between gap-3 rounded-xl border border-space-600 bg-space-900 px-4 py-2.5">
-              <dt className="text-ink-300">Satélites que contribuíram</dt>
+          <dl className="mt-3 grid gap-2 type-body-small">
+            <div className="flex justify-between gap-3 rounded-xl border border-space-600 bg-space-900 px-4 py-3">
+              <dt className="text-ink-300">Contributing satellites</dt>
               <dd className="flex flex-wrap justify-end gap-x-2 text-right font-mono">
                 {satellites?.contributing.length
                   ? satellites.contributing.map((name, i) => (
@@ -91,16 +91,16 @@ export function DayPanel({
               </dd>
             </div>
             {day.basis && (
-              <div className="flex justify-between gap-3 rounded-xl border border-space-600 bg-space-900 px-4 py-2.5">
-                <dt className="text-ink-300">Temperatura medida por</dt>
+              <div className="flex justify-between gap-3 rounded-xl border border-space-600 bg-space-900 px-4 py-3">
+                <dt className="text-ink-300">Temperature measured by</dt>
                 <dd className="whitespace-nowrap text-right font-mono">{BASIS_LABEL[day.basis]}</dd>
               </div>
             )}
           </dl>
 
-          <section aria-labelledby="day-temp-title" className="mt-5">
-            <h3 id="day-temp-title" className="font-display text-base font-bold">
-              Por temperatura de brilho
+          <section aria-labelledby="day-temp-title" className="mt-6">
+            <h3 id="day-temp-title" className="font-display type-heading-card">
+              By brightness temperature
             </h3>
             {bins && total > 0 ? (
               <>
@@ -111,7 +111,7 @@ export function DayPanel({
                       <span key={b.key} style={{ flexGrow: b.value, flexBasis: 0, background: binColor(b.key) }} />
                     ))}
                 </div>
-                <ul className="mt-3 grid gap-1.5 text-small">
+                <ul className="mt-3 grid gap-2 type-body-small">
                   {bins.map((b) => (
                     <li key={b.key} className="flex items-center gap-2">
                       <span
@@ -127,15 +127,15 @@ export function DayPanel({
                     </li>
                   ))}
                 </ul>
-                <p className="mt-2 text-caption text-ink-300">
-                  Temperatura de brilho do pixel mais quente de cada detecção, não a temperatura da chama.
+                <p className="mt-2 type-caption text-ink-300">
+                  Brightness temperature of the hottest pixel in each detection, not flame temperature.
                 </p>
               </>
             ) : (
-              <p className="mt-2 text-small text-ink-300">
+              <p className="mt-2 type-body-small text-ink-300">
                 {total > 0
-                  ? "Faixas de temperatura indisponíveis para este dia."
-                  : "Sem atividade para repartir por temperatura."}
+                  ? "Temperature bands unavailable for this day."
+                  : "No activity to break down by temperature."}
               </p>
             )}
           </section>

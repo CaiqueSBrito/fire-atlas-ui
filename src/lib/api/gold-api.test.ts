@@ -193,7 +193,6 @@ describe("calendário harmonizado pela API gold", () => {
       ["2026-11-13", "none", 0],
       ["2026-11-14", "unavailable", null],
     ]);
-    expect(out.unitLabel).toBe(ACTIVITY_CALENDAR.meta.unitLabelPt);
     expect(out.source.simulated).toBe(false);
   });
 

@@ -12,6 +12,7 @@ export type GlobePoint = { lat: number; lon: number };
 export type GlobeHandlers = {
   onPick?: (lat: number, lon: number) => void;
   onHover?: (point: GlobePoint | null) => void;
+  hotspots?: Array<[number, number]> | null;
 };
 
 const HOTSPOTS: Array<[number, number]> = [
@@ -66,7 +67,7 @@ function Hotspot({
   );
 }
 
-function Earth({ reduceMotion, onPick, onHover }: GlobeHandlers & { reduceMotion: boolean }) {
+function Earth({ reduceMotion, onPick, onHover, hotspots }: GlobeHandlers & { reduceMotion: boolean }) {
   const root = useRef<THREE.Group>(null);
   const tilt = useRef<THREE.Group>(null);
   const spin = useRef<THREE.Group>(null);
@@ -115,7 +116,7 @@ function Earth({ reduceMotion, onPick, onHover }: GlobeHandlers & { reduceMotion
               <sphereGeometry args={[1, 64, 64]} />
               <meshStandardMaterial map={map} roughness={1} />
             </mesh>
-            {HOTSPOTS.map(([lat, lon], i) => (
+            {(hotspots ?? HOTSPOTS).map(([lat, lon], i) => (
               <Hotspot
                 key={i}
                 lat={lat}
@@ -142,7 +143,7 @@ function Earth({ reduceMotion, onPick, onHover }: GlobeHandlers & { reduceMotion
   );
 }
 
-export default function Globe({ onPick, onHover }: GlobeHandlers) {
+export default function Globe({ onPick, onHover, hotspots }: GlobeHandlers) {
   const reduceMotion = usePrefersReducedMotion();
   return (
     <Canvas
@@ -162,7 +163,7 @@ export default function Globe({ onPick, onHover }: GlobeHandlers) {
         speed={reduceMotion ? 0 : 0.6}
       />
       <Suspense fallback={null}>
-        <Earth reduceMotion={reduceMotion} onPick={onPick} onHover={onHover} />
+        <Earth reduceMotion={reduceMotion} onPick={onPick} onHover={onHover} hotspots={hotspots} />
       </Suspense>
     </Canvas>
   );

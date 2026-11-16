@@ -131,3 +131,89 @@ html {
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* Escala de tipografia e medidas do design system de referência (só tamanhos; as cores são as do Fire Atlas). */
+@utility type-overline {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.88px;
+  text-transform: uppercase;
+}
+@utility type-statement {
+  font-size: 30px;
+  line-height: 36px;
+  font-weight: 600;
+  letter-spacing: -0.6px;
+  @media (width >= 64rem) {
+    font-size: 48px;
+    line-height: 58px;
+    letter-spacing: -1.4px;
+  }
+}
+@utility type-kpi {
+  font-size: 32px;
+  line-height: 40px;
+  font-weight: 600;
+  letter-spacing: -0.64px;
+}
+@utility type-heading-page {
+  font-size: 28px;
+  line-height: 36px;
+  font-weight: 600;
+  letter-spacing: -0.42px;
+}
+@utility type-heading-section {
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+@utility type-heading-card {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.08px;
+}
+@utility type-body {
+  font-size: 16px;
+  line-height: 24px;
+  font-weight: 400;
+}
+@utility type-body-small {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+@utility type-label-small {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+@utility type-button-small {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+}
+@utility type-caption {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  letter-spacing: 0.12px;
+}
+@utility type-mono-data {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+@utility rounded-panel {
+  border-radius: 20px;
+}
+@utility px-page {
+  padding-inline: 20px;
+  @media (width >= 64rem) {
+    padding-inline: 72px;
+  }
+}

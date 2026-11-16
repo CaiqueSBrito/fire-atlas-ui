@@ -2,7 +2,7 @@ import { HARMONIZED_META, SENSOR_META } from "@/lib/sensors";
 import type { SensorId } from "@/types/detections";
 import type { StatsResponse } from "@/types/stats";
 
-const fmt = (n: number) => n.toLocaleString("pt-BR");
+const fmt = (n: number) => n.toLocaleString("en-US");
 
 function Card({
   label,
@@ -41,7 +41,7 @@ function Card({
         <>
           <p className="mt-1 font-mono text-h2 font-bold text-ink-300">—</p>
           <p className="text-caption text-ink-300">
-            Indisponível{unavailable ? `: ${unavailable}` : "."}
+            Unavailable{unavailable ? `: ${unavailable}` : "."}
           </p>
         </>
       ) : (
@@ -67,39 +67,39 @@ export function IndicatorCards({
   const frp = stats.frp;
 
   return (
-    <section aria-label="Indicadores" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-label="Indicators" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
       {sensors.map((s) => (
         <Card
           key={s}
-          label={`Detecções ${SENSOR_META[s].label}`}
+          label={`Detections ${SENSOR_META[s].label}`}
           symbol={SENSOR_META[s].symbol}
           color={SENSOR_META[s].hex}
           badge="original"
           value={stats.bySensor[s]}
-          unit="detecções"
-          unavailable="a API não informou esta contagem"
+          unit="detections"
+          unavailable="the API did not provide this count"
         />
       ))}
       <Card
-        label="Total (originais)"
+        label="Total (original)"
         value={total}
-        unit="detecções"
-        unavailable="falta contagem de algum sensor"
+        unit="detections"
+        unavailable="a sensor count is missing"
       />
       <Card
-        label="Detecções harmonizadas"
+        label="Harmonized detections"
         symbol={HARMONIZED_META.symbol}
         color={HARMONIZED_META.hex}
-        badge="harmonizado"
+        badge="harmonized"
         value={stats.harmonized?.total}
-        unit="detecções"
-        unavailable="harmonização ainda não validada"
+        unit="detections"
+        unavailable="harmonization has not yet been validated"
       />
       <Card
-        label={frp?.unit ? `FRP médio (${frp.unit})` : "FRP médio"}
+        label={frp?.unit ? `Mean FRP (${frp.unit})` : "Mean FRP"}
         value={frp?.mean}
         unit={frp?.unit}
-        unavailable="o dado de FRP não foi fornecido"
+        unavailable="FRP data was not provided"
       />
     </section>
   );

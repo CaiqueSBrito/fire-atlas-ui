@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/feedback/empty-state";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
-import { useDetections } from "@/hooks/use-detections";
+import { useDetections, useMapForecast } from "@/hooks/use-detections";
 import { useResolvedFilters } from "@/hooks/use-filters";
 import { useMapLayers } from "@/hooks/use-map-layers";
 import { useQueryArea } from "@/hooks/use-query-area";
@@ -18,11 +18,13 @@ import { hexFocusZoom, sameHexInfo, type HexCell, type HexInfo } from "@/lib/uti
 import { computeHotAreas } from "@/lib/utils/hot-areas";
 import { clearIntroFly, peekIntroFly } from "@/lib/utils/intro-fly";
 import { formatBboxParam } from "@/lib/utils/bbox";
+import { hexBbox, saveMapPlace } from "@/lib/utils/map-place";
 import type { Bbox, FireDetection } from "@/types/detections";
 import { DetectionDetail } from "./detection-detail";
 import { DetectionList } from "./detection-list";
 import { HexDetail, HexTopList } from "./hex-detail";
 import { FireMap } from "./fire-map-loader";
+import { ForecastLayerList } from "./forecast-layer-list";
 import { Group, LayerPanel } from "./layer-panel";
 import { MapLegend } from "./map-legend";
 
@@ -45,6 +47,9 @@ export function MapExplorer() {
   const { data, error, isPending, isFetching, refetch, filters, enabled } =
     useDetections(queryArea);
   const [layers, setLayers] = useMapLayers();
+  const forecastQuery = useMapForecast(queryArea, layers.forecast);
+  const forecast =
+    layers.forecast && forecastQuery.data?.status === "available" ? forecastQuery.data : null;
   const imageryDate = imageryDateFor(filters.to);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [focus3d, setFocus3d] = useState<{ lon: number; lat: number; zoom?: number } | null>(null);
@@ -94,19 +99,19 @@ export function MapExplorer() {
   if (filters.problem) {
     overlay = (
       <ErrorState
-        title="Filtro inválido"
-        message={`${filters.problem} Ajuste os filtros para consultar.`}
+        title="Invalid filter"
+        message={`${filters.problem} Adjust the filters to search.`}
       />
     );
   } else if (filters.sensors.length === 0) {
     overlay = (
       <EmptyState
-        title="Nenhum sensor selecionado"
-        description="Ative MODIS e/ou VIIRS nos filtros para ver as detecções."
+        title="No sensors selected"
+        description="Enable MODIS and/or VIIRS in the filters to view detections."
       />
     );
   } else if (enabled && isPending) {
-    overlay = <LoadingState label="Carregando detecções…" />;
+    overlay = <LoadingState label="Loading detections…" />;
   } else if (error) {
     overlay = (
       <ErrorState
@@ -121,8 +126,8 @@ export function MapExplorer() {
   } else if (data && (grid ? grid.cells.length === 0 : data.items.length === 0)) {
     overlay = (
       <EmptyState
-        title="Nenhuma detecção registrada neste recorte"
-        description="Isso não significa que não houve fogo: satélites têm limites de cobertura, passagem e nuvens. Tente ampliar a área ou o período."
+        title="No detections recorded in this area"
+        description="This does not mean there was no fire: satellites have coverage, overpass, and cloud limitations. Try expanding the area or period."
       />
     );
   }
@@ -163,6 +168,7 @@ export function MapExplorer() {
         total={data.total}
         truncated={grid ? false : data.truncated}
         view3d={mode3d}
+        period={{ from: filters.from, to: filters.to }}
         onToggle3d={() =>
           mode3d
             ? exit3d()
@@ -189,14 +195,24 @@ export function MapExplorer() {
 
   const showDetections = !grid && (layers.plot === "points" || layers.dots);
 
+  const place: Bbox | null = hexSelected
+    ? hexBbox(hexSelected.id)
+    : selected
+      ? [selected.lon - 0.25, selected.lat - 0.25, selected.lon + 0.25, selected.lat + 0.25]
+      : (viewport ?? (filters.customArea ? filters.bbox : null));
+  const placeParam = place ? formatBboxParam(place) : null;
   const calendarParams = new URLSearchParams({ region: filters.regionId, date: filters.to });
-  if (viewport) calendarParams.set("bbox", formatBboxParam(viewport));
+  if (placeParam) calendarParams.set("bbox", placeParam);
   if (layers.base !== "streets") calendarParams.set("base", layers.base);
   if (plot !== "points") calendarParams.set("plot", plot);
   if (!layers.dots) calendarParams.set("dots", "false");
   if (layers.heat) calendarParams.set("heat", "true");
   if (layers.areas) calendarParams.set("areas", String(layers.areas));
   const calendarHref = `/explore/calendar?${calendarParams.toString()}`;
+
+  useEffect(() => {
+    if (placeParam) saveMapPlace({ region: filters.regionId, bbox: placeParam.split(",").map(Number) as Bbox });
+  }, [placeParam, filters.regionId]);
 
   const mapProps = {
     detections: items,
@@ -219,13 +235,14 @@ export function MapExplorer() {
     showHeat: layers.heat,
     imageryDate,
     onViewport: (bbox: Bbox) => setViewportState({ key: regionKey, bbox }),
+    forecastCells: forecast?.cells ?? null,
     label:
-      "Mapa de focos de calor. Arraste para deslocar; use os botões + e − para o zoom. A lista de detecções no painel é uma alternativa por teclado.",
+      "Fire detection map. Drag to pan; use the + and − buttons to zoom. The detection list in the panel provides a keyboard alternative.",
   };
 
   return (
     <main id="conteudo" tabIndex={-1} className="flex flex-1 flex-col lg:flex-row">
-      <h1 className="sr-only">Mapa de focos de calor</h1>
+      <h1 className="sr-only">Fire detection map</h1>
 
       <div className="relative order-1 min-h-[62svh] flex-1 lg:order-2 lg:min-h-[calc(100svh-9.5rem)]">
         <FireMap
@@ -240,30 +257,30 @@ export function MapExplorer() {
         {overlay && <Overlay>{overlay}</Overlay>}
         {data?.truncated && (
           <p role="note" className="absolute inset-x-4 top-4 z-10 rounded-xl border border-space-600 bg-space-900/95 p-3 text-small text-ink-300">
-            Resultado parcial. Reduza a área ou o período para consultar todas as células.
+            Partial results. Reduce the area or period to retrieve all cells.
           </p>
         )}
         <details className="group absolute bottom-10 right-4 z-10 w-72 max-w-[calc(100%-2rem)] rounded-3xl border border-space-600 bg-space-900/95 shadow-lg">
           <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 text-base font-semibold leading-6 tracking-[-0.02em] [&::-webkit-details-marker]:hidden">
-            Legenda e avisos
+            Legend and notices
             <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4 text-ink-300 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="m6 9 6 6 6-6" />
             </svg>
           </summary>
           <div className="flex max-h-[55svh] flex-col gap-4 overflow-y-auto px-4 pb-4">
             <p className="rounded-xl border border-space-600 bg-space-800 p-3 text-small text-ink-300">
-              <strong className="text-ink-100">Atenção:</strong> nenhum ponto no mapa
-              não comprova ausência de incêndio.
+              <strong className="text-ink-100">Note:</strong> no points on the map
+              does not prove the absence of fire.
             </p>
             {data && (
               <p className="font-mono text-small">
-                {data.total.toLocaleString("pt-BR")} detecções no recorte
+                {data.total.toLocaleString("en-US")} detections in the selected area
                 {data.truncated && (
                   <span className="block text-caption text-ink-300">
-                    Exibindo{" "}
-                    {(grid ? grid.cells.length : data.items.length).toLocaleString("pt-BR")}{" "}
-                    {grid ? "células" : "pontos"}. Restrinja a área ou o período para ver
-                    todos.
+                    Showing{" "}
+                    {(grid ? grid.cells.length : data.items.length).toLocaleString("en-US")}{" "}
+                    {grid ? "cells" : "points"}. Narrow the area or period to view
+                    all results.
                   </span>
                 )}
               </p>
@@ -271,9 +288,9 @@ export function MapExplorer() {
             {hotAreas && (
               <p className="rounded-xl border border-space-600 bg-space-800 p-3 text-small text-ink-300">
                 <span aria-hidden className="mr-1 inline-block h-3 w-5 rounded-sm border-2 border-white align-middle" />
-                Contorno branco: <strong className="text-ink-100">área de calor</strong>, células com ao menos{" "}
-                {hotAreas.threshold.toLocaleString("pt-BR")} focos (as {hotAreas.share}% mais intensas). As demais
-                ficam esmaecidas.
+                White outline: <strong className="text-ink-100">hot area</strong>, cells with at least{" "}
+                {hotAreas.threshold.toLocaleString("en-US")} fire detections (the top {hotAreas.share}% by intensity). Other cells
+                are faded.
               </p>
             )}
             <MapLegend
@@ -284,11 +301,12 @@ export function MapExplorer() {
               showHeat={layers.heat}
               plot={plot}
               hexInfo={hexInfo}
+              forecastIssue={forecast?.issueDate ?? null}
             />
             {data?.source.simulated && (
               <p className="rounded-xl border border-dashed border-ember-400/60 p-3 text-caption text-ink-300">
-                Protótipo: {data.source.name}. Defina <code>NEXT_PUBLIC_API_URL</code>{" "}
-                para usar a API.
+                Prototype: {data.source.name}. Set <code>NEXT_PUBLIC_API_URL</code>{" "}
+                to use the API.
               </p>
             )}
           </div>
@@ -304,7 +322,7 @@ export function MapExplorer() {
             <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4 text-ember-400" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 6h16M4 12h16M4 18h16" />
             </svg>
-            Mostrar painel
+            Show panel
           </button>
         )}
         <div className="absolute left-4 top-4 z-10 flex flex-col items-start gap-2">
@@ -323,19 +341,19 @@ export function MapExplorer() {
                   <circle cx="12" cy="12" r="9" />
                   <path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />
                 </svg>
-                Voltar ao globo
+                Back to globe
               </button>
           )}
           <Link
             href={calendarHref}
-            aria-label="Abrir o calendário neste ponto do mapa"
+            aria-label="Open the calendar at this map location"
             className="inline-flex h-12 items-center gap-2 rounded-full border-2 border-ember-400 bg-space-900/95 px-4 text-base font-semibold leading-6 tracking-[-0.02em] text-ink-100 shadow-lg transition-colors duration-200 hover:bg-space-800"
           >
             <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5 text-ember-400" fill="none" stroke="currentColor" strokeWidth="1.8">
               <rect x="3" y="5" width="18" height="16" rx="2" />
               <path d="M3 10h18M8 3v4M16 3v4" />
             </svg>
-            Calendário
+            Calendar
           </Link>
         </div>
         {globe && (
@@ -344,8 +362,8 @@ export function MapExplorer() {
             className="pointer-events-none absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-space-900/90 px-4 py-1.5 text-small"
           >
             {hoverContinent
-              ? `Clique para explorar: ${getRegion(hoverContinent).label}`
-              : "Clique em um continente para explorar"}
+              ? `Click to explore: ${getRegion(hoverContinent).label}`
+              : "Click a continent to explore"}
           </p>
         )}
         {drawing && (
@@ -353,13 +371,13 @@ export function MapExplorer() {
             role="status"
             className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-3 rounded-full border-2 border-ember-400 bg-space-900/95 py-1.5 pl-5 pr-2 text-base font-semibold leading-6 tracking-[-0.02em] shadow-lg"
           >
-            Arraste no mapa para desenhar a área
+            Drag on the map to draw an area
             <button
               type="button"
               onClick={() => setDrawing(false)}
               className="h-9 rounded-full px-4 text-small text-ink-300 transition-colors duration-200 hover:bg-space-800 hover:text-ink-100"
             >
-              Cancelar
+              Cancel
             </button>
           </div>
         )}
@@ -368,9 +386,9 @@ export function MapExplorer() {
             role="note"
             className="pointer-events-none absolute bottom-14 left-1/2 z-10 max-w-[calc(100%-2rem)] -translate-x-1/2 rounded-full bg-space-900/90 px-4 py-1.5 text-center text-caption text-ink-300"
           >
-            Nível mais fino disponível (H3 {finestLevel}, hexágonos de ≈{" "}
-            {(grid.cells[0].edgeKm * 2).toLocaleString("pt-BR", { maximumFractionDigits: 0 })} km).
-            Aproximar mais não traz mais detalhe.
+            Finest available level (H3 {finestLevel}, hexagons ≈{" "}
+            {(grid.cells[0].edgeKm * 2).toLocaleString("en-US", { maximumFractionDigits: 0 })} km across).
+            Zooming in further does not add detail.
           </p>
         )}
         {isFetching && !isPending && (
@@ -378,14 +396,14 @@ export function MapExplorer() {
             role="status"
             className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 rounded-full bg-space-900/90 px-4 py-1.5 text-small"
           >
-            Atualizando…
+            Updating…
           </p>
         )}
       </div>
 
       <aside
         id="painel-mapa"
-        aria-label="Painel do mapa"
+        aria-label="Map panel"
         hidden={!panelOpen}
         className="order-2 flex w-full flex-col gap-5 rounded-t-[32px] border border-space-600 bg-space-900 p-4 text-small leading-5 tracking-[-0.03em] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] lg:order-1 lg:m-3 lg:max-h-[calc(100svh-10.5rem)] lg:w-[16.5rem] lg:shrink-0 lg:self-start lg:overflow-y-auto lg:rounded-[32px]"
       >
@@ -396,7 +414,7 @@ export function MapExplorer() {
           aria-expanded="true"
           className="inline-flex min-h-11 items-center justify-between gap-2 rounded-full border border-space-600 px-4 text-small font-semibold hover:border-ink-300"
         >
-          Ocultar painel
+          Hide panel
           <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="m15 6-6 6 6 6" />
           </svg>
@@ -410,10 +428,35 @@ export function MapExplorer() {
           gridOnly={grid ? { resolution: grid.resolution } : null}
           dots={layers.dots}
           heat={layers.heat}
+          forecast={hasApi ? layers.forecast : undefined}
           onChange={(next) => void setLayers(next)}
         />
 
-        <Group title="Detecções" open={false}>
+        {layers.forecast && hasApi && (
+          <Group title="Forecast">
+            {forecastQuery.isPending ? (
+              <p role="status" className="text-small text-ink-300">Loading forecast…</p>
+            ) : forecastQuery.isError ? (
+              <ErrorState
+                title="Could not load the forecast"
+                message={forecastQuery.error.message}
+                onRetry={() => void forecastQuery.refetch()}
+              />
+            ) : forecastQuery.data?.status === "unavailable" ? (
+              <p className="rounded-xl border border-dashed border-space-600 p-3 text-small text-ink-300">
+                <strong className="text-ink-100">Forecast unavailable.</strong> {forecastQuery.data.reason}
+              </p>
+            ) : forecast ? (
+              <ForecastLayerList
+                cells={forecast.cells}
+                issueDate={forecast.issueDate}
+                truncated={forecast.truncated}
+              />
+            ) : null}
+          </Group>
+        )}
+
+        <Group title="Detections" open={false}>
           {plot === "hex" && hexInfo && (
             <HexTopList cells={hexInfo.top} selectedId={hexSelected?.id ?? null} onSelect={pickHex} />
           )}

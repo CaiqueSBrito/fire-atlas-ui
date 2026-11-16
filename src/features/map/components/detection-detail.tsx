@@ -3,14 +3,14 @@ import { SENSOR_META } from "@/lib/sensors";
 import type { DataOrigin, FireDetection } from "@/types/detections";
 
 export const formatDateTime = (iso: string) =>
-  `${new Date(iso).toLocaleString("pt-BR", {
+  `${new Date(iso).toLocaleString("en-US", {
     timeZone: "UTC",
     dateStyle: "short",
     timeStyle: "short",
   })} UTC`;
 
 export const formatFrp = (frp: number | null) =>
-  frp === null ? "Não informado" : `${frp.toLocaleString("pt-BR")} MW`;
+  frp === null ? "Not reported" : `${frp.toLocaleString("en-US")} MW`;
 
 export function DetectionDetail({
   detection: d,
@@ -29,17 +29,17 @@ export function DetectionDetail({
 }) {
   const meta = SENSOR_META[d.sensor];
   const rows: Array<[string, string]> = [
-    ["Localização", `${d.lat.toFixed(4)}°, ${d.lon.toFixed(4)}°`],
-    ["Data e hora", formatDateTime(d.datetime)],
+    ["Location", `${d.lat.toFixed(4)}°, ${d.lon.toFixed(4)}°`],
+    ["Date and time", formatDateTime(d.datetime)],
     ["Sensor", `${meta.label}${d.platform ? ` · ${d.platform}` : ""}`],
-    ["FRP (potência radiativa)", formatFrp(d.frp)],
+    ["FRP (fire radiative power)", formatFrp(d.frp)],
   ];
-  if (d.confidence) rows.push(["Confiança", d.confidence]);
-  if (d.dayNight) rows.push(["Passagem", d.dayNight === "D" ? "Diurna" : "Noturna"]);
+  if (d.confidence) rows.push(["Confidence", d.confidence]);
+  if (d.dayNight) rows.push(["Overpass", d.dayNight === "D" ? "Daytime" : "Nighttime"]);
   if (matchesAvailable && d.matchId) {
-    rows.push(["Correspondência", `Detecção ${d.matchId} (harmonização validada)`]);
+    rows.push(["Match", `Detection ${d.matchId} (validated harmonization)`]);
   }
-  rows.push(["Origem", `${source.name}${source.simulated ? " — simulado" : ""}`]);
+  rows.push(["Source", `${source.name}${source.simulated ? " — simulated" : ""}`]);
 
   return (
     <section
@@ -51,14 +51,14 @@ export function DetectionDetail({
           <span aria-hidden style={{ color: meta.hex }}>
             {meta.symbol}{" "}
           </span>
-          Detecção {meta.label}
+          Detection {meta.label}
         </h2>
         <button
           type="button"
           onClick={onClose}
           className="min-h-11 rounded-lg px-3 text-small text-ink-300 hover:text-ink-100"
         >
-          Fechar
+          Close
         </button>
       </div>
       <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-small">
@@ -70,7 +70,7 @@ export function DetectionDetail({
         ))}
       </dl>
       <Button variant="secondary" className="mt-4 w-full" onClick={onToggle3d}>
-        {view3d ? "Voltar ao 2D" : "Ver em 3D"}
+        {view3d ? "Back to 2D" : "View in 3D"}
       </Button>
     </section>
   );

@@ -1,18 +1,25 @@
 "use client";
 
-import type { AnnualLoadingState } from "@/lib/api/bootstrap";
+import { bootstrapProgress, type AnnualLoadingState } from "@/lib/api/bootstrap";
 import "./annual-loading-screen.css";
 
 type Props = { status: AnnualLoadingState; onRetry: () => void };
-const number = new Intl.NumberFormat("pt-BR");
+const number = new Intl.NumberFormat("en-US");
+const phaseLabel: Record<AnnualLoadingState["phase"], string> = {
+  preparing: "Preparing queries",
+  importing: "Exporting and importing data",
+  indexes: "Building indexes",
+  validating: "Validating keys",
+  analyzing: "Updating statistics",
+  ready: "Data ready",
+};
 
 export function AnnualLoadingScreen({ status, onRetry }: Props) {
   const failed = status.state === "failed";
-  const percent = status.state === "ready"
-    ? 100
-    : status.totalUnits > 0
-      ? Math.min(99, Math.floor((status.completedUnits / status.totalUnits) * 100))
-      : 0;
+  // Arquivos + indices/chaves/ANALYZE + o commit que publica ready. A ultima unidade so termina em ready.
+  const completedWork = status.completedUnits + status.finalizationCompleted;
+  const totalWork = status.totalUnits + status.finalizationTotal + 1;
+  const percent = bootstrapProgress(status);
 
   return (
     <div className={"annual-screen"}>
@@ -26,36 +33,40 @@ export function AnnualLoadingScreen({ status, onRetry }: Props) {
           <span className={"annual-hotspotSecondary"} />
         </div>
         <p className={"annual-eyebrow"}>NASA SPACE APPS 2026</p>
-        <h1 className={"annual-title"}>{failed ? "A carga foi interrompida" : "Carregando o Fire Atlas"}</h1>
-        <p className={"annual-description"}>Preparando os dados de focos de calor de 2026 para você.</p>
+        <h1 className={"annual-title"}>{failed ? "Data loading was interrupted" : "Loading Fire Atlas"}</h1>
+        <p className={"annual-description"}>Preparing 2026 fire hotspot data for you.</p>
         <div className={"annual-progressArea"}>
+          <p className={"annual-detail"}>{phaseLabel[status.phase]}</p>
           <div
             className={"annual-track"}
             role="progressbar"
-            aria-label="Carga mundial de 2026"
+            aria-label="Worldwide 2026 data load"
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={percent}
-            aria-valuetext={`${percent}% · ${status.completedUnits} de ${status.totalUnits} etapas concluídas`}
+            aria-valuetext={`${percent}% · ${phaseLabel[status.phase]} · ${completedWork} of ${totalWork} operations completed`}
           >
             <div className={"annual-fill"} style={{ width: `${percent}%` }} />
           </div>
           <div className={"annual-progressCaption"}>
-            <p role="status">{status.message || "Conectando à base de dados…"}</p>
+            <p role="status">{status.message || "Connecting to the database…"}</p>
             <span className={"annual-percent"}>{percent}%</span>
           </div>
-          <p className={"annual-scope"}>Mundo inteiro <span aria-hidden>·</span> MODIS + VIIRS <span aria-hidden>·</span> H3 0–6</p>
+          <p className={"annual-scope"}>Worldwide <span aria-hidden>·</span> MODIS + VIIRS <span aria-hidden>·</span> H3 map 0–5</p>
           {status.totalUnits > 0 && (
             <p className={"annual-detail"}>
-              {number.format(status.completedUnits)} / {number.format(status.totalUnits)} etapas
-              {" · "}{number.format(status.rowsLoaded)} registros em cache
+              Files: {number.format(status.completedUnits)} / {number.format(status.totalUnits)}
+              {status.finalizationTotal > 0 && (
+                <>{" · "}Finalization: {number.format(status.finalizationCompleted)} / {number.format(status.finalizationTotal)}</>
+              )}
+              <br />{number.format(status.rowsLoaded)} cached records
             </p>
           )}
-          {!failed && <p className={"annual-hint"}>A primeira carga pode demorar. Os próximos acessos reutilizam os dados.</p>}
+          {!failed && <p className={"annual-hint"}>After importing, the database builds indexes and validates keys. Each confirmed operation advances the progress bar.</p>}
           {failed && (
             <div className={"annual-error"}>
-              <p role="alert">{status.error || "Não foi possível concluir a carga. Tente novamente."}</p>
-              <button type="button" onClick={onRetry} className={"annual-retry"}>Retomar carregamento</button>
+              <p role="alert">{status.error || "Unable to finish loading data. Try again."}</p>
+              <button type="button" onClick={onRetry} className={"annual-retry"}>Resume loading</button>
             </div>
           )}
         </div>

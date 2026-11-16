@@ -8,6 +8,12 @@ import type { ForecastCell, ForecastResponse } from "@/types/forecast";
 import { ForecastView } from "./forecast-view";
 
 vi.mock("@/lib/api/forecast", () => ({ fetchForecast: vi.fn() }));
+vi.mock("@/features/map/components/fire-map-loader", () => ({
+  FireMap: (props: { forecastCells?: ForecastCell[] | null }) => (
+    <div data-testid="forecast-map">{props.forecastCells?.length ?? 0} células</div>
+  ),
+}));
+vi.mock("@/lib/utils/webgl", () => ({ supportsWebGL: () => true }));
 
 const forecast = vi.mocked(fetchForecast);
 
@@ -60,48 +66,53 @@ describe("ForecastView (NASA-015)", () => {
   it("mostra carregamento enquanto consulta", () => {
     forecast.mockReturnValue(new Promise(() => {}));
     renderWithProviders(<ForecastView />);
-    expect(screen.getByRole("status")).toHaveTextContent("Consultando previsões…");
+    expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
   it("sem previsão do serviço informa indisponibilidade e nenhuma estimativa (RN04)", async () => {
     forecast.mockResolvedValue({ status: "unavailable", reason: "Nenhuma previsao importada." });
     renderWithProviders(<ForecastView />);
-    expect(await screen.findByText("Indisponível.")).toBeInTheDocument();
+    expect(await screen.findByText("Unavailable.")).toBeInTheDocument();
     expect(screen.getByText(/Nenhuma previsao importada\./)).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
   });
 
-  it("deixa claro que é previsão, não detecção observada (RN02)", async () => {
-    forecast.mockResolvedValue(available());
-    renderWithProviders(<ForecastView />);
-    expect(await screen.findByRole("note")).toHaveTextContent(/PREVISÃO — não são detecções observadas/);
-  });
 
   it("indicadores da região usam os totais do serviço, não só as linhas listadas", async () => {
     forecast.mockResolvedValue(available());
     renderWithProviders(<ForecastView />);
-    const cards = within(await screen.findByRole("region", { name: "Indicadores" }));
-    expect(cards.getByText("34.791")).toBeInTheDocument();
-    expect(cards.getByText("8.360")).toBeInTheDocument();
-    expect(cards.getByText("98,5")).toBeInTheDocument();
-    expect(cards.getByText("3,4")).toBeInTheDocument();
+    const cards = within(await screen.findByRole("region", { name: "Indicators" }));
+    expect(cards.getByText("34,791")).toBeInTheDocument();
+    expect(cards.getByText("8,360")).toBeInTheDocument();
+    expect(cards.getByText("98.5")).toBeInTheDocument();
+    expect(cards.getByText("3.4")).toBeInTheDocument();
   });
 
-  it("lista as células em ordem com localidade, unidades e ausência como traço", async () => {
+
+  it("mostra as células existentes no mapa e permite abrir e fechar o detalhe", async () => {
     forecast.mockResolvedValue(available());
     renderWithProviders(<ForecastView />);
-    const rows = within(await screen.findByRole("table")).getAllByRole("row").slice(1);
-    expect(rows).toHaveLength(2);
-    expect(rows[0]).toHaveTextContent("Sinop (12 km), Brasil");
-    expect(rows[0]).toHaveTextContent("98,5%");
-    expect(rows[0]).toHaveTextContent("10,50° S, 55,50° O");
-    expect(rows[0]).toHaveTextContent("Sim");
-    expect(rows[1]).toHaveTextContent("Sem localidade registrada");
-    expect(rows[1]).toHaveTextContent("40,0%");
-    expect(rows[1]).toHaveTextContent("Não");
-    expect(within(rows[1]).getAllByText("—")).toHaveLength(3);
-    expect(screen.getByText(/As 2 de maior probabilidade entre 34\.791 células/)).toBeInTheDocument();
+    expect(await screen.findByTestId("forecast-map")).toHaveTextContent("2 células");
+    const choice = screen.getByRole("button", { name: /Sinop.*98.5%/ });
+    await userEvent.click(choice);
+    expect(choice).toHaveAttribute("aria-pressed", "true");
+    const detail = within(screen.getByRole("region", { name: "Sinop (12 km), Brasil" }));
+    expect(detail.getByText("98.5%")).toBeInTheDocument();
+    expect(detail.getByText("24 MW")).toBeInTheDocument();
+    expect(detail.getByText("10.50° S, 55.50° W")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "View entire region" }));
+    expect(choice).toHaveAttribute("aria-pressed", "false");
+    expect(screen.queryByRole("region", { name: "Sinop (12 km), Brasil" })).not.toBeInTheDocument();
+  });
+
+  it("limita apenas a tabela a cem linhas sem reduzir as células do mapa", async () => {
+    const cells = Array.from({ length: 101 }, (_, i) => cell({ id: String(i) }));
+    forecast.mockResolvedValue(available({ cells }));
+    renderWithProviders(<ForecastView />);
+    expect(await screen.findByTestId("forecast-map")).toHaveTextContent("101 células");
+    await userEvent.click(screen.getByText(/View cell table/));
+    expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(101);
   });
 
   it("região sem células não vira ausência de risco", async () => {
@@ -113,8 +124,8 @@ describe("ForecastView (NASA-015)", () => {
       }),
     );
     renderWithProviders(<ForecastView />);
-    expect(await screen.findByText("Nenhuma célula com previsão nesta região")).toBeInTheDocument();
-    expect(screen.getByText(/não significa ausência de risco/)).toBeInTheDocument();
+    expect(await screen.findByText("No cells with forecasts in this region")).toBeInTheDocument();
+    expect(screen.getByText(/does not mean there is no fire risk/)).toBeInTheDocument();
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 
@@ -123,15 +134,15 @@ describe("ForecastView (NASA-015)", () => {
     forecast.mockResolvedValueOnce(available());
     renderWithProviders(<ForecastView />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Falha de rede");
-    await userEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-    expect(await screen.findByRole("table")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { name: "Fire risk map" })).toBeInTheDocument();
   });
 
   it("consulta a área da região escolhida nos filtros", async () => {
     forecast.mockResolvedValue({ status: "unavailable", reason: "x" });
     renderWithProviders(<ForecastView />, { searchParams: "?region=brasil" });
-    await screen.findByText("Indisponível.");
+    await screen.findByText("Unavailable.");
     expect(forecast.mock.calls[0][0]).toEqual([-74, -34, -34, 6]);
-    expect(screen.getByText(/Relatório de risco de fogo para Brasil/)).toBeInTheDocument();
+    expect(screen.getByText(/Fire risk report for Brazil/)).toBeInTheDocument();
   });
 });

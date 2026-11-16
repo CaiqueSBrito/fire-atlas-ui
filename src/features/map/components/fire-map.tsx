@@ -13,6 +13,7 @@ import {
 } from "maplibre-gl";
 import {
   FLAT_MAX_ZOOM,
+  FORECAST_RAMP,
   GLOBE_CENTER,
   GLOBE_MAX_ZOOM,
   GLOBE_PROJECTION,
@@ -23,6 +24,7 @@ import {
   TERRAIN_TILES,
   gibsTiles,
   globeZoom,
+  flatMinZoom,
   imageryDateFor,
   type BasemapId,
   type PlotId,
@@ -37,6 +39,7 @@ import type { CountryCollection } from "@/lib/utils/countries";
 import { existingLayers } from "@/lib/utils/map-query";
 import {
   aggregateHex,
+  colorFloor,
   hexColor,
   hexInfo,
   hexResolution,
@@ -46,6 +49,7 @@ import {
 } from "@/lib/utils/hex";
 import { loadCountries } from "@/lib/utils/countries";
 import type { Bbox, FireDetection, SensorId } from "@/types/detections";
+import type { ForecastCell } from "@/types/forecast";
 
 setWorkerUrl("/maplibre-gl-worker.mjs");
 
@@ -86,7 +90,7 @@ const streetsReady = new WeakMap<MlMap, Promise<void>>();
 function loadStreetsStyle(): Promise<StreetsStyle> {
   streetsStyle ??= fetch(STREETS_STYLE_URL)
     .then((r) => {
-      if (!r.ok) throw new Error(`Estilo de ruas indisponível (${r.status})`);
+      if (!r.ok) throw new Error(`Street style unavailable (${r.status})`);
       return r.json() as Promise<StreetsStyle>;
     })
     .catch((error) => {
@@ -259,6 +263,7 @@ export type FireMapProps = {
   onContinentPick?: (id: ContinentId) => void;
   onContinentHover?: (id: ContinentId | null) => void;
   onViewport?: (bbox: Bbox) => void;
+  forecastCells?: ForecastCell[] | null;
 };
 
 export default function FireMap({
@@ -290,6 +295,7 @@ export default function FireMap({
   onContinentPick,
   onContinentHover,
   onViewport,
+  forecastCells = null,
 }: FireMapProps) {
   const box = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MlMap | null>(null);
@@ -410,6 +416,44 @@ export default function FireMap({
         source: "areas",
         layout: { visibility: "none", "line-join": "round" },
         paint: { "line-color": "#ffffff", "line-opacity": 0.95, "line-width": 2.4 },
+      } as never);
+      const forecastColor = [
+        "interpolate",
+        ["linear"],
+        ["get", "p"],
+        ...FORECAST_RAMP.flatMap((c, i) => [i / (FORECAST_RAMP.length - 1), c]),
+      ];
+      map.addSource("forecast", { type: "geojson", data: EMPTY as never });
+      map.addSource("forecast-points", { type: "geojson", data: EMPTY as never });
+      map.addLayer({
+        id: "forecast-fill",
+        type: "fill",
+        source: "forecast",
+        minzoom: 5,
+        layout: { visibility: "none" },
+        paint: { "fill-color": forecastColor, "fill-opacity": 0.55 },
+      } as never);
+      map.addLayer({
+        id: "forecast-line",
+        type: "line",
+        source: "forecast",
+        minzoom: 5,
+        layout: { visibility: "none" },
+        paint: { "line-color": "#ff5a4f", "line-width": 1.4, "line-dasharray": [2, 1.5] },
+      } as never);
+      map.addLayer({
+        id: "forecast-dot",
+        type: "circle",
+        source: "forecast-points",
+        maxzoom: 5.5,
+        layout: { visibility: "none" },
+        paint: {
+          "circle-color": forecastColor,
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 1, 2.5, 5, 5],
+          "circle-stroke-color": "#1a0f2e",
+          "circle-stroke-width": 1,
+          "circle-opacity": 0.9,
+        },
       } as never);
       map.addSource("heat", { type: "geojson", data: EMPTY as never });
       map.addLayer({
@@ -629,6 +673,23 @@ export default function FireMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready) return;
+    if (projection === "globe") {
+      map.setMinZoom(0);
+      return;
+    }
+    const lockWorld = () =>
+      map.setMinZoom(Math.min(flatMinZoom(map.getContainer().clientWidth), map.getMaxZoom()));
+    map.once("moveend", lockWorld);
+    map.on("resize", lockWorld);
+    return () => {
+      map.off("moveend", lockWorld);
+      map.off("resize", lockWorld);
+    };
+  }, [projection, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
     const first = firstView.current;
     const intro = first && introRef.current;
     const animate = (!first || intro) && !reduceMotion();
@@ -639,7 +700,9 @@ export default function FireMap({
       const { width, height } = map.getContainer().getBoundingClientRect();
       let cancelled = false;
       const lockGlobeZoom = () => {
-        if (!cancelled) map.setMaxZoom(GLOBE_MAX_ZOOM);
+        if (cancelled) return;
+        if (map.getMinZoom() > GLOBE_MAX_ZOOM) map.setMinZoom(0);
+        map.setMaxZoom(GLOBE_MAX_ZOOM);
       };
       map.once("moveend", lockGlobeZoom);
       map.flyTo({
@@ -768,12 +831,13 @@ export default function FireMap({
     const map = mapRef.current;
     if (!map || !ready) return;
     const max = cells.reduce((m, c) => Math.max(m, c.count), 0);
+    const floor = colorFloor(cells.map((c) => c.count), max);
     setData(map, "hex", {
       type: "FeatureCollection",
       features: cells.map((c) => ({
         type: "Feature",
         geometry: { type: "Polygon", coordinates: [hexRing(c.id)] },
-        properties: { cell: c.id, n: c.count, color: hexColor(c.count, max) },
+        properties: { cell: c.id, n: c.count, color: hexColor(c.count, max, floor) },
       })),
     });
     cb.current.onHexChange?.(plot === "hex" ? hexInfo(cells, cellRes) : null);
@@ -817,6 +881,31 @@ export default function FireMap({
     if (!map || !ready) return;
     setVisibility(map, "heat", showHeat);
   }, [showHeat, ready]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const list = forecastCells ?? [];
+    setData(map, "forecast", {
+      type: "FeatureCollection",
+      features: list.map((c) => ({
+        type: "Feature",
+        geometry: { type: "Polygon", coordinates: [hexRing(c.id)] },
+        properties: { id: c.id, p: c.probability },
+      })),
+    } as never);
+    setData(map, "forecast-points", {
+      type: "FeatureCollection",
+      features: list.map((c) => ({
+        type: "Feature",
+        geometry: { type: "Point", coordinates: [c.lon, c.lat] },
+        properties: { id: c.id, p: c.probability },
+      })),
+    } as never);
+    for (const id of ["forecast-fill", "forecast-line", "forecast-dot"]) {
+      setVisibility(map, id, Boolean(forecastCells));
+    }
+  }, [forecastCells, ready]);
 
   useEffect(() => {
     const date = imageryDate ?? imageryDateFor();

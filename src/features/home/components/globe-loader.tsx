@@ -30,10 +30,10 @@ const Globe = dynamic(() => import("./globe"), {
   loading: () => <GlobePlaceholder />,
 });
 
-export function GlobeLoader({ onPick, onHover }: GlobeHandlers) {
+export function GlobeLoader({ onPick, onHover, hotspots }: GlobeHandlers) {
   return (
     <WebGLBoundary>
-      <Globe onPick={onPick} onHover={onHover} />
+      <Globe onPick={onPick} onHover={onHover} hotspots={hotspots} />
     </WebGLBoundary>
   );
 }

@@ -48,13 +48,13 @@ export function shiftDate(date: string, delta: number): string {
 
 export const dayNumber = (date: string) => date.slice(8, 10);
 
-const longFmt = new Intl.DateTimeFormat("pt-BR", {
+const longFmt = new Intl.DateTimeFormat("en-US", {
   day: "numeric",
   month: "long",
   year: "numeric",
   timeZone: "UTC",
 });
-const monthFmt = new Intl.DateTimeFormat("pt-BR", {
+const monthFmt = new Intl.DateTimeFormat("en-US", {
   month: "long",
   year: "numeric",
   timeZone: "UTC",
@@ -68,7 +68,7 @@ export function formatMonthTitle(month: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-const monthShortFmt = new Intl.DateTimeFormat("pt-BR", {
+const monthShortFmt = new Intl.DateTimeFormat("en-US", {
   month: "short",
   timeZone: "UTC",
 });
@@ -86,5 +86,5 @@ export const maxYear = () => Number(todayUtc().slice(0, 4)) + 1;
 
 export function formatShort(date: string): string {
   const [y, m, d] = date.split("-");
-  return `${d}/${m}/${y}`;
+  return `${m}/${d}/${y}`;
 }

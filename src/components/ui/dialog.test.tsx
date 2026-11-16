@@ -54,7 +54,7 @@ describe("Dialog", () => {
   it("o botão Fechar e o clique fora também fecham", async () => {
     render(<Harness />);
     await userEvent.click(screen.getByRole("button", { name: "abrir" }));
-    await userEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "abrir" }));
     const backdrop = screen.getByRole("dialog").previousElementSibling as HTMLElement;

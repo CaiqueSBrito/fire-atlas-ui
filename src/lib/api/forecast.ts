@@ -15,7 +15,7 @@ export async function fetchForecast(
   if (!hasApi) {
     return {
       status: "unavailable",
-      reason: "O serviço de previsões não está configurado neste ambiente.",
+      reason: "The forecast service is not configured in this environment.",
     };
   }
   const coverage = await fetchCoverage();

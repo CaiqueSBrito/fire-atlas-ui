@@ -5,10 +5,10 @@ export function Unavailable({ children }: { children: React.ReactNode }) {
         aria-hidden
         className="mt-0.5 rounded bg-space-800 px-1.5 py-0.5 font-mono text-caption uppercase text-ink-300"
       >
-        n/d
+        n/a
       </span>
       <span>
-        <strong className="text-ink-100">Indisponível.</strong> {children}
+        <strong className="text-ink-100">Unavailable.</strong> {children}
       </span>
     </p>
   );

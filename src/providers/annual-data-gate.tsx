@@ -16,12 +16,15 @@ const INITIAL_STATUS: AnnualLoadingState = {
   completedUnits: 0,
   totalUnits: 0,
   rowsLoaded: 0,
+  phase: "preparing",
+  finalizationCompleted: 0,
+  finalizationTotal: 0,
   message: hasApi
-    ? "Conectando ao carregamento compartilhado de 2026."
-    : "O carregamento de 2026 está indisponível.",
+    ? "Connecting to the shared 2026 data load."
+    : "The 2026 data load is unavailable.",
   error: hasApi
     ? null
-    : "A API não está configurada. Defina NEXT_PUBLIC_API_URL para carregar os dados reais de 2026.",
+    : "The API is not configured. Set NEXT_PUBLIC_API_URL to load real 2026 data.",
 };
 
 const AnnualDataContext = createContext<{
@@ -63,8 +66,8 @@ export function AnnualDataProvider({ children }: { children: ReactNode }) {
         setStatus((previous) => ({
           ...previous,
           state: "failed",
-          message: "Não foi possível acompanhar o carregamento compartilhado de 2026.",
-          error: error instanceof Error ? error.message : "Falha desconhecida ao consultar a API.",
+          message: "Unable to monitor the shared 2026 data load.",
+          error: error instanceof Error ? error.message : "Unknown error while querying the API.",
         }));
       } finally {
         running = false;
@@ -77,7 +80,7 @@ export function AnnualDataProvider({ children }: { children: ReactNode }) {
       setStatus((previous) => ({
         ...previous,
         state: "loading",
-        message: "Retomando o carregamento compartilhado de 2026.",
+        message: "Resuming the shared 2026 data load.",
         error: null,
       }));
       void request(true);
@@ -105,7 +108,7 @@ export function AnnualDataProvider({ children }: { children: ReactNode }) {
 /** O segmento Next sempre renderiza; somente os consumidores dentro da pagina aguardam a carga. */
 export function AnnualDataGate({ children, showLoading = true }: { children: ReactNode; showLoading?: boolean }) {
   const context = useContext(AnnualDataContext);
-  if (!context) throw new Error("AnnualDataGate exige AnnualDataProvider");
+  if (!context) throw new Error("AnnualDataGate requires AnnualDataProvider");
   if (context.status.state === "ready") return children;
   return showLoading
     ? <AnnualLoadingScreen status={context.status} onRetry={context.onRetry} />

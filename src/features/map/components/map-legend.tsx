@@ -1,4 +1,4 @@
-import { HEAT_RAMP, HEX_RAMP, NDVI_RAMP, type BasemapId, type PlotId } from "@/lib/map-layers";
+import { FORECAST_RAMP, HEAT_RAMP, HEX_RAMP, NDVI_RAMP, type BasemapId, type PlotId } from "@/lib/map-layers";
 import type { HexInfo } from "@/lib/utils/hex";
 import { SENSOR_META, SENSORS } from "@/lib/sensors";
 import type { SensorId } from "@/types/detections";
@@ -42,6 +42,8 @@ export function MapLegend({
   showHeat = false,
   plot = "points",
   hexInfo,
+  harmonizedUnit,
+  forecastIssue,
 }: {
   counts?: Partial<Record<SensorId, number>>;
   enabled?: SensorId[];
@@ -50,6 +52,8 @@ export function MapLegend({
   showHeat?: boolean;
   plot?: PlotId;
   hexInfo?: HexInfo | null;
+  harmonizedUnit?: string;
+  forecastIssue?: string | null;
 }) {
   return (
     <section aria-labelledby="legend-title">
@@ -57,7 +61,7 @@ export function MapLegend({
         id="legend-title"
         className="text-small font-semibold tracking-[-0.02em] text-ink-300"
       >
-        Legenda
+        Legend
       </h2>
       <ul className="mt-2 flex flex-col gap-1.5 text-small">
         {SENSORS.map((s) => {
@@ -74,11 +78,11 @@ export function MapLegend({
               <span className={on ? "" : "text-ink-300"}>
                 {SENSOR_META[s].label}
                 <span className="text-ink-300"> · {SENSOR_META[s].platforms}</span>
-                {!on && <span className="text-ink-300"> (oculto)</span>}
+                {!on && <span className="text-ink-300"> (hidden)</span>}
               </span>
               {on && counts?.[s] !== undefined && (
                 <span className="ml-auto font-mono text-ink-300">
-                  {counts[s]!.toLocaleString("pt-BR")}
+                  {counts[s]!.toLocaleString("en-US")}
                 </span>
               )}
             </li>
@@ -87,29 +91,47 @@ export function MapLegend({
         {showMatches && (
           <li className="flex items-center gap-2">
             <span aria-hidden className="grid h-4 w-4 place-items-center rounded-full border-2 border-white" />
-            Correspondência entre sensores (harmonização validada)
+            Cross-sensor match (validated harmonization)
           </li>
         )}
         {plot === "hex" && hexInfo && (
           <Gradient
-            title={`Focos por hexágono (H3, resolução ${hexInfo.res})`}
+            title={
+              harmonizedUnit
+                ? `Harmonized activity per hexagon (H3, resolution ${hexInfo.res})`
+                : `Fire detections per hexagon (H3, resolution ${hexInfo.res})`
+            }
             colors={HEX_RAMP}
-            low="1 foco"
-            high={`${hexInfo.max.toLocaleString("pt-BR")} focos`}
-            note={`Aresta ≈ ${hexInfo.edgeKm.toLocaleString("pt-BR", { maximumFractionDigits: 1 })} km · ${hexInfo.cells.toLocaleString("pt-BR")} células · escala logarítmica`}
+            low={harmonizedUnit ? "Lower" : "1 detection"}
+            high={
+              harmonizedUnit
+                ? hexInfo.max.toLocaleString("en-US", { maximumFractionDigits: 1 })
+                : `${hexInfo.max.toLocaleString("en-US")} detections`
+            }
+            note={`${harmonizedUnit ? `${harmonizedUnit} · ` : ""}Edge ≈ ${hexInfo.edgeKm.toLocaleString("en-US", { maximumFractionDigits: 1 })} km · ${hexInfo.cells.toLocaleString("en-US")} cells · logarithmic scale`}
+          />
+        )}
+        {forecastIssue && (
+          <Gradient
+            title="Forecast: probability of fire in the next 7 days"
+            colors={FORECAST_RAMP}
+            low="0%"
+            mid="50%"
+            high="100%"
+            note={`Dashed red hexagons (points when zoomed out). Issued ${new Date(`${forecastIssue}T00:00:00Z`).toLocaleDateString("en-US", { timeZone: "UTC" })}. Model estimate, not an observed detection.`}
           />
         )}
         {showHeat && (
           <Gradient
-            title="Mapa de calor (densidade de focos)"
+            title="Heatmap (fire detection density)"
             colors={HEAT_RAMP}
-            low="Menor densidade"
-            high="Maior densidade"
+            low="Lower density"
+            high="Higher density"
           />
         )}
         {basemap === "vegetation" && (
           <Gradient
-            title="Vegetação (NDVI, MODIS)"
+            title="Vegetation (NDVI, MODIS)"
             colors={NDVI_RAMP.colors}
             low={NDVI_RAMP.low}
             mid={NDVI_RAMP.mid}
@@ -118,13 +140,13 @@ export function MapLegend({
         )}
         {basemap === "streets" && (
           <li className="text-caption text-ink-300">
-            Mapa de ruas: © OpenStreetMap contributors · OpenFreeMap (OpenMapTiles).
+            Street map: © OpenStreetMap contributors · OpenFreeMap (OpenMapTiles).
           </li>
         )}
         {basemap === "illustrated" && (
           <li className="text-caption text-ink-300">
-            Tons de cinza são apenas decorativos e não representam dados.
-            Divisões internas só existem para os maiores países.
+            Grayscale shades are decorative only and do not represent data.
+            Internal boundaries are available only for the largest countries.
           </li>
         )}
       </ul>

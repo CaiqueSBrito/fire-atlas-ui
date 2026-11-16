@@ -1,3 +1,5 @@
+import { englishApiMessage } from "./english-message";
+
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL?.replace(/\/+$/, "");
 
 // O Athena pode consumir 30 s no backend; a margem inclui a transferência e a leitura do JSON.
@@ -21,7 +23,7 @@ async function problemDetail(res: Response): Promise<string | null> {
     const body: unknown = await res.json();
     if (body && typeof body === "object" && "detail" in body) {
       const { detail } = body as { detail: unknown };
-      return typeof detail === "string" && detail ? detail : null;
+      return typeof detail === "string" && detail ? englishApiMessage(detail) : null;
     }
   } catch {
     return null;
@@ -54,8 +56,8 @@ export async function apiFetch<T>(
       const recoverable = res.status === 408 || res.status === 429 || (res.status >= 500 && res.status !== 501);
       throw new ApiError(
         detail
-          ? `${recoverable ? "O servidor não concluiu a consulta" : "O servidor recusou a consulta"}: ${detail}`
-          : `O servidor respondeu com erro (${res.status}).`,
+          ? `${recoverable ? "The server could not complete the query" : "The server rejected the query"}: ${detail}`
+          : `The server returned an error (${res.status}).`,
         res.status,
         recoverable,
       );
@@ -65,9 +67,9 @@ export async function apiFetch<T>(
   } catch (error) {
     if (signal?.aborted) throw signal.reason;
     if (timeout.aborted) {
-      throw new ApiError("A consulta ultrapassou 45 s. Reduza o período ou a área e tente novamente.", 408);
+      throw new ApiError("The query exceeded 45 s. Reduce the date range or area and try again.", 408);
     }
     if (error instanceof ApiError) throw error;
-    throw new ApiError("Não foi possível conectar ao servidor.");
+    throw new ApiError("Unable to connect to the server.");
   }
 }

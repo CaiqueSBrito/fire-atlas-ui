@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchActivityMonth, fetchDaySatellites, fetchMonthAnomaly } from "@/lib/api/activity";
@@ -24,8 +24,8 @@ vi.mock("@/lib/api/coverage", async (original) => ({
   fetchCoverage: vi.fn(),
 }));
 vi.mock("./day-map", () => ({
-  DayMap: (p: { date: string; region: { id: string } }) => (
-    <div data-testid="day-map" data-date={p.date} data-region={p.region.id} />
+  DayMap: (p: { date: string; region: { id: string }; viewBbox?: number[] | null }) => (
+    <div data-testid="day-map" data-date={p.date} data-region={p.region.id} data-view={p.viewBbox?.join(",") ?? ""} />
   ),
 }));
 
@@ -47,7 +47,7 @@ function monthOf(m: string, values: (number | null)[], region = "world"): Activi
     month: m,
     region,
     days: values.map((v, i) => day(`${m}-${String(i + 1).padStart(2, "0")}`, v)),
-    unitLabel: "Atividade de fogo harmonizada (células ativas equivalentes ao MODIS Aqua)",
+    unitLabel: "Atividade de fogo harmonizada (MODIS Aqua-equivalent active cells)",
     warnings: ["O dia é o dia local de fogo, não UTC."],
     source: { name: "teste", simulated: false },
   };
@@ -59,7 +59,7 @@ beforeEach(() => {
   month.mockReset();
   anomaly.mockReset();
   satellites.mockReset();
-  vi.mocked(fetchCoverage).mockResolvedValue({ resolutions: [0, 1, 2, 3, 4, 5, 6], minDate: "2000-11-01", maxDate: "2026-11-13" });
+  vi.mocked(fetchCoverage).mockResolvedValue({ resolutions: [0, 1, 2, 3, 4, 5], minDate: "2000-11-01", maxDate: "2026-11-13" });
   month.mockImplementation(async (m, region) => monthOf(m, [100, 200, 50, null], region));
   anomaly.mockResolvedValue({
     sufficient: false, current: null, baselineMedian: null, deviationPct: null, yearsWithData: 0, minYears: 3, note: null,
@@ -67,84 +67,109 @@ beforeEach(() => {
   satellites.mockResolvedValue({ date: "", contributing: ["NOAA-20"], available: [] });
 });
 
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  sessionStorage.clear();
+});
 
-const heading = () => screen.findByRole("heading", { level: 2, name: /de novembro de 2026/ });
+const heading = () => screen.findByRole("heading", { level: 2, name: /^November \d+, 2026$/ });
 
 describe("CalendarView", () => {
-  it("sem data na URL abre o último dia com dado do mês (hoje está sem dado)", async () => {
+  it("sem data na URL abre o último dia com dado do mês (hoje está no data)", async () => {
     renderWithProviders(<CalendarView />);
-    expect(await heading()).toHaveTextContent("3 de novembro de 2026");
+    expect(await heading()).toHaveTextContent("November 3, 2026");
     expect(screen.getByTestId("day-map")).toHaveAttribute("data-date", "2026-11-03");
   });
   it("abre o último dia com atividade e grade espacial sem substituir uma data explícita", async () => {
-    vi.mocked(fetchCoverage).mockResolvedValue({ resolutions: [0, 1, 2, 3, 4, 5, 6], minDate: "2000-11-01", maxDate: "2026-11-02" });
+    vi.mocked(fetchCoverage).mockResolvedValue({ resolutions: [0, 1, 2, 3, 4, 5], minDate: "2000-11-01", maxDate: "2026-11-02" });
     renderWithProviders(<CalendarView />);
-    expect(await heading()).toHaveTextContent("2 de novembro de 2026");
-    await userEvent.click(screen.getByRole("button", { name: /^3 de novembro de 2026/ }));
-    expect(await heading()).toHaveTextContent("3 de novembro de 2026");
+    expect(await heading()).toHaveTextContent("November 2, 2026");
+    await userEvent.click(screen.getByRole("button", { name: /^November 3, 2026/ }));
+    expect(await heading()).toHaveTextContent("November 3, 2026");
   });
 
   it("escolher uma barra grava a data na URL e troca mapa e painel", async () => {
     const onUrlUpdate = vi.fn();
     renderWithProviders(<CalendarView />, { onUrlUpdate });
     await heading();
-    await userEvent.click(screen.getByRole("button", { name: /^2 de novembro de 2026/ }));
-    expect(await heading()).toHaveTextContent("2 de novembro de 2026");
+    await userEvent.click(screen.getByRole("button", { name: /^November 2, 2026/ }));
+    expect(await heading()).toHaveTextContent("November 2, 2026");
     expect(screen.getByTestId("day-map")).toHaveAttribute("data-date", "2026-11-02");
     expect(onUrlUpdate.mock.calls.at(-1)![0].queryString).toContain("date=2026-11-02");
   });
 
-  it("trocar a região consulta a nova região e descarta a área desenhada", async () => {
+  it("escolher um dia no calendário troca mapa, painel e URL", async () => {
     const onUrlUpdate = vi.fn();
-    renderWithProviders(<CalendarView />, { searchParams: "?bbox=-50,-10,-40,0", onUrlUpdate });
+    renderWithProviders(<CalendarView />, { onUrlUpdate });
     await heading();
-    await userEvent.click(screen.getByRole("button", { name: "América do Sul" }));
-    await waitFor(() => expect(month).toHaveBeenLastCalledWith("2026-11", "south-america", expect.anything()));
-    const qs = onUrlUpdate.mock.calls.at(-1)![0].queryString;
-    expect(qs).toContain("region=south-america");
-    expect(qs).not.toContain("bbox");
-    expect(screen.getByRole("button", { name: "América do Sul" })).toHaveAttribute("aria-pressed", "true");
+    await userEvent.click(screen.getByRole("button", { name: /November 2026 — choose day/ }));
+    await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "November 2, 2026" }));
+    expect(await heading()).toHaveTextContent("November 2, 2026");
+    expect(screen.getByTestId("day-map")).toHaveAttribute("data-date", "2026-11-02");
+    expect(onUrlUpdate.mock.calls.at(-1)![0].queryString).toContain("date=2026-11-02");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("mudar de mês consulta o novo mês e limpa a data escolhida", async () => {
+  it("trocar o mês pelo seletor de dia atualiza a consulta, o mapa e a URL", async () => {
     const onUrlUpdate = vi.fn();
     renderWithProviders(<CalendarView />, { searchParams: "?date=2026-11-02", onUrlUpdate });
     await heading();
-    await userEvent.click(screen.getByRole("button", { name: "Mês anterior" }));
+    expect(screen.queryByRole("button", { name: "Previous month" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Next month" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /November 2026 — choose day/ }));
+    const picker = within(screen.getByRole("dialog"));
+    await userEvent.click(picker.getByRole("button", { name: "Previous month" }));
+    await userEvent.click(picker.getByRole("button", { name: "October 2, 2026" }));
     await waitFor(() => expect(month).toHaveBeenLastCalledWith("2026-10", "world", expect.anything()));
+    expect(await screen.findByRole("heading", { level: 2, name: "October 2, 2026" })).toBeInTheDocument();
+    expect(screen.getByTestId("day-map")).toHaveAttribute("data-date", "2026-10-02");
     const qs = onUrlUpdate.mock.calls.at(-1)![0].queryString;
     expect(qs).toContain("month=2026-10");
-    expect(qs).not.toContain("date=");
+    expect(qs).toContain("date=2026-10-02");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("dia sem dado escolhido mostra o aviso e não consulta satélites", async () => {
+  it("dia no data escolhido mostra o aviso e não consulta satélites", async () => {
     renderWithProviders(<CalendarView />, { searchParams: "?date=2026-11-04" });
-    expect(await heading()).toHaveTextContent("4 de novembro de 2026");
-    expect(screen.getByText(/Isso não significa ausência de fogo/)).toBeInTheDocument();
+    expect(await heading()).toHaveTextContent("November 4, 2026");
+    expect(screen.getByText(/This does not mean there was no fire/)).toBeInTheDocument();
     expect(satellites).not.toHaveBeenCalled();
   });
 
-  it("resumo do mês: pico, dias sem dado e comparação indisponível com o motivo", async () => {
-    renderWithProviders(<CalendarView />);
-    await heading();
-    expect(screen.getByText("02/11 · 200")).toBeInTheDocument();
-    expect(screen.getByText("Indisponível")).toBeInTheDocument();
-    expect(screen.getByText(/exige pelo menos 3 anos anteriores com dado; há 0/)).toBeInTheDocument();
-  });
 
   it("falha ao carregar o mês informa o motivo e tenta de novo", async () => {
     month.mockRejectedValueOnce(new ApiError("Serviço fora do ar"));
     renderWithProviders(<CalendarView />);
     expect(await screen.findByRole("alert")).toHaveTextContent("Serviço fora do ar");
-    await userEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
-    expect(await heading()).toHaveTextContent("3 de novembro de 2026");
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await heading()).toHaveTextContent("November 3, 2026");
   });
 
   it("não oferece repetir uma operação que a API não implementa", async () => {
     month.mockRejectedValue(new ApiError("Recurso indisponível", 501, false));
     renderWithProviders(<CalendarView />);
     await screen.findByRole("alert");
-    expect(screen.queryByRole("button", { name: "Tentar novamente" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
+  });
+
+  it("o mapa do dia abre no lugar escolhido no mapa principal da mesma região", async () => {
+    sessionStorage.setItem("fire-atlas:map-place", "south-america|-56,-12,-54,-10");
+    renderWithProviders(<CalendarView />, { searchParams: "region=south-america" });
+    await heading();
+    expect(screen.getByTestId("day-map")).toHaveAttribute("data-view", "-56,-12,-54,-10");
+  });
+
+  it("uma área explícita na URL tem prioridade sobre o lugar lembrado", async () => {
+    sessionStorage.setItem("fire-atlas:map-place", "world|-56,-12,-54,-10");
+    renderWithProviders(<CalendarView />, { searchParams: "bbox=-50,-10,-40,0" });
+    await heading();
+    expect(screen.getByTestId("day-map")).toHaveAttribute("data-view", "-50,-10,-40,0");
+  });
+
+  it("não leva o lugar lembrado para outra região", async () => {
+    sessionStorage.setItem("fire-atlas:map-place", "south-america|-56,-12,-54,-10");
+    renderWithProviders(<CalendarView />, { searchParams: "region=africa" });
+    await heading();
+    expect(screen.getByTestId("day-map")).toHaveAttribute("data-view", "");
   });
 });

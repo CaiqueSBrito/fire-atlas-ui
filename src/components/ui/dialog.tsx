@@ -85,7 +85,7 @@ export function Dialog({
           <button
             type="button"
             onClick={() => onCloseRef.current()}
-            aria-label="Fechar"
+            aria-label="Close"
             className="grid h-12 w-12 place-items-center rounded-full text-ink-300 transition-colors duration-200 hover:bg-space-800 hover:text-ink-100"
           >
             <svg aria-hidden viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">

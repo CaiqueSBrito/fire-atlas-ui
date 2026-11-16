@@ -11,7 +11,7 @@ export default function ExploreError({
 }) {
   return (
     <ErrorState
-      message={error.message || "Ocorreu um erro inesperado."}
+      message={error.message || "An unexpected error occurred."}
       onRetry={retry}
     />
   );

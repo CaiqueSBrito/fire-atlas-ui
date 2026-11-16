@@ -8,7 +8,7 @@ import type {
 } from "@/types/calendar";
 import { UNIT_LABEL_FALLBACK } from "./activity";
 
-const SOURCE = { name: "Dados simulados (protótipo)", simulated: true };
+const SOURCE = { name: "Simulated data (prototype)", simulated: true };
 
 const TEMPERATURE_EDGES: readonly [string, number | null, number | null][] = [
   ["lt320", null, 320],
@@ -84,7 +84,7 @@ export async function mockActivityMonth(
     region,
     days,
     unitLabel: UNIT_LABEL_FALLBACK,
-    warnings: ["Dados simulados: nenhum número desta tela vem do FIRMS."],
+    warnings: ["Simulated data: none of the numbers on this screen come from FIRMS."],
     source: SOURCE,
   };
 }
@@ -98,7 +98,7 @@ export async function mockMonthAnomaly(month: string, signal?: AbortSignal): Pro
     deviationPct: null,
     yearsWithData: 0,
     minYears: 3,
-    note: `Dados simulados não têm histórico para ${month}.`,
+    note: `Simulated data has no history for ${month}.`,
   };
 }
 

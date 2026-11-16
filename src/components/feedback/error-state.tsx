@@ -7,8 +7,8 @@ type ErrorStateProps = {
 };
 
 export function ErrorState({
-  title = "Não foi possível carregar os dados",
-  message = "Verifique sua conexão e tente novamente.",
+  title = "Unable to load data",
+  message = "Check your connection and try again.",
   onRetry,
 }: ErrorStateProps) {
   return (
@@ -24,7 +24,7 @@ export function ErrorState({
           onClick={onRetry}
           className="mt-4 rounded-lg bg-fire-500 px-4 py-2 text-small font-semibold text-white hover:bg-fire-400"
         >
-          Tentar novamente
+          Try again
         </button>
       )}
     </div>

@@ -12,7 +12,7 @@ import type {
 export type MockMode = "error" | "empty" | null;
 
 export const MOCK_SOURCE = {
-  name: "Dados simulados (protótipo) · posições aproximadas",
+  name: "Simulated data (prototype) · approximate locations",
   simulated: true,
 } as const;
 
@@ -189,7 +189,7 @@ export async function mockDetections(
 ): Promise<DetectionsResponse> {
   await wait(600, signal);
   if (mock === "error") {
-    throw new ApiError("Simulação: o servidor está indisponível.");
+    throw new ApiError("Simulation: the server is unavailable.");
   }
   const base = { harmonization: { available: false }, source: MOCK_SOURCE };
   if (mock === "empty") {

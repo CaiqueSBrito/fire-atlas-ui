@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Fustat, JetBrains_Mono } from "next/font/google";
 import { SkipLink } from "@/components/layout/skip-link";
 import { AppProviders } from "@/providers/app-providers";
+import { SiteHeader } from "@/components/layout/site-header";
+import { AnnualDataGate } from "@/providers/annual-data-gate";
 import "./globals.css";
 
 const display = Space_Grotesk({
@@ -23,18 +25,23 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Fire Atlas — NASA Space Apps 2026",
   description:
-    "Plataforma de exploração de focos de calor (NASA FIRMS: MODIS + VIIRS) com mapa, calendário e análises.",
+    "Explore fire hotspots (NASA FIRMS: MODIS + VIIRS) with an interactive map, calendar, and analytics.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="pt-BR"
+      lang="en"
       className={`${display.variable} ${sans.variable} ${mono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <SkipLink />
-        <AppProviders>{children}</AppProviders>
+        <AppProviders>
+          <AnnualDataGate showLoading={false}>
+            <SiteHeader />
+          </AnnualDataGate>
+          {children}
+        </AppProviders>
       </body>
     </html>
   );

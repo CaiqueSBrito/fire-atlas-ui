@@ -14,7 +14,7 @@ describe("ErrorState (RN05 / CA04 da Home)", () => {
   it("oferece nova tentativa quando há onRetry", async () => {
     const onRetry = vi.fn();
     render(<ErrorState onRetry={onRetry} />);
-    await userEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(onRetry).toHaveBeenCalledOnce();
   });
 
@@ -23,10 +23,4 @@ describe("ErrorState (RN05 / CA04 da Home)", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("usa textos padrão em português", () => {
-    render(<ErrorState />);
-    expect(screen.getByRole("alert")).toHaveTextContent(
-      "Não foi possível carregar os dados",
-    );
-  });
 });

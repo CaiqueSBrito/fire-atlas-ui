@@ -9,14 +9,14 @@ export type Region = {
 };
 
 export const REGIONS: readonly Region[] = [
-  { id: "world", label: "Mundo", bbox: [-180, -60, 180, 80] },
-  { id: "north-america", label: "América do Norte", bbox: [-170, 7, -50, 75] },
-  { id: "south-america", label: "América do Sul", bbox: [-82, -56, -34, 13] },
-  { id: "europe", label: "Europa", bbox: [-25, 34, 45, 72] },
-  { id: "africa", label: "África", bbox: [-20, -36, 54, 38] },
-  { id: "asia", label: "Ásia", bbox: [26, -11, 146, 78] },
+  { id: "world", label: "World", bbox: [-180, -60, 180, 80] },
+  { id: "north-america", label: "North America", bbox: [-170, 7, -50, 75] },
+  { id: "south-america", label: "South America", bbox: [-82, -56, -34, 13] },
+  { id: "europe", label: "Europe", bbox: [-25, 34, 45, 72] },
+  { id: "africa", label: "Africa", bbox: [-20, -36, 54, 38] },
+  { id: "asia", label: "Asia", bbox: [26, -11, 146, 78] },
   { id: "oceania", label: "Oceania", bbox: [110, -48, 180, 0] },
-  { id: "brasil", label: "Brasil", bbox: [-74, -34, -34, 6] },
+  { id: "brasil", label: "Brazil", bbox: [-74, -34, -34, 6] },
   { id: "amazonas", label: "Amazonas", bbox: [-73.8, -9.8, -56.1, 2.3] },
   { id: "para", label: "Pará", bbox: [-58.9, -9.9, -46, 2.6] },
   { id: "mato-grosso", label: "Mato Grosso", bbox: [-61.7, -18, -50.2, -7.3] },
@@ -27,6 +27,7 @@ export const REGIONS: readonly Region[] = [
 ];
 
 export const DEFAULT_REGION_ID = "world";
+export const CONTINENT_IDS = ["north-america", "south-america", "europe", "africa", "asia", "oceania"];
 
 export function getRegion(id: string | null | undefined): Region {
   return (

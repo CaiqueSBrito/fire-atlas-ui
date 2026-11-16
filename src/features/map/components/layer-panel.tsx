@@ -36,6 +36,7 @@ export function LayerPanel({
   gridOnly = null,
   dots = true,
   heat,
+  forecast,
   onChange,
 }: {
   base: BasemapId;
@@ -43,11 +44,13 @@ export function LayerPanel({
   gridOnly?: { resolution: number } | null;
   dots?: boolean;
   heat: boolean;
+  forecast?: boolean;
   onChange: (next: {
     base?: BasemapId;
     plot?: PlotId;
     dots?: boolean;
     heat?: boolean;
+    forecast?: boolean;
   }) => void;
 }) {
   const plotName = useId();
@@ -56,14 +59,14 @@ export function LayerPanel({
   return (
     <section aria-labelledby="layers-title" className="flex flex-col">
       <h2 id="layers-title" className="mb-1 text-small font-semibold tracking-[-0.02em] text-ink-300">
-        Camadas do mapa
+        Map layers
       </h2>
 
-      <Group title="Visualização dos focos">
+      <Group title="Fire detection display">
         {gridOnly && (
           <p className="rounded-xl border border-space-600 p-3 text-caption text-ink-300">
-            A fonte de dados agrega os focos por célula H3 (resolução {gridOnly.resolution}).
-            Pontos individuais não estão disponíveis.
+            The data source aggregates fire detections by H3 cell (resolution {gridOnly.resolution}).
+            Individual points are not available.
           </p>
         )}
         {!gridOnly && PLOT_OPTIONS.map((o) => (
@@ -86,27 +89,35 @@ export function LayerPanel({
           <Toggle
             checked={dots}
             onChange={(next) => onChange({ dots: next })}
-            label="Mostrar pontos sobre os hexágonos"
-            description="Ao aproximar o zoom, cada detecção ◆ ● aparece por cima da célula; clique para ver os detalhes"
+            label="Show points over hexagons"
+            description="When zoomed in, each detection ◆ ● appears above the cell; click to view details"
           />
         )}
       </Group>
 
-      <Group title="Sobreposições">
+      <Group title="Overlays">
         <Toggle
           checked={heat}
           onChange={(next) => onChange({ heat: next })}
-          label="Mapa de calor"
-          description="Densidade de focos, ponderada pela FRP quando informada"
+          label="Heatmap"
+          description="Fire detection density, weighted by FRP when available"
         />
+        {forecast !== undefined && (
+          <Toggle
+            checked={forecast}
+            onChange={(next) => onChange({ forecast: next })}
+            label="Fire forecast (7 days)"
+            description="Probability estimated by the data team's model, per hexagon; not an observed detection"
+          />
+        )}
       </Group>
 
-      <Group title="Configurações">
+      <Group title="Settings">
         <Toggle
           checked={illustrated}
           onChange={(next) => onChange({ base: next ? "illustrated" : "streets" })}
-          label="Mapa ilustrado"
-          description="Países e estados em tons de cinza, no lugar do mapa base"
+          label="Illustrated map"
+          description="Countries and states in grayscale, replacing the basemap"
         />
       </Group>
     </section>

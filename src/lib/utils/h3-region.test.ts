@@ -62,4 +62,9 @@ describe("cellsForBbox", () => {
     const { cells } = cellsForBbox(PARA, []);
     expect(cells).toHaveLength(1);
   });
+  it("não consulta a resolução retirada mesmo quando a cobertura ainda a anuncia", () => {
+    const { cells, resolution } = cellsForBbox([-50.001, -3.001, -50, -3], [0, 1, 2, 3, 4, 5, 6]);
+    expect(resolution).toBe(5);
+    expect(cells.every((id) => getResolution(id) === 5)).toBe(true);
+  });
 });

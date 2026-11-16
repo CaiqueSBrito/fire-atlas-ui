@@ -158,8 +158,15 @@ export type ApiHistoricalSensor = {
     days: number;
     daysWithData: number;
     detections: number;
-    detectionsPerDay: number;
+    detectionsPerDay: number | null;
   };
+  baseline?: {
+    year: number;
+    start: string;
+    end: string;
+    detections: number;
+    detectionsPerDay: number;
+  }[];
   yearsWithData: number;
   meanDetectionsPerDay?: number | null;
   stdDevDetectionsPerDay?: number | null;
@@ -217,5 +224,19 @@ export type ApiForecastResponse = {
   items: ApiForecastItem[];
   source: string;
   method: string;
+  message?: string | null;
+};
+
+export type ApiActivityMonthItem = {
+  month: string;
+  harmonized?: number | null;
+  daysWithData: number;
+  daysInMonth: number;
+  complete: boolean;
+};
+
+export type ApiActivityMonthlyResponse = {
+  months: ApiActivityMonthItem[];
+  meta?: ApiActivityMeta | null;
   message?: string | null;
 };

@@ -1,5 +1,6 @@
 import { cellToBoundary, cellToLatLng, getHexagonEdgeLengthAvg, latLngToCell } from "h3-js";
 import { HEX_RAMP } from "@/lib/map-layers";
+import { MAX_H3_RESOLUTION } from "./h3-region";
 import type { Detection } from "@/types/calendar";
 import type { SensorId } from "@/types/detections";
 
@@ -27,8 +28,6 @@ const FOCUS_ZOOM_BY_RES: Record<number, number> = {
   3: 5.5,
   4: 7,
   5: 8.5,
-  6: 9.5,
-  7: 10.5,
 };
 
 export function hexFocusZoom(res: number): number {
@@ -39,13 +38,11 @@ const ZOOM_TO_RES: ReadonlyArray<[number, number]> = [
   [2, 2],
   [3, 3],
   [4, 4],
-  [5.5, 5],
-  [7, 6],
 ];
 
 export function hexResolution(zoom: number): number {
   for (const [limit, res] of ZOOM_TO_RES) if (zoom < limit) return res;
-  return 7;
+  return MAX_H3_RESOLUTION;
 }
 
 export function aggregateHex(
@@ -93,8 +90,14 @@ const hexToRgb = (hex: string): [number, number, number] => [
   parseInt(hex.slice(5, 7), 16),
 ];
 
-export function hexColor(count: number, max: number): string {
-  const t = max <= 1 ? 0 : Math.log(Math.max(1, count)) / Math.log(max);
+export function colorFloor(counts: number[], max: number): number {
+  let smallest = Infinity;
+  for (const c of counts) if (c > 0 && c < smallest) smallest = c;
+  return smallest < 1 ? Math.max(max / 1000, smallest) : 1;
+}
+
+export function hexColor(count: number, max: number, floor = 1): string {
+  const t = max <= floor ? 0 : Math.log(Math.max(floor, count) / floor) / Math.log(max / floor);
   const scaled = Math.min(1, Math.max(0, t)) * (HEX_RAMP.length - 1);
   const i = Math.min(HEX_RAMP.length - 2, Math.floor(scaled));
   const k = scaled - i;

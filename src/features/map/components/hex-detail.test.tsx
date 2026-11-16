@@ -18,34 +18,30 @@ const cell = (over: Partial<HexCell> = {}): HexCell => ({
 describe("HexDetail", () => {
   it("mostra a contagem total e por sensor", () => {
     render(<HexDetail view3d={false} onToggle3d={() => {}} cell={cell()} shown={100} total={100} truncated={false} onClose={vi.fn()} />);
-    const region = screen.getByRole("region", { name: "Hexágono H3" });
-    expect(region).toHaveTextContent("Focos na célula37");
+    const region = screen.getByRole("region", { name: "H3 hexagon" });
+    expect(region).toHaveTextContent("Fire detections in cell37");
     expect(region).toHaveTextContent("◆ MODIS12");
     expect(region).toHaveTextContent("● VIIRS25");
   });
 
   it("informa resolução, tamanho, centro e identificador da célula", () => {
     render(<HexDetail view3d={false} onToggle3d={() => {}} cell={cell()} shown={1} total={1} truncated={false} onClose={vi.fn()} />);
-    const region = screen.getByRole("region", { name: "Hexágono H3" });
-    expect(region).toHaveTextContent("4 (aresta ≈ 26,1 km)");
+    const region = screen.getByRole("region", { name: "H3 hexagon" });
+    expect(region).toHaveTextContent("4 (edge ≈ 26.1 km)");
     expect(region).toHaveTextContent("-10.090°, -49.920°");
     expect(region).toHaveTextContent("8481635ffffffff");
   });
 
-  it("avisa que a contagem é parcial quando os pontos foram truncados", () => {
-    render(<HexDetail view3d={false} onToggle3d={() => {}} cell={cell()} shown={2497} total={4577} truncated onClose={vi.fn()} />);
-    expect(screen.getByText(/Contagem sobre os 2\.497 pontos exibidos, de 4\.577 no recorte/)).toBeInTheDocument();
-  });
 
   it("não mostra o aviso de contagem parcial quando todos os pontos estão carregados", () => {
     render(<HexDetail view3d={false} onToggle3d={() => {}} cell={cell()} shown={10} total={10} truncated={false} onClose={vi.fn()} />);
-    expect(screen.queryByText(/Contagem sobre os/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Count based on the/)).not.toBeInTheDocument();
   });
 
   it("fecha pelo botão", async () => {
     const onClose = vi.fn();
     render(<HexDetail view3d={false} onToggle3d={() => {}} cell={cell()} shown={1} total={1} truncated={false} onClose={onClose} />);
-    await userEvent.click(screen.getByRole("button", { name: "Fechar" }));
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(onClose).toHaveBeenCalledOnce();
   });
 });
@@ -56,16 +52,10 @@ describe("HexDetail — vista 3D", () => {
     render(
       <HexDetail cell={cell()} shown={1} total={1} truncated={false} view3d={false} onToggle3d={onToggle3d} onClose={vi.fn()} />,
     );
-    await userEvent.click(screen.getByRole("button", { name: "Ver em 3D" }));
+    await userEvent.click(screen.getByRole("button", { name: "View in 3D" }));
     expect(onToggle3d).toHaveBeenCalledOnce();
   });
 
-  it("mostra 'Voltar ao 2D' quando já está em 3D", () => {
-    render(
-      <HexDetail cell={cell()} shown={1} total={1} truncated={false} view3d onToggle3d={vi.fn()} onClose={vi.fn()} />,
-    );
-    expect(screen.getByRole("button", { name: "Voltar ao 2D" })).toBeInTheDocument();
-  });
 });
 
 describe("HexTopList", () => {

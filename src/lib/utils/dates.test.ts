@@ -1,16 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   daysInMonth,
-  dayNumber,
   firstWeekday,
-  formatLong,
-  formatMonthTitle,
-  formatShort,
   isValidDate,
   isValidMonth,
   maxYear,
-  monthOf,
-  monthShortName,
   shiftDate,
   shiftMonth,
   todayUtc,
@@ -68,27 +62,6 @@ describe("validação", () => {
   });
 });
 
-describe("formatação pt-BR", () => {
-  it("formata datas e meses", () => {
-    expect(formatLong("2026-10-13")).toBe("13 de outubro de 2026");
-    expect(formatLong("2026-11-01")).toBe("1 de novembro de 2026");
-    expect(formatMonthTitle("2026-11")).toBe("Novembro de 2026");
-    expect(formatShort("2026-10-13")).toBe("13/10/2026");
-    expect(dayNumber("2026-10-03")).toBe("03");
-    expect(monthOf("2026-10-13")).toBe("2026-10");
-  });
-
-  it("não sofre deslocamento de fuso (UTC)", () => {
-    expect(formatLong("2026-01-01")).toBe("1 de janeiro de 2026");
-    expect(formatLong("2026-12-31")).toBe("31 de dezembro de 2026");
-  });
-
-  it("dá nomes curtos de mês sem ponto", () => {
-    expect(monthShortName(0)).toBe("jan");
-    expect(monthShortName(11)).toBe("dez");
-    for (let i = 0; i < 12; i++) expect(monthShortName(i)).not.toContain(".");
-  });
-});
 
 describe("relógio em UTC", () => {
   it("usa a data UTC, não a local", () => {

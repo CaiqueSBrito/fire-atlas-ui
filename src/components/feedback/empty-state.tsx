@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
 export function EmptyState({
-  title = "Nenhum dado encontrado",
-  description = "Não há detecções para os filtros selecionados. Tente ampliar o período ou mudar o satélite.",
+  title = "No data found",
+  description = "No detections match the selected filters. Try a wider date range or a different satellite.",
   action,
 }: {
   title?: string;

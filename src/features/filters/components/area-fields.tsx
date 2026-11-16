@@ -7,10 +7,10 @@ import { formatBboxParam, parseBbox, validateBbox } from "@/lib/utils/bbox";
 import type { Bbox } from "@/types/detections";
 
 const FIELDS = [
-  { key: 0, label: "Oeste (lon)", hint: "−180 a 180" },
-  { key: 1, label: "Sul (lat)", hint: "−90 a 90" },
-  { key: 2, label: "Leste (lon)", hint: "−180 a 180" },
-  { key: 3, label: "Norte (lat)", hint: "−90 a 90" },
+  { key: 0, label: "West (lon)", hint: "−180 to 180" },
+  { key: 1, label: "South (lat)", hint: "−90 to 90" },
+  { key: 2, label: "East (lon)", hint: "−180 to 180" },
+  { key: 3, label: "North (lat)", hint: "−90 to 90" },
 ] as const;
 
 export function AreaFields({
@@ -30,7 +30,7 @@ export function AreaFields({
     e.preventDefault();
     const parsed = values.map((v) => Number(v.replace(",", ".")));
     if (parsed.some((n, i) => !Number.isFinite(n) || values[i].trim() === "")) {
-      setError("Preencha os quatro limites com números.");
+      setError("Enter numbers for all four boundaries.");
       return;
     }
     const problem = validateBbox(parsed as Bbox);
@@ -68,11 +68,11 @@ export function AreaFields({
       )}
       <div className="flex flex-wrap gap-2">
         <Button type="submit" variant="secondary">
-          Usar esta área
+          Use this area
         </Button>
         {bbox && (
           <Button variant="ghost" onClick={() => onChange(null)}>
-            Remover área
+            Remove area
           </Button>
         )}
       </div>

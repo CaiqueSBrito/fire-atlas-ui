@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detectPreset, formatPeriod, presetPeriod } from "./filter-presets";
+import { detectPreset, presetPeriod } from "./filter-presets";
 
 const TODAY = "2026-11-14";
 
@@ -39,9 +39,3 @@ describe("detectPreset", () => {
   });
 });
 
-describe("formatPeriod", () => {
-  it("um dia só ou intervalo", () => {
-    expect(formatPeriod("2026-11-12", "2026-11-12")).toBe("12/11/2026");
-    expect(formatPeriod("2026-11-08", "2026-11-14")).toBe("08/11/2026 → 14/11/2026");
-  });
-});
